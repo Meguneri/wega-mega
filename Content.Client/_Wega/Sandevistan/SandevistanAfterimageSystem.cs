@@ -14,9 +14,9 @@ namespace Content.Client._Wega.Sandevistan;
 /// moving user draws on top — the David Martinez blur trail. The ghost fades its alpha out over
 /// its lifetime instead of popping out instantly.
 /// </summary>
-public sealed class SandevistanAfterimageSystem : EntitySystem
+public sealed partial class SandevistanAfterimageSystem : EntitySystem
 {
-    [Dependency] private readonly SpriteSystem _sprite = default!;
+    [Dependency] private SpriteSystem _sprite = default!;
 
     public override void Initialize()
     {

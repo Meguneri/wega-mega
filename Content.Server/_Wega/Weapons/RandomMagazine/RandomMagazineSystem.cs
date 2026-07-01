@@ -26,9 +26,14 @@ public sealed partial class RandomMagazineSystem : EntitySystem
         if (!_slots.TryGetSlot(ent.Owner, SharedGunSystem.MagazineSlot, out var slot))
             return;
 
-        // Remove whatever startingItem put in there
+        // Remove whatever startingItem put in there. QueueDel alone leaves the item in the slot this
+        // tick, so the insert below would hit CanInsert's HasItem guard and drop the new magazine on
+        // the floor — eject first to free the slot synchronously, then delete the old magazine.
         if (slot.Item is { } existing)
+        {
+            _slots.TryEject(ent.Owner, slot, null, out _, excludeUserAudio: true);
             QueueDel(existing);
+        }
 
         var mag = Spawn(proto, Transform(ent.Owner).Coordinates);
         _slots.TryInsert(ent.Owner, slot, mag, null);

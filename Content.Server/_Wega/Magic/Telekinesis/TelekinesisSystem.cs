@@ -89,10 +89,14 @@ public sealed partial class TelekinesisSystem : EntitySystem
         var target = holding.Target;
         var targetPos = _xform.ToMapCoordinates(args.Target).Position;
         var casterPos = _xform.GetMapCoordinates(caster).Position;
-        var direction = (targetPos - casterPos).Normalized();
+        var delta = targetPos - casterPos;
 
         Release(caster, target, holding);
-        _throwing.TryThrow(target, direction * 6f, 15f, caster);
+
+        // Прицел броска в собственную позицию даёт нулевой вектор: Normalized() вернул бы NaN
+        // и подал бы NaN-импульс в физику. В этом вырожденном случае просто не бросаем.
+        if (delta.LengthSquared() > 0f)
+            _throwing.TryThrow(target, delta.Normalized() * 6f, 15f, caster);
     }
 
     private void Release(EntityUid caster, EntityUid target, TelekinesisHoldingComponent holding)

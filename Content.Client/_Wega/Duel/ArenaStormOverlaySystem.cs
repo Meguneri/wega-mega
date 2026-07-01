@@ -6,7 +6,7 @@ namespace Content.Client._Wega.Duel;
 /// Держит <see cref="ArenaStormOverlay"/> зарегистрированным. Оверлей сам гейтится по активным
 /// штормам на карте игрока, поэтому системе достаточно добавить/убрать его.
 /// </summary>
-public sealed class ArenaStormOverlaySystem : EntitySystem
+public sealed partial class ArenaStormOverlaySystem : EntitySystem
 {
     [Dependency] private IOverlayManager _overlayMan = default!;
 

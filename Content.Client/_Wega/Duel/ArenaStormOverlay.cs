@@ -15,10 +15,10 @@ namespace Content.Client._Wega.Duel;
 /// пульсирующая линия-маркер; внутри — едва заметный контур-подсказка «куда отступать». Безопасная
 /// зона не заливается. Самогейтится по активным штормам на карте глаза игрока.
 /// </summary>
-public sealed class ArenaStormOverlay : Overlay
+public sealed partial class ArenaStormOverlay : Overlay
 {
-    [Dependency] private readonly IEntityManager _entity = default!;
-    [Dependency] private readonly IGameTiming _timing = default!;
+    [Dependency] private IEntityManager _entity = default!;
+    [Dependency] private IGameTiming _timing = default!;
 
     private readonly SharedTransformSystem _transform;
 

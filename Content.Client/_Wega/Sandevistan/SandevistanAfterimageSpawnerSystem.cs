@@ -19,8 +19,8 @@ namespace Content.Client._Wega.Sandevistan;
 /// </summary>
 public sealed partial class SandevistanAfterimageSpawnerSystem : EntitySystem
 {
-    [Dependency] private readonly IGameTiming _timing = default!;
-    [Dependency] private readonly SandevistanAfterimageSystem _afterimage = default!;
+    [Dependency] private IGameTiming _timing = default!;
+    [Dependency] private SandevistanAfterimageSystem _afterimage = default!;
 
     /// <summary>Per-user next-spawn time, kept client-local so networking never resets it.</summary>
     private readonly Dictionary<EntityUid, TimeSpan> _nextSpawn = new();

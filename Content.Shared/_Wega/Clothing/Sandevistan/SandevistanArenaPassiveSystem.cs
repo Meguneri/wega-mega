@@ -13,12 +13,12 @@ namespace Content.Shared._Wega.Clothing.Sandevistan;
 /// a flat dodge chance and a small permanent speed boost. Lets the implant grant on the mob what the
 /// worn eyewear grants through clothing slots.
 /// </summary>
-public sealed class SandevistanArenaPassiveSystem : EntitySystem
+public sealed partial class SandevistanArenaPassiveSystem : EntitySystem
 {
-    [Dependency] private readonly INetManager _net = default!;
-    [Dependency] private readonly IRobustRandom _random = default!;
-    [Dependency] private readonly SharedPopupSystem _popup = default!;
-    [Dependency] private readonly MovementSpeedModifierSystem _movement = default!;
+    [Dependency] private INetManager _net = default!;
+    [Dependency] private IRobustRandom _random = default!;
+    [Dependency] private SharedPopupSystem _popup = default!;
+    [Dependency] private MovementSpeedModifierSystem _movement = default!;
 
     public override void Initialize()
     {

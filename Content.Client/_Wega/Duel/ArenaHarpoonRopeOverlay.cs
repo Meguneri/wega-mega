@@ -13,10 +13,10 @@ namespace Content.Client._Wega.Duel;
 /// без рывков и исчезновения кусками, укорачивается по мере сближения. Лёгкая бегущая «дрожь» по
 /// длине + свечение делают его похожим на натянутый под напряжением кабель.
 /// </summary>
-public sealed class ArenaHarpoonRopeOverlay : Overlay
+public sealed partial class ArenaHarpoonRopeOverlay : Overlay
 {
-    [Dependency] private readonly IEntityManager _entity = default!;
-    [Dependency] private readonly IGameTiming _timing = default!;
+    [Dependency] private IEntityManager _entity = default!;
+    [Dependency] private IGameTiming _timing = default!;
 
     private readonly SharedTransformSystem _transform;
 

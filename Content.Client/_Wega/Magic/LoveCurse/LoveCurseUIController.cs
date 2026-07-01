@@ -5,7 +5,7 @@ using Robust.Client.UserInterface.Controllers;
 
 namespace Content.Client._Wega.Magic.LoveCurse;
 
-public sealed class LoveCurseUIController : UIController
+public sealed partial class LoveCurseUIController : UIController
 {
     [Dependency] private IUserInterfaceManager _uiManager = default!;
     [Dependency] private IEntityManager _entityManager = default!;
