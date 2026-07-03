@@ -10,7 +10,7 @@ REM   mapping 50                                          - создать НО�
 REM   mapping 50 Maps/_Wega/Arena/DMarena2urban.yml       - открыть существующую
 REM Сохранение:  savemap 50 Maps/_Wega/Arena/моя_карта.yml
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo [1/3] Сборка (первый раз — несколько минут)...
 dotnet build Content.Server --configuration Debug -v quiet || goto :err

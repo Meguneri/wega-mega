@@ -10,9 +10,9 @@
 
 ЗАПУСК
 ------
-  Windows : дважды кликни  run_mapping.bat
-  macOS   : в терминале:   ./run_mapping.sh
-  Linux   : в терминале:   ./run_mapping.sh
+  Windows : дважды кликни  dev\run_mapping.bat
+  macOS   : в терминале:   ./dev/run_mapping.sh
+  Linux   : в терминале:   ./dev/run_mapping.sh
 
 Первый запуск собирает проект — это несколько минут, потом быстро.
 Скрипт сам поднимет локальный сервер и откроет игру.

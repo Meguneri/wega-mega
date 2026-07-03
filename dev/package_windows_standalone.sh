@@ -8,11 +8,11 @@
 # Внутри он запускает "Играть.bat" -> поднимается сервер и клиент сам коннектится к localhost.
 #
 # Запускать ЭТОТ скрипт на своей машине (mac/linux), где стоит .NET SDK:
-#     ./package_windows_standalone.sh
+#     ./dev/package_windows_standalone.sh
 #
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
 RID="win-x64"

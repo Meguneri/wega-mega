@@ -17,7 +17,7 @@ import os
 
 from PIL import Image
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MELEE = os.path.join(ROOT, "Resources", "Textures", "_Wega", "Objects", "Weapons", "Melee")
 BASE = os.path.join(MELEE, "katana.rsi")          # источник геометрии
 RSI = os.path.join(MELEE, "rengoku_katana.rsi")   # назначение

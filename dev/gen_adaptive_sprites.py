@@ -17,7 +17,7 @@ import os
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEX = os.path.join(ROOT, "Resources", "Textures", "_Wega")
 WHEEL_DIR = os.path.join(TEX, "Effects", "mahoraga_wheel.rsi")
 SHOCK_DIR = os.path.join(TEX, "Effects", "adaptive_shockwave.rsi")

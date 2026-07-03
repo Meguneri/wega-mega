@@ -10,7 +10,7 @@
 #   mapping 50 Maps/_Wega/Arena/DMarena2urban.yml   — открыть существующую для правки
 # Сохранение: команда  savemap 50 Maps/_Wega/Arena/моя_карта.yml
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 echo "[1/3] Сборка (первый раз — несколько минут)..."
 dotnet build Content.Server --configuration Debug -v quiet
