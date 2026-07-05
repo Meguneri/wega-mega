@@ -20,7 +20,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// — конец боя сбрасывает шторм.
 /// Центр зоны — собственная позиция трекера (как у авто-дропа снабжения).
 /// </summary>
-public sealed partial class ArenaStormSystem : EntitySystem
+public sealed class ArenaStormSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IChatManager _chatManager = default!;
@@ -116,6 +116,45 @@ public sealed partial class ArenaStormSystem : EntitySystem
             count++;
         }
         return count;
+    }
+
+    /// <summary>
+    /// Включает или выключает шторм на конкретной арене. При включении во время боя сбрасывает отсчёт.
+    /// </summary>
+    public void ToggleStorm(EntityUid uid, bool enabled)
+    {
+        if (!TryComp<ArenaStormComponent>(uid, out var storm))
+            return;
+
+        if (enabled)
+        {
+            storm.Enabled = true;
+            storm.Cancelled = false;
+            Dirty(uid, storm);
+
+            if (TryComp<DuelArenaComponent>(uid, out var arena) && arena.IsActive)
+                OnDuelStarted(uid, storm);
+        }
+        else
+        {
+            storm.Enabled = false;
+            CancelStorm(uid, storm);
+        }
+    }
+
+    /// <summary>
+    /// Принудительно запускает сужение зоны немедленно, минуя <see cref="ArenaStormComponent.StartDelay"/>.
+    /// Используется фазой «внезапной смерти» дуэльной арены.
+    /// </summary>
+    public void ForceStartStorm(EntityUid uid, ArenaStormComponent storm)
+    {
+        storm.Cancelled = false;
+        storm.Active = true;
+        storm.StartAt = null;
+        storm.ShrinkStartTime = _timing.CurTime;
+        storm.ShrinkStartRadius = storm.InitialRadius;
+        storm.NextDamageAt = _timing.CurTime + TimeSpan.FromSeconds(storm.DamageInterval);
+        Dirty(uid, storm);
     }
 
     public override void Update(float frameTime)

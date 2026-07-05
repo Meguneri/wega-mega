@@ -113,7 +113,8 @@ namespace Content.Server.Shower
         {
             if (!_solutionContainer.TryGetSolution(uid, "shower", out var showerSol, out var solution) || solution.Volume == 0)
             {
-                StopSpraying(uid, component);
+                // Пустой/недоступный резервуар не должен сам выключать душ —
+                // он остаётся включённым, пока его не переключат вручную.
                 return;
             }
 

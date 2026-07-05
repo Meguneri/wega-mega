@@ -5,6 +5,12 @@
   defaultLinks: [ SurgeryTableReceiver ]
 
 - type: sourcePort
+  id: BossArenaEnded
+  name: signal-port-name-boss-arena-ended
+  description: signal-port-description-boss-arena-ended
+  defaultLinks: [ Close ]
+
+- type: sourcePort
   id: DuelEnded
   name: signal-port-name-duel-ended
   description: signal-port-description-duel-ended

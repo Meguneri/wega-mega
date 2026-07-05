@@ -14,7 +14,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// живых дуэлянтов: сначала появляется маркер-прицел, спустя <see cref="ArenaAirstrikeComponent.WarningDuration"/>
 /// секунд — взрыв с эффектами China Lake / PMC.
 /// </summary>
-public sealed partial class ArenaAirstrikeSystem : EntitySystem
+public sealed class ArenaAirstrikeSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IRobustRandom _random = default!;
@@ -103,13 +103,38 @@ public sealed partial class ArenaAirstrikeSystem : EntitySystem
         airstrike.PendingStrikes.Clear();
     }
 
+    /// <summary>
+    /// Включает или выключает авиаудары на конкретной арене. При выключении отменяет запланированные удары.
+    /// </summary>
+    public void ToggleAirstrike(EntityUid uid, bool enabled)
+    {
+        if (!TryComp<ArenaAirstrikeComponent>(uid, out var airstrike))
+            return;
+
+        airstrike.Enabled = enabled;
+
+        if (!enabled)
+        {
+            airstrike.NextStrikeAt = null;
+            foreach (var (marker, _) in airstrike.PendingStrikes)
+                if (Exists(marker))
+                    QueueDel(marker);
+            airstrike.PendingStrikes.Clear();
+        }
+        else if (TryComp<DuelArenaComponent>(uid, out var arena) && arena.IsActive)
+        {
+            airstrike.NextStrikeAt = _timing.CurTime + TimeSpan.FromSeconds(airstrike.FirstStrikeDelay);
+            airstrike.PendingStrikes.Clear();
+        }
+    }
+
     private void ScheduleWave(EntityUid uid, ArenaAirstrikeComponent airstrike, DuelArenaComponent arena, TimeSpan now)
     {
         var gridUid = Transform(uid).GridUid;
         if (gridUid == null || !TryComp<MapGridComponent>(gridUid, out var gridComp))
             return;
 
-        var allTiles = _map.GetAllTiles(gridUid.Value, gridComp).ToList();
+        var allTiles = _map.GetAllTiles(gridUid.Value, gridComp).Where(t => !t.Tile.IsEmpty).ToList();
         if (allTiles.Count == 0)
             return;
 

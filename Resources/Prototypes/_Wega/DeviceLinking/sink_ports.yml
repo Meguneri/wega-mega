@@ -2,3 +2,13 @@
   id: SurgeryTableReceiver
   name: signal-port-name-surgery-table-receiver
   description: signal-port-description-surgery-table-receiver
+
+- type: sinkPort
+  id: StormCancel
+  name: signal-port-name-storm-cancel
+  description: signal-port-description-storm-cancel
+
+- type: sinkPort
+  id: StormStart
+  name: signal-port-name-storm-start
+  description: signal-port-description-storm-start

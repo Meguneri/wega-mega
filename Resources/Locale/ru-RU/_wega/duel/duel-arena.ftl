@@ -10,6 +10,10 @@ duel-arena-not-started-need-two = Дуэль не началась: нужно �
 
 duel-arena-started = Дуэль началась! { $fighters }
 
+duel-arena-sudden-death = Внезапная смерть! Время боя истекло — безопасная зона сжимается, а через 30 секунд дуэль завершится вничью!
+
+duel-arena-timeout-draw = Время боя истекло! Ничья! Снаряжение убрано.
+
 duel-arena-scores-reset = Счёт дуэльной арены обнулён.
 
 duel-arena-cleaned = Арена очищена: выданное снаряжение убрано.
@@ -30,7 +34,7 @@ duel-arena-concluded-draw = Ничья! { $fighters } потеряли созн�
 # Общий накопленный счёт арены, дописывается к итогу боя
 duel-arena-scoreboard = Общий счёт: { $scores }
 
-# Ready-check кнопки дуэли (DuelArenaSystem.Ready) — старт только когда готовы оба бойца
+# Ready-check кнопки дуэли (DuelReadySystem) — старт только когда готовы оба бойца
 duel-ready-already-active = Бой уже идёт.
 duel-ready-fighter-ready = { $name } готов! ({ $count }/{ $total })
 duel-ready-fighter-unready = { $name } отменил готовность. ({ $count }/{ $total })
@@ -44,14 +48,15 @@ duel-arena-connector-vs = против
 duel-arena-connector-and = и
 
 # Админ-команда duelscorereset
-cmd-duelscorereset-desc = Обнуляет накопленный счёт побед на всех дуэльных аренах.
+cmd-duelscorereset-desc = Обнуляет накопленный счёт побед на всех дуэльных и босс-аренах.
 cmd-duelscorereset-help = Использование: { $command }
 cmd-duelscorereset-invalid-args = Неверные аргументы. Использование: { $command }
 cmd-duelscorereset-result = Счёт обнулён на аренах: { $count }.
 
-# Команда arenastorm — управление сужающейся зоной
-cmd-arenastorm-desc = Управляет штормом (сужающейся зоной) на дуэльных аренах: on — запустить, off — отменить.
-cmd-arenastorm-help = Использование: { $command } <on|off>
-cmd-arenastorm-invalid-args = Неверные аргументы. Использование: { $command } <on|off>
-cmd-arenastorm-off-result = Шторм отменён на аренах: { $count }.
-cmd-arenastorm-on-result = Шторм запущен на аренах: { $count }.
+# Команда arenazone — управление зоной арены (шторм + авиаудары)
+cmd-arenazone-desc = Управляет зоной дуэльной арены: включает или выключает шторм и/или авиаудары на ближайшей арене.
+cmd-arenazone-help = Использование: { $command } <on|off>
+cmd-arenazone-invalid-args = Неверные аргументы. Использование: { $command } <on|off>
+cmd-arenazone-no-arena = Не найдено дуэльной арены на текущей карте.
+cmd-arenazone-off-result = Зона отключена: шторм — { $storm }, авиаудары — { $airstrike }.
+cmd-arenazone-on-result = Зона включена: шторм — { $storm }, авиаудары — { $airstrike }.

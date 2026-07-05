@@ -1,0 +1,15 @@
+- type: entity
+  id: ArrestBotRemote
+  name: пульт арест-бота
+  description: Позволяет отдать ближайшему арест-боту приказ задержать выбранную цель.
+  parent: BaseItem
+  components:
+  - type: Sprite
+    sprite: Objects/Devices/pda.rsi
+    state: pda
+  - type: Item
+    size: Small
+  - type: UseDelay
+    delay: 1
+  - type: ArrestBotRemote
+    botSearchRange: 30

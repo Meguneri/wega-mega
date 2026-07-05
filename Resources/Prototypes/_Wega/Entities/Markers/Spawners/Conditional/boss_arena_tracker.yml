@@ -1,0 +1,42 @@
+# BossArenaTracker — невидимая сущность, размещается в центре босс-арены.
+# По сигналу Open собирает живых игроков на том же гриде, телепортирует их к маркерам
+# BossArenaSpawnMarker (или по умолчанию вокруг трекера), спавнит босса и отслеживает
+# его смерть/фазы. По смерти босса выдаёт награду, по гибели участников — сбрасывается.
+
+- type: entity
+  id: BossArenaTracker
+  parent: MarkerBase
+  name: Boss Arena Tracker
+  suffix: Boss Arena
+  description: Невидимый трекер босс-арены. Запускает PvE-бой по сигналу.
+  components:
+  - type: Sprite
+    layers:
+      - state: red
+  - type: DeviceNetwork
+    deviceNetId: Wireless
+    receiveFrequencyId: BasicDevice
+  - type: WirelessNetworkConnection
+    range: 200
+  - type: DeviceLinkSink
+    ports:
+      - Open
+      - Toggle
+  - type: DeviceLinkSource
+    range: 200
+    ports:
+      - BossArenaEnded
+    lastSignals:
+      BossArenaEnded: false
+  - type: BossArena
+    scanRange: 200
+    scanInterval: 0.5
+    returnGrace: 20
+    minionPrototypes:
+      - MobXenoDrone
+    minionPhaseStart: 1
+    minionSpawnInterval: 25
+    minionSpawnPerWave: 3
+    maxMinions: 9
+    minionSpawnRadius: 8
+

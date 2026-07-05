@@ -49,11 +49,26 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     public string ResetPort = "DuelEnded";
 
     /// <summary>
-    /// Через сколько секунд после конца боя трекер шлёт на шлюзы баз сигнал закрытия —
+    /// <summary>Через сколько секунд после конца боя трекер шлёт на шлюзы баз сигнал закрытия —
     /// чтобы дуэлянты успели вернуться в свои базы по открытым шлюзам.
     /// </summary>
     [DataField]
     public float ReturnGrace = 20f;
+
+    /// <summary>
+    /// Максимальная длительность боя (в секундах). 0 — таймер выключен (бой длится до победы/сброса).
+    /// По истечении начинается внезапная смерть или, если она отключена, дуэль завершается вничью.
+    /// </summary>
+    [DataField]
+    public float MaxFightDuration = 0f;
+
+    /// <summary>
+    /// Длительность фазы «внезапной смерти» (в секундах). 0 — сразу ничья по таймауту.
+    /// В эту фазу принудительно запускается шторм (если на трекере есть <see cref="ArenaStormComponent"/>),
+    /// чтобы форсировать развязку. Если и за это время победитель не определился — ничья.
+    /// </summary>
+    [DataField]
+    public float SuddenDeathDuration = 0f;
 
     /// <summary>
     /// Прототип маяка снабжения, который арена сбрасывает в центр во время активного боя.
@@ -110,6 +125,21 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     /// Дуэль «вооружена»: в зоне есть минимум двое бойцов (поддерживается 3+) и ждём исхода.
     /// </summary>
     public bool IsActive;
+
+    /// <summary>
+    /// Время, когда закончится основной таймер боя. null — таймер не запущен.
+    /// </summary>
+    public TimeSpan? FightEndAt;
+
+    /// <summary>
+    /// Время окончания фазы внезапной смерти. null — фаза не активна.
+    /// </summary>
+    public TimeSpan? SuddenDeathEndAt;
+
+    /// <summary>
+    /// Фаза внезапной смерти активна прямо сейчас.
+    /// </summary>
+    public bool SuddenDeathActive;
 
     /// <summary>
     /// Время следующего сканирования.

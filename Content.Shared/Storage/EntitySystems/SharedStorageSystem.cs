@@ -28,6 +28,7 @@ using Content.Shared.Timing;
 using Content.Shared.Storage.Events;
 using Content.Shared.Verbs;
 using Content.Shared.Whitelist;
+using Content.Shared.Modular.Suit;
 using Robust.Shared.Audio;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Configuration;
@@ -478,6 +479,23 @@ public abstract partial class SharedStorageSystem : EntitySystem
                 Text = Loc.GetString("storage-component-transfer-verb"),
                 IconEntity = GetNetEntity(args.Using),
                 Act = () => TransferEntities(uid, args.Target, args.User, component, null, targetStorage, targetLock)
+            };
+
+            args.Verbs.Add(verb);
+            return;
+        }
+
+        // Если цель ПКМ — надетая часть МОД-скафандра, перенаправляем перенос в хранилище самого костюма.
+        if (TryComp(args.Target, out AttachedModularSuitPartComponent? attached)
+            && attached.Suit != null
+            && TryComp(attached.Suit.Value, out StorageComponent? suitStorage)
+            && (!TryComp(attached.Suit.Value, out LockComponent? suitLock) || !suitLock.Locked))
+        {
+            UtilityVerb verb = new()
+            {
+                Text = Loc.GetString("storage-component-transfer-verb"),
+                IconEntity = GetNetEntity(args.Using),
+                Act = () => TransferEntities(uid, attached.Suit.Value, args.User, component, null, suitStorage, suitLock)
             };
 
             args.Verbs.Add(verb);

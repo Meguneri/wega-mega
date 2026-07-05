@@ -22,7 +22,7 @@ namespace Content.Server._Wega.Duel.Systems;
 ///     злым MeleeWeapon, без вайтлистов и ручных списков. Распаковка — как у
 ///     новогоднего подарка (RandomGiftSystem): использовать в руке.
 /// </summary>
-public sealed partial class RandomWeaponGiftSystem : EntitySystem
+public sealed class RandomWeaponGiftSystem : EntitySystem
 {
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private IPrototypeManager _prototype = default!;

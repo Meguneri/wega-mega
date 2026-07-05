@@ -1,6 +1,8 @@
 using System.Linq;
 using Content.Server._Wega.Duel.Components;
+using Content.Shared._Wega.Duel;
 using Content.Shared.Interaction;
+using Content.Shared.Mind;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Movement.Pulling.Components;
 using Content.Shared.Movement.Pulling.Systems;
@@ -8,6 +10,7 @@ using Robust.Shared.EntitySerialization;
 using Robust.Shared.EntitySerialization.Systems;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
+using Robust.Shared.Network;
 using Robust.Shared.Random;
 
 namespace Content.Server._Wega.Duel.Systems;
@@ -22,12 +25,12 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Если контроллера на карте нет — ничего из этого не происходит, дуэль работает в одиночном
 /// режиме без изменений.
 /// </summary>
-public sealed partial class DuelRotationSystem : EntitySystem
+public sealed class DuelRotationSystem : EntitySystem
 {
     [Dependency] private MapLoaderSystem _mapLoader = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private IRobustRandom _random = default!;
-    [Dependency] private DuelArenaSystem _arena = default!;
+    [Dependency] private SharedMindSystem _mind = default!;
     [Dependency] private PullingSystem _pulling = default!;
 
     /// <summary>
@@ -46,6 +49,12 @@ public sealed partial class DuelRotationSystem : EntitySystem
             && puller.Pulling is { } pulled
             && TryComp<PullableComponent>(pulled, out var pulledComp))
             _pulling.TryStopPull(pulled, pulledComp);
+    }
+
+    /// <summary>Возвращает идентификатор игрока, управляющего телом, или null для тел без разума (NPC).</summary>
+    private NetUserId? GetUser(EntityUid body)
+    {
+        return _mind.TryGetMind(body, out _, out var mind) ? mind.UserId : null;
     }
 
     /// <summary>
@@ -254,7 +263,7 @@ public sealed partial class DuelRotationSystem : EntitySystem
         for (var i = 0; i < ordered.Count; i++)
         {
             slotOf[i] = -1;
-            if (_arena.GetUser(ordered[i]) is not { } user
+            if (GetUser(ordered[i]) is not { } user
                 || !comp.PreferredSpawns.TryGetValue(user, out var pref))
                 continue;
 
@@ -311,7 +320,7 @@ public sealed partial class DuelRotationSystem : EntitySystem
         // Запускаем раунд на арене: её трекер просканирует прибывших бойцов, сделает снимок
         // стен и объявит старт. Трекер ищем на карте арены.
         if (TryGetArenaTracker(map, out var tracker))
-            _arena.StartRotationRound(tracker);
+            RaiseLocalEvent(tracker, new RotationRoundStartEvent());
         else
             Log.Warning($"[duel-rotation] на арене (индекс {arenaIndex}) не найден трекер DuelArena — раунд не стартовал");
     }
@@ -391,7 +400,7 @@ public sealed partial class DuelRotationSystem : EntitySystem
         _transform.SetCoordinates(fighter, Transform(target).Coordinates);
 
         // Запоминаем, на каком спавне игрок реально оказался, чтобы между раундами возвращать его сюда же.
-        if (_arena.GetUser(fighter) is { } user)
+        if (GetUser(fighter) is { } user)
             comp.PreferredSpawns[user] = Comp<DuelArenaSpawnComponent>(target).SpawnIndex;
     }
 

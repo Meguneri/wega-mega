@@ -1,10 +1,11 @@
 using System.Linq;
 using System.Numerics;
 using Content.Server._Wega.Duel.Components;
+using Content.Server.DeviceLinking.Systems;
+using Robust.Server.Audio;
 using Content.Shared.Interaction;
 using Content.Shared.Popups;
 using Robust.Shared.GameObjects;
-using Robust.Shared.Map;
 
 namespace Content.Server._Wega.Duel.Systems;
 
@@ -17,12 +18,15 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Когда нажаты все кнопки арены (минимум две), кнопка программно шлёт DuelStart и запускается штатная
 /// цепочка старта (таймер → DuelFight → барьеры/колокол/ArmDuel). Кнопка находит «свою» арену по гриду.
 /// </summary>
-public sealed partial class DuelArenaSystem
+public sealed class DuelReadySystem : EntitySystem
 {
+    [Dependency] private DeviceLinkSystem _signalSystem = default!;
     [Dependency] private SharedPopupSystem _popup = default!;
+    [Dependency] private AudioSystem _audio = default!;
 
-    private void InitializeReady()
+    public override void Initialize()
     {
+        base.Initialize();
         SubscribeLocalEvent<DuelReadyButtonComponent, ComponentInit>(OnReadyButtonInit);
         SubscribeLocalEvent<DuelReadyButtonComponent, ActivateInWorldEvent>(OnReadyButtonActivated);
     }
@@ -37,7 +41,7 @@ public sealed partial class DuelArenaSystem
 
     private void OnReadyButtonActivated(EntityUid uid, DuelReadyButtonComponent comp, ActivateInWorldEvent args)
     {
-        // args.Complex — осознанное «использование» (E/клик), а не побочное взаимодействие.
+        // args.Complex — осознанное «использование» (E/клик), а не побочное взаимодие.
         if (args.Handled || !args.Complex)
             return;
 
@@ -161,7 +165,8 @@ public sealed partial class DuelArenaSystem
         arena.ReadyButtons.Clear();
     }
 
-    private bool TryGetArenaForGrid(EntityUid? grid, out EntityUid arenaUid, out DuelArenaComponent arena)
+    /// <summary>Находит арену по гриду кнопки. Публичный, т.к. может понадобиться другим системам арены.</summary>
+    public bool TryGetArenaForGrid(EntityUid? grid, out EntityUid arenaUid, out DuelArenaComponent arena)
     {
         arenaUid = default;
         arena = default!;
@@ -179,4 +184,7 @@ public sealed partial class DuelArenaSystem
         }
         return false;
     }
+
+    private string SafeName(EntityUid uid)
+        => Exists(uid) ? MetaData(uid).EntityName : "?";
 }

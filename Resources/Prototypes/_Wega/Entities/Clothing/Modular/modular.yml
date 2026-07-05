@@ -1451,6 +1451,15 @@
         - ClothingModularChestPlateEnchanted
         - ClothingModularGauntletsEnchanted
         - ClothingModularBootsEnchanted
+  - type: ModularSuitPreassembled
+    modules:
+    - StorageSuitModule
+    - FlashlightSuitModuleCyan
+  - type: ItemSlots
+    slots:
+      cell_slot:
+        name: power-cell-slot-component-slot-name-default
+        startingItem: PowerCellSmall
   - type: ModularSuit
     activeComponents:
       head:

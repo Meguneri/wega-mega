@@ -97,7 +97,6 @@ public sealed partial class RengokuKatanaSystem : EntitySystem
         var direction = facing.Normalized() * comp.NinthFormRange;
         _throwing.TryThrow(user, direction, comp.NinthFormSpeed, compensateFriction: true);
         _audio.PlayPvs(comp.NinthFormChargeSound, user);
-        _audio.PlayPvs(comp.NinthFormSound, user);
 
         // Боевой клич Пламенного столпа — виден всем рядом.
         _popup.PopupEntity(Loc.GetString("rengoku-katana-ninth-form-cry"), user, PopupType.LargeCaution);

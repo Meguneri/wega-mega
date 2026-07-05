@@ -1,0 +1,53 @@
+# Маркеры точек появления для босс-арены.
+
+- type: entity
+  id: BossArenaParticipantSpawnMarker
+  parent: MarkerBase
+  name: Boss Arena Participant Spawn
+  suffix: Boss Arena, Participant
+  description: Невидимая точка появления участника босс-арены.
+  components:
+  - type: Sprite
+    layers:
+      - state: green
+  - type: BossArenaSpawnMarker
+    spawnType: Participant
+    index: 0
+
+- type: entity
+  id: BossArenaParticipantSpawnMarker1
+  parent: BossArenaParticipantSpawnMarker
+  suffix: Boss Arena, Participant 1
+  components:
+  - type: BossArenaSpawnMarker
+    index: 1
+
+- type: entity
+  id: BossArenaParticipantSpawnMarker2
+  parent: BossArenaParticipantSpawnMarker
+  suffix: Boss Arena, Participant 2
+  components:
+  - type: BossArenaSpawnMarker
+    index: 2
+
+- type: entity
+  id: BossArenaParticipantSpawnMarker3
+  parent: BossArenaParticipantSpawnMarker
+  suffix: Boss Arena, Participant 3
+  components:
+  - type: BossArenaSpawnMarker
+    index: 3
+
+- type: entity
+  id: BossArenaBossSpawnMarker
+  parent: MarkerBase
+  name: Boss Arena Boss Spawn
+  suffix: Boss Arena, Boss
+  description: Невидимая точка появления босса босс-арены.
+  components:
+  - type: Sprite
+    layers:
+      - state: red
+  - type: BossArenaSpawnMarker
+    spawnType: Boss
+    index: 0

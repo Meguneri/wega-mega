@@ -46,7 +46,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Замаппленные вещи карты не трогаются: они загружаются до старта дуэли
 /// и поэтому не получают тег ArenaIssuedItem.
 /// </summary>
-public sealed partial class DuelArenaCleanupSystem : EntitySystem
+public sealed class DuelArenaCleanupSystem : EntitySystem
 {
     [Dependency] private DeviceLinkSystem _link = default!;
     [Dependency] private IChatManager _chat = default!;

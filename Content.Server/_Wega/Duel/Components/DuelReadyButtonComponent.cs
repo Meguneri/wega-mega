@@ -8,7 +8,7 @@ namespace Content.Server._Wega.Duel.Components;
 /// кнопкам, по одной на базу). Когда нажаты все кнопки арены (минимум 2) — кнопка программно дёргает
 /// порт <see cref="StartPort"/> (DuelStart через AutoLink), запуская штатную цепочку старта: таймер →
 /// DuelFight → барьеры/колокол/ArmDuel. Над кнопкой соперника висит голограмма «ГОТОВ» (см.
-/// <see cref="DuelArenaComponent.ReadyHologram"/>). Логика — в <see cref="Systems.DuelArenaSystem"/> (partial Ready).
+/// <see cref="DuelArenaComponent.ReadyHologram"/>). Логика — в <see cref="Systems.DuelReadySystem"/>.
 /// </summary>
 [RegisterComponent]
 public sealed partial class DuelReadyButtonComponent : Component

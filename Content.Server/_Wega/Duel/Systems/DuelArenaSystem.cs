@@ -2,6 +2,7 @@ using Content.Server._Wega.Duel.Components;
 using Content.Server.Chat.Managers;
 using Content.Server.DeviceLinking.Systems;
 using Content.Shared._Wega.Clothing.Sandevistan;
+using Content.Shared._Wega.Duel;
 using Content.Shared.Actions;
 using Content.Shared.Actions.Components;
 using Content.Shared.Administration.Systems;
@@ -30,7 +31,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// (порт <see cref="DuelArenaComponent.ResetPort"/>) отправляется не сразу, а спустя
 /// <see cref="DuelArenaComponent.ReturnGrace"/> секунд — чтобы дуэлянты успели вернуться в базы.
 /// </summary>
-public sealed partial class DuelArenaSystem : EntitySystem
+public sealed class DuelArenaSystem : EntitySystem
 {
     [Dependency] private DeviceLinkSystem _signalSystem = default!;
     [Dependency] private IChatManager _chatManager = default!;
@@ -44,15 +45,18 @@ public sealed partial class DuelArenaSystem : EntitySystem
     [Dependency] private DuelRotationSystem _rotation = default!;
     [Dependency] private InventorySystem _inventory = default!;
     [Dependency] private AudioSystem _audio = default!;
+    [Dependency] private DuelReadySystem _readySystem = default!;
+    [Dependency] private DuelArenaRestoreSystem _restoreSystem = default!;
+    [Dependency] private ArenaLoadoutSystem _loadoutSystem = default!;
+    [Dependency] private ArenaStormSystem _stormSystem = default!;
 
     public override void Initialize()
     {
         base.Initialize();
         SubscribeLocalEvent<DuelArenaComponent, ComponentInit>(OnInit);
         SubscribeLocalEvent<DuelArenaComponent, SignalReceivedEvent>(OnSignalReceived);
+        SubscribeLocalEvent<DuelArenaComponent, RotationRoundStartEvent>(OnRotationRoundStart);
         SubscribeLocalEvent<MobStateChangedEvent>(OnMobStateChanged);
-
-        InitializeReady();
     }
 
     private void OnInit(EntityUid uid, DuelArenaComponent comp, ComponentInit args)
@@ -74,9 +78,9 @@ public sealed partial class DuelArenaSystem : EntitySystem
             if (comp.PendingWallRestore)
             {
                 comp.PendingWallRestore = false;
-                RestoreWalls(uid, comp);
-                RestoreGrilles(uid, comp);
-                RestoreLights(uid, comp);
+                _restoreSystem.RestoreWalls(uid, comp);
+                _restoreSystem.RestoreGrilles(uid, comp);
+                _restoreSystem.RestoreLights(uid, comp);
             }
 
             // Отложенное вооружение раунда ротации: бойцы перенесены на эту арену на прошлом тике,
@@ -107,6 +111,28 @@ public sealed partial class DuelArenaSystem : EntitySystem
                 comp.SupplyDropAt = comp.SupplyDropInterval > 0f
                     ? now + TimeSpan.FromSeconds(comp.SupplyDropInterval)
                     : null;
+            }
+
+            // Таймер боя: истёк основной лимит — запускаем внезапную смерть или фиксируем ничью.
+            if (comp.IsActive && comp.FightEndAt is { } fightEnd && now >= fightEnd)
+            {
+                comp.FightEndAt = null;
+                if (comp.SuddenDeathDuration > 0)
+                {
+                    StartSuddenDeath(uid, comp);
+                }
+                else
+                {
+                    ConcludeDuel(uid, comp, forceDraw: true);
+                    continue;
+                }
+            }
+
+            // Таймер внезапной смерти: истёк — дуэль заканчивается вничью.
+            if (comp.SuddenDeathActive && comp.SuddenDeathEndAt is { } sdEnd && now >= sdEnd)
+            {
+                ConcludeDuel(uid, comp, forceDraw: true);
+                continue;
             }
 
             // Сканируем только вооружённые арены — чтобы вовремя снять взвод,
@@ -219,6 +245,8 @@ public sealed partial class DuelArenaSystem : EntitySystem
         if (comp.IsActive)
             return;
 
+        comp.PendingWallRestore = false;
+
         var duelists = GetAliveInRange(uid, comp);
         if (duelists.Count < 2)
         {
@@ -239,9 +267,9 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // чтобы после дуэли восстановить разрушенное. Мерж на каждом старте: новые тайлы
         // добавляются, старые не перезаписываются — снимок самовосстанавливается, даже
         // если какой-то из проходов вышел неполным.
-        SnapshotWalls(uid, comp);
-        SnapshotGrilles(uid, comp);
-        SnapshotLights(uid, comp);
+        _restoreSystem.SnapshotWalls(uid, comp);
+        _restoreSystem.SnapshotGrilles(uid, comp);
+        _restoreSystem.SnapshotLights(uid, comp);
 
         // Отменяем grace-период предыдущей дуэли — иначе Update отправит сигнал закрытия
         // шлюзов уже во время нового боя.
@@ -253,26 +281,35 @@ public sealed partial class DuelArenaSystem : EntitySystem
             ? _timing.CurTime + TimeSpan.FromSeconds(comp.SupplyDropDelay)
             : null;
 
+        // Планируем лимит основного времени боя. Внезапная смерть (если задана) запустится позже.
+        comp.FightEndAt = comp.MaxFightDuration > 0f
+            ? _timing.CurTime + TimeSpan.FromSeconds(comp.MaxFightDuration)
+            : null;
+        comp.SuddenDeathEndAt = null;
+        comp.SuddenDeathActive = false;
+
         var vsSep = $" {Loc.GetString("duel-arena-connector-vs")} ";
         var names = string.Join(vsSep, comp.Duelists.Select(d => MetaData(d).EntityName));
         _chatManager.DispatchServerAnnouncement(
             Loc.GetString("duel-arena-started", ("fighters", names)), Color.Gold);
+
+        // Выдаём выбранные наборы снаряжения каждому дуэлянту.
+        _loadoutSystem.EquipDuelists(comp.Duelists);
 
         // Звук старта дуэли играет штатный DuelStartSoundEmitter на карте
         // (EmitGlobalSoundOnSignal по сигналу DuelFight) — здесь дублировать не нужно.
     }
 
     /// <summary>
-    /// Планирует запуск раунда на арене в режиме ротации. Вооружение НЕ выполняется сразу: контроллер
-    /// зовёт это синхронно из ConcludeDuel — сразу после телепорта бойцов и полного исцеления
-    /// проигравшего, когда грид/состояние ещё не «осели». Поэтому ставим флаг и вооружаем на
-    /// следующем тике в Update (см. <see cref="DuelArenaComponent.PendingRotationArm"/>), когда
-    /// GetAliveInRange уже корректно увидит прибывших бойцов и объявит старт.
+    /// Режим ротации: контроллер перенёс бойцов на эту арену и просит вооружить раунд.
+    /// Вооружение НЕ выполняется сразу: перенос и полное исцеление проигравшего происходят
+    /// синхронно в ConcludeDuel, когда грид/состояние ещё не «осели». Ставим флаг и вооружаем
+    /// на следующем тике в Update, когда GetAliveInRange уже корректно увидит прибывших бойцов
+    /// и объявит старт.
     /// </summary>
-    public void StartRotationRound(EntityUid arenaUid)
+    private void OnRotationRoundStart(EntityUid uid, DuelArenaComponent comp, RotationRoundStartEvent args)
     {
-        if (TryComp<DuelArenaComponent>(arenaUid, out var comp))
-            comp.PendingRotationArm = true;
+        comp.PendingRotationArm = true;
     }
 
     private void OnSignalReceived(EntityUid uid, DuelArenaComponent comp, ref SignalReceivedEvent args)
@@ -305,10 +342,15 @@ public sealed partial class DuelArenaSystem : EntitySystem
         comp.IsActive = false;
 
         // Сброс ready-check: убираем готовность и голограммы «ГОТОВ».
-        ClearReady(comp);
+        _readySystem.ClearReady(comp);
 
         // Останавливаем авто-дроп снабжения до следующего боя.
         comp.SupplyDropAt = null;
+
+        // Сбрасываем таймеры боя и внезапной смерти.
+        comp.FightEndAt = null;
+        comp.SuddenDeathEndAt = null;
+        comp.SuddenDeathActive = false;
 
         // Шлюзы закроем через ReturnGrace секунд — чтобы бойцы успели вернуться в свои базы.
         comp.GateCloseAt = _timing.CurTime + TimeSpan.FromSeconds(comp.ReturnGrace);
@@ -316,6 +358,22 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // Стены чиним на следующем тике (см. Update) — вне стека текущего события,
         // чтобы арена была целой к следующему раунду.
         comp.PendingWallRestore = true;
+    }
+
+    /// <summary>
+    /// Запускает фазу «внезапной смерти»: форсирует сужение шторма (если он есть на трекере) и
+    /// планирует окончательную ничью через <see cref="DuelArenaComponent.SuddenDeathDuration"/>.
+    /// </summary>
+    private void StartSuddenDeath(EntityUid uid, DuelArenaComponent comp)
+    {
+        comp.SuddenDeathActive = true;
+        comp.SuddenDeathEndAt = _timing.CurTime + TimeSpan.FromSeconds(comp.SuddenDeathDuration);
+
+        if (TryComp<ArenaStormComponent>(uid, out var storm) && storm.Enabled && !storm.Active)
+            _stormSystem.ForceStartStorm(uid, storm);
+
+        _chatManager.DispatchServerAnnouncement(
+            Loc.GetString("duel-arena-sudden-death"), Color.OrangeRed);
     }
 
     /// <summary>
@@ -335,6 +393,20 @@ public sealed partial class DuelArenaSystem : EntitySystem
             comp.ScoreNames.Clear();
             comp.StreakUser = null;
             comp.Streak = 0;
+            cleared++;
+        }
+
+        // Счёт босс-арен тоже обнуляем.
+        var bossQuery = EntityQueryEnumerator<BossArenaComponent>();
+        while (bossQuery.MoveNext(out _, out var boss))
+        {
+            if (boss.Scores.Count == 0)
+                continue;
+
+            boss.Scores.Clear();
+            boss.ScoreNames.Clear();
+            boss.StreakUser = null;
+            boss.Streak = 0;
             cleared++;
         }
 
@@ -371,7 +443,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
     /// Источник — одиночная арена или контроллер ротации (см. <see cref="IDuelScoreStore"/>).
     /// Возвращает null, если счёта ещё нет.
     /// </summary>
-    private string? BuildScoreboard(IDuelScoreStore store)
+    public string? BuildScoreboard(IDuelScoreStore store)
     {
         if (store.Scores.Count == 0)
             return null;
@@ -407,21 +479,33 @@ public sealed partial class DuelArenaSystem : EntitySystem
     /// Если живых ещё ≥2 — ничего не делает (бой продолжается). Идемпотентна за счёт IsActive.
     /// </summary>
     private bool ConcludeDuel(EntityUid arenaUid, DuelArenaComponent arena)
+        => ConcludeDuel(arenaUid, arena, forceDraw: false);
+
+    /// <summary>
+    /// Подводит итог дуэли. Если <paramref name="forceDraw"/> — считает ничьёй независимо от
+    /// числа живых бойцов (используется по таймауту). Иначе — стандартная логика победителя/ничьей.
+    /// </summary>
+    private bool ConcludeDuel(EntityUid arenaUid, DuelArenaComponent arena, bool forceDraw)
     {
         if (!arena.IsActive)
             return false;
 
         var aliveDuelists = arena.Duelists.Where(d => IsActiveFighter(arenaUid, d)).ToList();
-        if (aliveDuelists.Count > 1)
+        if (!forceDraw && aliveDuelists.Count > 1)
             return false; // бой ещё идёт
 
         arena.IsActive = false;
 
         // Готовность к этому бою больше не нужна — убираем остатки ready-check (на всякий случай).
-        ClearReady(arena);
+        _readySystem.ClearReady(arena);
 
         // Останавливаем авто-дроп снабжения — бой окончен.
         arena.SupplyDropAt = null;
+
+        // Таймеры боя больше не нужны.
+        arena.FightEndAt = null;
+        arena.SuddenDeathEndAt = null;
+        arena.SuddenDeathActive = false;
 
         // Куда писать счёт: одиночная арена ведёт его сама; в режиме ротации — общий счёт на
         // контроллере. Развилка по флагу RotationController (пусто = старое поведение).
@@ -588,7 +672,8 @@ public sealed partial class DuelArenaSystem : EntitySystem
         foreach (var spell in spells)
         {
             _actions.RemoveAction(spell);
-            QueueDel(spell);
+            if (!Deleted(spell))
+                QueueDel(spell);
         }
     }
 

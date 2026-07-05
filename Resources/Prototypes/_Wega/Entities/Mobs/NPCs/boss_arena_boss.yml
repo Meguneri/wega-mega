@@ -1,0 +1,41 @@
+# Босс босс-арены — простой ближнобойный босс.
+- type: entity
+  parent: MobHuman
+  id: MobBossArena
+  name: Арена-босс
+  description: Могучий воин, охраняющий арену. Становится сильнее по мере получения урона.
+  components:
+  - type: NpcFactionMember
+    factions:
+    - RaidBoss
+  - type: RandomHumanoidAppearance
+    randomizeName: false
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      400: PreCritical
+      500: Critical
+      600: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 2.2
+    baseSprintSpeed: 3.5
+  - type: MeleeWeapon
+    damage:
+      types:
+        Blunt: 18
+    altDisarm: false
+  - type: BossArenaBoss
+    phaseThresholds:
+    - 0.66
+    - 0.33
+    phaseSpeedMultipliers:
+    - 1.0
+    - 1.2
+    - 1.5
+    phaseDamageMultipliers:
+    - 1.0
+    - 1.2
+    - 1.5
+  - type: HTN
+    rootTask:
+      task: SimpleHumanoidHostileCompound

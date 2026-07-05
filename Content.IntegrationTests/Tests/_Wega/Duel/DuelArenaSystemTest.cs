@@ -1,0 +1,496 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using Content.IntegrationTests.Fixtures;
+using Content.Server._Wega.Duel.Components;
+using Content.Server._Wega.Duel.Systems;
+using Content.Shared.Damage;
+using Content.Shared.Damage.Prototypes;
+using Content.Shared.Damage.Systems;
+using Content.Shared.DeviceLinking.Events;
+using Content.Shared.Damage.Components;
+using Content.Shared.FixedPoint;
+using Content.Shared.Humanoid;
+using Content.Shared._Wega.Duel;
+using Content.Shared.Maps;
+using Content.Shared.Mobs.Components;
+using Content.Shared.Mobs.Systems;
+using Robust.Shared.GameObjects;
+using Robust.Shared.Map;
+using Robust.Shared.Map.Components;
+using Robust.Shared.Maths;
+using Robust.Shared.Prototypes;
+
+namespace Content.IntegrationTests.Tests._Wega.Duel;
+
+[TestFixture]
+[TestOf(typeof(DuelArenaSystem))]
+public sealed class DuelArenaSystemTest : GameTest
+{
+    [TestPrototypes]
+    private const string Prototypes = @"
+- type: entity
+  name: DuelTestDummy
+  id: DuelTestDummy
+  components:
+  - type: Damageable
+  - type: Injurable
+    damageContainer: Biological
+  - type: MobState
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      200: Dead
+  - type: HumanoidProfile
+
+- type: entity
+  name: DuelTestWall
+  id: DuelTestWall
+  components:
+  - type: Sprite
+    sprite: Structures/Walls/solid.rsi
+  - type: Tag
+    tags:
+    - Wall
+  - type: Damageable
+    damageModifierSet: StructuralMetallic
+  - type: Injurable
+    damageContainer: StructuralInorganic
+  - type: Physics
+    bodyType: Static
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: ""-0.5,-0.5,0.5,0.5""
+
+- type: entity
+  name: DuelTestIssuedItem
+  id: DuelTestIssuedItem
+  components:
+  - type: ArenaIssuedItem
+  - type: Sprite
+    sprite: Objects/Misc/guardian_info.rsi
+
+- type: entity
+  id: DuelTestStormTracker
+  parent: DuelArenaTracker
+  components:
+  - type: ArenaStorm
+    initialRadius: 5
+    minRadius: 1
+    shrinkStep: 1
+    shrinkInterval: 1
+    startDelay: 0
+    damageInterval: 0.01
+    damage:
+      types:
+        Heat: 5
+";
+
+    private static readonly ProtoId<DamageTypePrototype> TestDamageType = "Blunt";
+
+    /// <summary>
+    /// CreateTestMap создаёт грид из одного тайла. Для арены нужно пространство для трекера и бойцов,
+    /// поэтому расширяем грид до 5x5 вокруг начала координат.
+    /// </summary>
+    private static void ExpandGrid(SharedMapSystem mapSystem, Entity<MapGridComponent> grid, Tile tile)
+    {
+        for (var x = -1; x <= 3; x++)
+        {
+            for (var y = -1; y <= 3; y++)
+            {
+                mapSystem.SetTile(grid.Owner, grid.Comp, new Vector2i(x, y), tile);
+            }
+        }
+    }
+
+    [Test]
+    public async Task DuelStartAndConcludeTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mobStateSystem = server.System<MobStateSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            fighter1 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            fighter2 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.False);
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной после сигнала старта");
+            Assert.That(arena.Duelists.Count, Is.EqualTo(2), "Должно быть зарегистрировано 2 дуэлянта");
+            Assert.That(arena.Duelists, Does.Contain(fighter1));
+            Assert.That(arena.Duelists, Does.Contain(fighter2));
+
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+
+            // ConcludeDuel вызывается синхронно по событию смерти и тут же воскрешает бойцов через
+            // Rejuvenate, поэтому сразу после урона fighter2 уже жив. Проверяем сам факт завершения.
+            arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.False, "Дуэль должна завершиться после смерти одного из бойцов");
+            Assert.That(arena.Duelists.Count, Is.EqualTo(0), "Список дуэлянтов должен очиститься");
+            Assert.That(arena.GateCloseAt, Is.Not.Null, "Должен быть запланирован сигнал закрытия шлюзов");
+            Assert.That(mobStateSystem.IsAlive(fighter2), Is.True, "Проигравший должен быть воскрешён");
+            Assert.That(mobStateSystem.IsAlive(fighter1), Is.True, "Победитель должен быть воскрешён");
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.False, "Дуэль должна оставаться завершённой");
+            Assert.That(arena.GateCloseAt, Is.Not.Null, "Grace-период закрытия шлюзов должен сохраняться");
+        });
+    }
+
+    [Test]
+    public async Task DuelTimeoutDrawTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            // Короткий таймер: бой длится 0.5 секунды, затем сразу ничья (внезапная смерть отключена).
+            arena.MaxFightDuration = 0.5f;
+            arena.SuddenDeathDuration = 0f;
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+        });
+
+        // 0.5 секунды ≈ 15 тиков при 30 тик/с; даём запас.
+        await pair.RunTicksSync(30);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.False, "Дуэль должна завершиться по таймауту");
+            Assert.That(arena.Duelists.Count, Is.EqualTo(0), "Список дуэлянтов должен очиститься");
+            Assert.That(arena.GateCloseAt, Is.Not.Null, "Должен быть запланирован сигнал закрытия шлюзов");
+        });
+    }
+
+    [Test]
+    public async Task DuelResetBySignalTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            var fighter1 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            var fighter2 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True);
+            Assert.That(arena.Duelists.Count, Is.EqualTo(2));
+
+            var resetEv = new SignalReceivedEvent("Toggle");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref resetEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.False, "Дуэль должна сброситься по сигналу Toggle");
+            Assert.That(arena.Duelists.Count, Is.EqualTo(0), "Список дуэлянтов должен очиститься");
+            Assert.That(arena.GateCloseAt, Is.Not.Null, "Должен быть запланирован сигнал закрытия шлюзов");
+        });
+    }
+
+    [Test]
+    public async Task DuelWallRestoreTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var restoreSystem = server.System<DuelArenaRestoreSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+        EntityUid wall = default;
+        Vector2i wallTile = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var grid = (testMap.Grid.Owner, testMap.Grid.Comp);
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            // Ставим трекер в центр, стену на соседнем тайле.
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            var wallCoords = coordinates.Offset(new Vector2(1, 0));
+            wall = entManager.SpawnEntity("DuelTestWall", wallCoords);
+            wallTile = mapSystem.TileIndicesFor(gridUid, grid.Comp, wallCoords);
+
+            // Заякориваем стену вручную — тестовый прототип не делает этого при спавне.
+            entManager.System<SharedTransformSystem>().AnchorEntity(wall);
+            Assert.That(entManager.GetComponent<TransformComponent>(wall).Anchored, Is.True, "Тестовая стена должна быть заякорена");
+
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            restoreSystem.SnapshotWalls(tracker, arena);
+            Assert.That(arena.WallSnapshot.ContainsKey(wallTile), Is.True, "Стена должна попасть в снимок");
+
+            // Убираем стену, имитируя разрушение.
+            entManager.DeleteEntity(wall);
+        });
+
+        // Даём движку физически удалить сущность и очистить snap-grid ячейку.
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            arena.PendingWallRestore = true;
+            restoreSystem.RestoreWalls(tracker, arena);
+
+            var grid = (testMap.Grid.Owner, testMap.Grid.Comp);
+            var anchored = new List<EntityUid>();
+            mapSystem.GetAnchoredEntities(grid, wallTile, anchored);
+
+            Assert.That(anchored.Count, Is.GreaterThan(0), "После восстановления на тайле должна быть стена");
+
+            var restored = anchored.FirstOrDefault(e => entManager.GetComponent<MetaDataComponent>(e).EntityPrototype?.ID == "DuelTestWall");
+            Assert.That(restored, Is.Not.EqualTo(default(EntityUid)), "На тайле должна появиться DuelTestWall");
+        });
+    }
+
+    [Test]
+    public async Task DuelArenaCleanupSystemTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid item = default;
+        EntityUid mob = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            controller = entManager.SpawnEntity("DuelCleanupController", coordinates);
+            item = entManager.SpawnEntity("DuelTestIssuedItem", coordinates.Offset(new Vector2(1, 0)));
+            mob = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            // Помечаем моба как выданное снаряжение — CleanupArea должна защитить живых существ.
+            entManager.EnsureComponent<ArenaIssuedItemComponent>(mob);
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(item), Is.True);
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(mob), Is.True);
+
+            var cleanEv = new SignalReceivedEvent("Trigger");
+            entManager.EventBus.RaiseLocalEvent(controller, ref cleanEv);
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(entManager.Deleted(item), Is.True, "Выданный предмет должен быть удалён очисткой");
+            Assert.That(entManager.Deleted(mob), Is.False, "Живой моб не должен быть удалён очисткой");
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(mob), Is.False, "Метка арены должна быть снята с моба");
+        });
+    }
+
+    [Test]
+    public async Task ArenaStormSystemTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+        var transformSystem = entManager.System<SharedTransformSystem>();
+        var stormSystem = entManager.System<ArenaStormSystem>();
+        var damageableSystem = server.System<DamageableSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelTestStormTracker", coordinates);
+            fighter1 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            fighter2 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной");
+            Assert.That(arena.Duelists.Count, Is.EqualTo(2), "Должно быть 2 дуэлянта");
+
+            // Принудительно запускаем шторм без задержки.
+            stormSystem.StartAllStorms();
+        });
+
+        // StartAllStorms лишь планирует старт; активность выставляется на следующем тике Update.
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var storm = entManager.GetComponent<ArenaStormComponent>(tracker);
+            Assert.That(storm.Active, Is.True, "Шторм должен стать активным");
+
+            // Переносим второго бойца далеко за пределы безопасной зоны.
+            transformSystem.SetCoordinates(fighter2, new EntityCoordinates(testMap.Grid.Owner, new Vector2(50, 0)));
+            Assert.That(transformSystem.GetMapCoordinates(fighter2).MapId, Is.EqualTo(transformSystem.GetMapCoordinates(tracker).MapId));
+        });
+
+        // Даём шторму нанести хотя бы один тик урона.
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(damageableSystem.GetTotalDamage(fighter1), Is.EqualTo(FixedPoint2.Zero), "Боец в центре не должен получать урон");
+            Assert.That(damageableSystem.GetTotalDamage(fighter2), Is.GreaterThan(FixedPoint2.Zero), "Боец за пределами зоны должен получить урон");
+        });
+    }
+
+    [Test]
+    public async Task ArmDuelResetsPendingWallRestoreTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var gridUid = tile.GridUid;
+            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            arena.PendingWallRestore = true;
+
+            // ArmDuel должен сбросить флаг отложенного восстановления сразу при старте.
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной");
+            Assert.That(arena.PendingWallRestore, Is.False, "ArmDuel должен сбросить PendingWallRestore");
+        });
+    }
+}

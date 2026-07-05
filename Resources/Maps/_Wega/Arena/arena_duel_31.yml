@@ -5,7 +5,7 @@ meta:
   forkId: ""
   forkVersion: ""
   time: 06/21/2026 19:15:57
-  entityCount: 583
+  entityCount: 585
 maps:
 - 1000
 grids:
@@ -4108,4 +4108,18 @@ entities:
     - type: Transform
       pos: 6.5,25.5
       parent: 1
+- proto: ArenaLoadoutTerminal
+  entities:
+  - uid: 584
+    components:
+    - type: Transform
+      pos: 5.5,0.5
+      parent: 1
+    - type: Godmode
+  - uid: 585
+    components:
+    - type: Transform
+      pos: 25.5,30.5
+      parent: 1
+    - type: Godmode
 ...

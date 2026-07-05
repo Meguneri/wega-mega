@@ -1,0 +1,15 @@
+<ui:RadialMenu xmlns="https://spacestation14.io"
+               xmlns:ui="clr-namespace:Content.Client.UserInterface.Controls"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               x:Class="Content.Client._Wega.Duel.ArenaLoadoutWindow"
+               MinWidth="500"
+               MinHeight="500">
+
+    <ui:RadialContainer Name="MainContainer"
+                       VerticalExpand="True"
+                       HorizontalExpand="True"
+                       InitialRadius="90"
+                       ReserveSpaceForHiddenChildren="False">
+    </ui:RadialContainer>
+
+</ui:RadialMenu>

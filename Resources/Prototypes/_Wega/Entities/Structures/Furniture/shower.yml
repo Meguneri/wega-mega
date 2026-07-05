@@ -44,13 +44,13 @@
       - !type:PlaySoundBehavior
         sound:
           collection: MetalBreak
-  - type: SolutionContainerManager
-    solutions:
-      shower:
-        maxVol: 9999999
-        reagents:
-        - ReagentId: Water
-          Quantity: 9999999
+  - type: Solution
+    id: shower
+    solution:
+      maxVol: 9999999
+      reagents:
+      - ReagentId: Water
+        Quantity: 9999999
   - type: SolutionRegeneration
     generated:
       reagents:

@@ -6,4 +6,4 @@
 rengoku-katana-first-form-miss = Пламя рассекает пустоту — рядом никого.
 
 # Боевой клич в начале рывка Девятой формы (виден всем рядом).
-rengoku-katana-ninth-form-cry = Установи своё сердце в огне!
+rengoku-katana-ninth-form-cry = Пусть сердце твоё пылает!

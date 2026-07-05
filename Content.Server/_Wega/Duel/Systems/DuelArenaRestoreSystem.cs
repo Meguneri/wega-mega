@@ -1,12 +1,13 @@
 using System.Linq;
+using System.Numerics;
 using Content.Server._Wega.Duel.Components;
 using Content.Server.Light.EntitySystems;
+using Content.Shared.Construction;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.FixedPoint;
 using Content.Shared.Light.Components;
 using Content.Shared.Mobs.Components;
-using Content.Shared.Construction;
 using Content.Shared.Tag;
 using Robust.Server.GameObjects;
 using Robust.Shared.GameObjects;
@@ -18,14 +19,14 @@ using Robust.Shared.Prototypes;
 namespace Content.Server._Wega.Duel.Systems;
 
 /// <summary>
-/// Восстановление стен и окон дуэльной арены. При каждом старте дуэли (конструкции целы) планировка
-/// стен и окон мержится в снимок (тайл → прототип + тайл пола под ним). После каждого раунда
-/// конструкции приводятся к снимку: целая правильная стена/окно чинится (помятая/треснувшее
-/// становится новым); отсутствующая / разрушенная до балки / чужая конструкция убирается и заново
-/// ставится свежей; уничтоженный пол под ней восстанавливается. Восстановление выполняется отложенно
-/// (см. PendingWallRestore) — на тике после завершения боя, вне стека события смерти.
+/// Восстановление стен, решёток и светильников дуэльной арены. При каждом старте дуэли (конструкции целы)
+/// планировка мержится в снимок (тайл → прототип + тайл пола под ним). После каждого раунда
+/// конструкции приводятся к снимку: целая правильная стена/окно чинится; отсутствующая, разрушенная
+/// до балки или чужая конструкция убирается и заново ставится свежей; уничтоженный пол под ней
+/// восстанавливается. Восстановление выполняется отложенно — на тике после завершения боя, вне стека
+/// события смерти.
 /// </summary>
-public sealed partial class DuelArenaSystem
+public sealed class DuelArenaRestoreSystem : EntitySystem
 {
     [Dependency] private SharedMapSystem _map = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
@@ -38,9 +39,7 @@ public sealed partial class DuelArenaSystem
     private static readonly ProtoId<TagPrototype> WindowTag = "Window";
 
     /// <summary>
-    /// Восстанавливаемая конструкция арены — стена (тег <see cref="WallTag"/>) или окно
-    /// (тег <see cref="WindowTag"/>). И то, и другое попадает в снимок и чинится/переставляется
-    /// по одинаковой логике.
+    /// Восстанавливаемая конструкция арены — стена или окно.
     /// </summary>
     private bool IsRestorableStructure(EntityUid uid)
         => _tag.HasTag(uid, WallTag) || _tag.HasTag(uid, WindowTag);
@@ -49,13 +48,9 @@ public sealed partial class DuelArenaSystem
         => _tag.HasTag(tagComp, WallTag) || _tag.HasTag(tagComp, WindowTag);
 
     /// <summary>
-    /// Мержит текущую планировку стен арены в снимок. Вызывается при КАЖДОМ старте дуэли (стены
-    /// в этот момент целы): новые тайлы со стенами добавляются, уже записанные не перезаписываются.
-    /// Так снимок самовосстанавливается, даже если какой-то проход вышел неполным (например, при
-    /// старте боя часть стен оказалась недоступна для перечисления) — следующий старт дуэли дополнит
-    /// недостающее. Заодно запоминается тайл пола под каждой стеной (для восстановления дыр).
+    /// Мержит текущую планировку стен арены в снимок. Вызывается при КАЖДОМ старте дуэли.
     /// </summary>
-    private void SnapshotWalls(EntityUid arenaUid, DuelArenaComponent comp)
+    public void SnapshotWalls(EntityUid arenaUid, DuelArenaComponent comp)
     {
         var grid = Transform(arenaUid).GridUid;
         if (grid == null || !TryComp<MapGridComponent>(grid, out var gridComp))
@@ -66,7 +61,6 @@ public sealed partial class DuelArenaSystem
 
         var added = 0;
 
-        // Проходим по всем тегированным сущностям и берём только стены на гриде арены.
         var query = EntityQueryEnumerator<TagComponent, TransformComponent>();
         while (query.MoveNext(out var uid, out var tagComp, out var xform))
         {
@@ -80,7 +74,6 @@ public sealed partial class DuelArenaSystem
             if (comp.WallSnapshot.TryAdd(tile, proto))
                 added++;
 
-            // Пол под стеной — чтобы восстановить, если за бой его уничтожат (дыра в космос).
             comp.WallTileSnapshot.TryAdd(tile, _map.GetTileRef(grid.Value, gridComp, tile).Tile);
         }
 
@@ -91,15 +84,9 @@ public sealed partial class DuelArenaSystem
     }
 
     /// <summary>
-    /// Приводит стены арены к снимку <see cref="DuelArenaComponent.WallSnapshot"/>. Для каждого
-    /// тайла снимка: если на месте стоит правильная (по прототипу) стена — лечим ей повреждения,
-    /// чтобы помятая стала как новая; иначе (стены нет, она разрушена до балки или стоит чужая) —
-    /// убираем балки/неправильную стену, чиним пол (если уничтожен) и ставим свежую стену.
-    /// Настенные предметы (постеры, лампы, интеркомы, APC) не трогаем. Каждый тайл обрабатывается
-    /// независимо (ошибка на одном не прерывает остальные). Вызывается из Update на тике после
-    /// завершения боя.
+    /// Приводит стены арены к снимку. Вызывается из DuelArenaSystem.Update на тике после завершения боя.
     /// </summary>
-    private void RestoreWalls(EntityUid arenaUid, DuelArenaComponent comp)
+    public void RestoreWalls(EntityUid arenaUid, DuelArenaComponent comp)
     {
         if (comp.WallSnapshot.Count == 0)
         {
@@ -127,7 +114,6 @@ public sealed partial class DuelArenaSystem
                 anchored.Clear();
                 _map.GetAnchoredEntities((grid.Value, gridComp), tile, anchored);
 
-                // Ищем стену/окно на тайле.
                 EntityUid? wall = null;
                 foreach (var e in anchored)
                 {
@@ -138,10 +124,8 @@ public sealed partial class DuelArenaSystem
                     }
                 }
 
-                // Правильная стена/окно уже стоит — просто чиним повреждения (помятая → новая) и идём дальше.
                 if (wall is { } existing && MetaData(existing).EntityPrototype?.ID == proto.Id)
                 {
-                    // Сбрасываем урон в ноль — помятая/повреждённая стена становится как новая.
                     if (TryComp<DamageableComponent>(existing, out var damage))
                     {
                         _damageable.SetAllDamage((existing, damage), FixedPoint2.Zero);
@@ -150,19 +134,12 @@ public sealed partial class DuelArenaSystem
                     continue;
                 }
 
-                // Освобождаем тайл от балок (остатков снесённой стены) И от чужой/повреждённой стены
-                // ВСЕГДА — даже если свежую в этот раз не поставим: иначе мусор зависнет навсегда (на
-                // занятом мобом тайле его не уберёт ни клинап, ни следующее восстановление). НЕ трогаем
-                // прочие заякоренные сущности — настенные постеры, лампы, интеркомы, APC и т.п. должны
-                // пережить восстановление стены.
                 foreach (var debris in anchored)
                 {
                     if (Exists(debris) && (IsWallDebris(debris) || IsRestorableStructure(debris)))
                         Del(debris);
                 }
 
-                // Пол под стеной уничтожен (дыра в космос)? Без пола стену не заякорить —
-                // восстанавливаем тайл по снимку.
                 if (_map.GetTileRef(grid.Value, gridComp, tile).Tile.IsEmpty
                     && comp.WallTileSnapshot.TryGetValue(tile, out var savedTile))
                 {
@@ -171,10 +148,6 @@ public sealed partial class DuelArenaSystem
 
                 var coords = _map.GridTileToLocal(grid.Value, gridComp, tile);
 
-                // На тайле стоит/лежит существо (например, дуэлянт, упавший в крит на месте снесённой
-                // стены)? Отодвигаем его на ближайший свободный тайл, чтобы стена не зажала. Если
-                // отодвинуть некуда — стену здесь не ставим (тайл восстановится на следующем раунде,
-                // мусор уже убран выше).
                 var blocked = false;
                 foreach (var mob in _lookup.GetEntitiesInRange<MobStateComponent>(coords, 0.45f))
                 {
@@ -212,19 +185,12 @@ public sealed partial class DuelArenaSystem
             + $"вылечено {healed}, переставлено {respawned}, занято мобами {blockedCount}, ошибок {failed}");
     }
 
-    /// <summary>
-    /// Решётка любого вида (обычная, заводная, диагональная) — целая или сломанная. Опознаётся по
-    /// прототипу (Grille / ClockworkGrille / GrilleBroken и т.п.), потому что у решёток нет общего тега.
-    /// </summary>
+    /// <summary>Решётка любого вида — опознаётся по прототипу, т.к. общего тега нет.</summary>
     private bool IsGrille(EntityUid uid)
         => Exists(uid) && MetaData(uid).EntityPrototype?.ID is { } proto && proto.Contains("Grille");
 
-    /// <summary>
-    /// Мержит текущую расстановку решёток арены в снимок (тайл → прототип). Вызывается при КАЖДОМ
-    /// старте дуэли (решётки целы) по той же мерж-логике, что и стены. Целые решётки опознаются по
-    /// <see cref="SharedCanBuildWindowOnTopComponent"/> (есть только у целых решёток, не у сломанных).
-    /// </summary>
-    private void SnapshotGrilles(EntityUid arenaUid, DuelArenaComponent comp)
+    /// <summary>Мержит текущую расстановку решёток арены в снимок.</summary>
+    public void SnapshotGrilles(EntityUid arenaUid, DuelArenaComponent comp)
     {
         var grid = Transform(arenaUid).GridUid;
         if (grid == null || !TryComp<MapGridComponent>(grid, out var gridComp))
@@ -252,12 +218,8 @@ public sealed partial class DuelArenaSystem
             Log.Info($"[duel-arena] снимок решёток пополнен: +{added}, всего {comp.GrilleSnapshot.Count} тайлов");
     }
 
-    /// <summary>
-    /// Приводит решётки арены к снимку <see cref="DuelArenaComponent.GrilleSnapshot"/>. Для каждого
-    /// тайла: целая правильная решётка — чиним урон; сломанная/чужая/отсутствующая — убираем и ставим
-    /// свежую (восстановив под ней пол, если уничтожен). Не трогает окна, стоящие на том же тайле.
-    /// </summary>
-    private void RestoreGrilles(EntityUid arenaUid, DuelArenaComponent comp)
+    /// <summary>Приводит решётки арены к снимку.</summary>
+    public void RestoreGrilles(EntityUid arenaUid, DuelArenaComponent comp)
     {
         if (comp.GrilleSnapshot.Count == 0)
             return;
@@ -278,7 +240,6 @@ public sealed partial class DuelArenaSystem
                 anchored.Clear();
                 _map.GetAnchoredEntities((grid.Value, gridComp), tile, anchored);
 
-                // Целая решётка нужного типа уже на месте?
                 EntityUid? intact = null;
                 foreach (var e in anchored)
                 {
@@ -298,14 +259,12 @@ public sealed partial class DuelArenaSystem
                     continue;
                 }
 
-                // Сломанные/неправильные решётки на тайле убираем (окна и прочее не трогаем).
                 foreach (var debris in anchored)
                 {
                     if (Exists(debris) && IsGrille(debris))
                         Del(debris);
                 }
 
-                // Пол под решёткой уничтожен? Восстанавливаем по снимку, иначе не заякорить.
                 if (_map.GetTileRef(grid.Value, gridComp, tile).Tile.IsEmpty
                     && comp.GrilleTileSnapshot.TryGetValue(tile, out var savedTile))
                 {
@@ -335,22 +294,13 @@ public sealed partial class DuelArenaSystem
             + $"вылечено {healed}, переставлено {respawned}, ошибок {failed}");
     }
 
-    /// <summary>
-    /// Остаток снесённой стены — балка (Girder/ReinforcedGirder/ClockworkGirder/BrassGirder и т.п.).
-    /// Только такие сущности убираем перед восстановлением стены; настенные предметы не трогаем.
-    /// </summary>
+    /// <summary>Остаток снесённой стены — балка (Girder/*).</summary>
     private bool IsWallDebris(EntityUid uid)
     {
-        // Сущность из списка заякоренных могла быть уже удалена (например, каскадом от Del
-        // соседнего мусора или отложенным QueueDel клинапа) — MetaData на ней кидает исключение.
         return Exists(uid) && MetaData(uid).EntityPrototype?.ID is { } proto && proto.Contains("Girder");
     }
 
-    /// <summary>
-    /// Ищет ближайший свободный тайл вокруг <paramref name="origin"/> (кольцами наружу, в пределах
-    /// нескольких клеток), куда можно отодвинуть тело, чтобы поставить стену. Свободный тайл —
-    /// тот, где нет стены и где стена не вырастет (отсутствует в снимке).
-    /// </summary>
+    /// <summary>Ищет ближайший свободный тайл вокруг origin.</summary>
     private bool TryFindFreeTile(EntityUid gridUid, MapGridComponent gridComp, DuelArenaComponent comp, Vector2i origin, out EntityCoordinates coords)
     {
         coords = default;
@@ -362,13 +312,11 @@ public sealed partial class DuelArenaSystem
             {
                 for (var dy = -r; dy <= r; dy++)
                 {
-                    // Только периметр текущего кольца (чебышёвское расстояние == r).
                     if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r)
                         continue;
 
                     var candidate = origin + new Vector2i(dx, dy);
 
-                    // Пропускаем тайлы, где стена уже есть или вырастет по снимку.
                     if (comp.WallSnapshot.ContainsKey(candidate))
                         continue;
 
@@ -386,15 +334,8 @@ public sealed partial class DuelArenaSystem
         return false;
     }
 
-    /// <summary>
-    /// Мержит текущую расстановку светильников арены в снимок (тайл → прототип + поворот).
-    /// Вызывается при КАЖДОМ старте дуэли по той же логике, что и снимок стен: новые светильники
-    /// добавляются, уже записанные не перезаписываются. Берёт любые анкоренные сущности-светильники
-    /// (с <see cref="PointLightComponent"/>) на гриде арены — это покрывает все типы: и обычные
-    /// светильники с лампой (<see cref="PoweredLightComponent"/>), и «always powered» напольные
-    /// светильники, фонарные столбы и маркеры, у которых нет лампы.
-    /// </summary>
-    private void SnapshotLights(EntityUid arenaUid, DuelArenaComponent comp)
+    /// <summary>Мержит текущую расстановку светильников арены в снимок.</summary>
+    public void SnapshotLights(EntityUid arenaUid, DuelArenaComponent comp)
     {
         var grid = Transform(arenaUid).GridUid;
         if (grid == null || !TryComp<MapGridComponent>(grid, out var gridComp))
@@ -423,14 +364,8 @@ public sealed partial class DuelArenaSystem
             Log.Info($"[duel-arena] снимок светильников пополнен: +{added}, всего {comp.LightSnapshot.Count} тайлов");
     }
 
-    /// <summary>
-    /// Приводит светильники арены к снимку <see cref="DuelArenaComponent.LightSnapshot"/>. Для каждого
-    /// тайла: если светильник нужного типа на месте — чиним корпус (помятый → как новый) и лампу
-    /// (разбитую/перегоревшую/отсутствующую меняем на свежую); если светильник уничтожен целиком —
-    /// ставим новый с тем же поворотом. Каждый тайл обрабатывается независимо. Вызывается из Update
-    /// на тике после завершения боя, рядом с восстановлением стен.
-    /// </summary>
-    private void RestoreLights(EntityUid arenaUid, DuelArenaComponent comp)
+    /// <summary>Приводит светильники арены к снимку.</summary>
+    public void RestoreLights(EntityUid arenaUid, DuelArenaComponent comp)
     {
         if (comp.LightSnapshot.Count == 0)
             return;
@@ -451,7 +386,6 @@ public sealed partial class DuelArenaSystem
                 anchored.Clear();
                 _map.GetAnchoredEntities((grid.Value, gridComp), tile, anchored);
 
-                // Светильник нужного типа на тайле?
                 EntityUid? fixture = null;
                 foreach (var e in anchored)
                 {
@@ -462,7 +396,6 @@ public sealed partial class DuelArenaSystem
                     }
                 }
 
-                // Светильник уцелел — чиним корпус и лампу (если есть) на месте, сохраняя поворот/проводку.
                 if (fixture is { } light)
                 {
                     if (TryComp<DamageableComponent>(light, out var dmg))
@@ -473,7 +406,6 @@ public sealed partial class DuelArenaSystem
                     continue;
                 }
 
-                // Светильник уничтожен — убираем обломки/светильники на тайле и ставим свежий.
                 foreach (var debris in anchored)
                 {
                     if (Exists(debris) && HasComp<PointLightComponent>(debris))
@@ -507,10 +439,7 @@ public sealed partial class DuelArenaSystem
             + $"вылечено {healed}, переставлено {respawned}, ошибок {failed}");
     }
 
-    /// <summary>
-    /// Возвращает лампу светильника в рабочее состояние: целую и горящую не трогает, а разбитую,
-    /// перегоревшую или отсутствующую заменяет свежей (по <see cref="PoweredLightComponent.HasLampOnSpawn"/>).
-    /// </summary>
+    /// <summary>Возвращает лампу светильника в рабочее состояние.</summary>
     private void RestoreBulb(EntityUid light)
     {
         if (!TryComp<PoweredLightComponent>(light, out var comp))
@@ -518,15 +447,12 @@ public sealed partial class DuelArenaSystem
 
         var bulb = _poweredLight.GetBulb(light, comp);
 
-        // Лампа на месте и цела — ничего не делаем.
         if (bulb is { } present && TryComp<LightBulbComponent>(present, out var bulbComp) && bulbComp.State == LightBulbState.Normal)
             return;
 
-        // Нечем заменить (у светильника не задана лампа по умолчанию) — оставляем как есть.
         if (comp.HasLampOnSpawn is not { } lampProto)
             return;
 
-        // Удаляем разбитую/перегоревшую лампу (Del, а не выброс — чтобы не сорить осколками в арене).
         if (bulb is { } old)
             Del(old);
 
