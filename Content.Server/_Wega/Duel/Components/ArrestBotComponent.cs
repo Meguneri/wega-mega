@@ -1,23 +1,25 @@
+using Robust.Shared.Audio;
+using Robust.Shared.Map;
 using Robust.Shared.Prototypes;
-using Robust.Shared.Timing;
 
 namespace Content.Server._Wega.Duel.Components;
 
 /// <summary>
-/// Состояние арест-бота.
+/// Состояние арестатора.
 /// </summary>
 public enum ArrestBotState
 {
     Idle,
     Pursuing,
-    Stunned,
-    Cuffed,
-    Delivering,
-    Done
+    Stripping,
+    Cuffing,
+    Delivering
 }
 
 /// <summary>
-/// Компонент арест-бота. Преследует назначенную цель, оглушает её, надевает наручники и ведёт к тому, кто отдал приказ.
+/// Компонент арестатора. Преследует назначенную цель, оглушает её станнером,
+/// снимает броню и одежду, надевает наручники и ведёт к тому, кто отдал приказ,
+/// после чего уходит в блюспейс.
 /// </summary>
 [RegisterComponent]
 public sealed partial class ArrestBotComponent : Component
@@ -29,7 +31,7 @@ public sealed partial class ArrestBotComponent : Component
     public EntityUid? Target;
 
     /// <summary>
-    /// Тот, кто отдал приказ на задержание. Бот ведёт цель к этому существу.
+    /// Тот, кто отдал приказ на задержание. Арестатор ведёт цель к этому существу.
     /// </summary>
     [ViewVariables]
     public EntityUid? Issuer;
@@ -41,34 +43,67 @@ public sealed partial class ArrestBotComponent : Component
     public ArrestBotState State = ArrestBotState.Idle;
 
     /// <summary>
-    /// Радиус, с которого бот применяет стан/наручники.
+    /// Радиус ближнего боя — с него арестатор снимает одежду и надевает наручники.
     /// </summary>
     [DataField]
-    public float ArrestRange = 1.2f;
+    public float ArrestRange = 1.4f;
 
     /// <summary>
-    /// Длительность оглушения (секунды).
+    /// Дальность, с которой арестатор стреляет из станнера по цели.
+    /// </summary>
+    [DataField]
+    public float FiringRange = 7f;
+
+    /// <summary>
+    /// Длительность гарантированного добивающего оглушения при надевании наручников (секунды).
+    /// Основной стан наносит само оружие; это лишь страховка, чтобы цель не очнулась в упор.
     /// </summary>
     [DataField]
     public float StunDuration = 4f;
 
     /// <summary>
-    /// Прототип наручников, которые надевает бот.
+    /// Прототип наручников, которые надевает арестатор.
     /// </summary>
     [DataField]
     public EntProtoId HandcuffPrototype = "Handcuffs";
 
     /// <summary>
-    /// Скорость бота.
+    /// Имплант «Блюспейс коридор», который арестатор активирует после доставки цели.
     /// </summary>
     [DataField]
-    public float MoveSpeed = 3.5f;
+    public EntProtoId BluespaceImplant = "BluespaceLifelineImplant";
 
     /// <summary>
-    /// Задержка между действиями (секунды).
+    /// Задержка между действиями — выстрелами, снятием вещей, наручниками (секунды).
     /// </summary>
     [DataField]
     public float ActionCooldown = 1f;
+
+    /// <summary>
+    /// Слоты, которые конвоир снимает с цели перед наручниками: броня или скафандр,
+    /// шлем, РПС, рюкзак, перчатки, комбинезон и обувь — всё это может нести защиту.
+    /// </summary>
+    [DataField]
+    public List<string> StripSlots = new() { "outerClothing", "head", "belt", "back", "gloves", "jumpsuit", "shoes" };
+
+    /// <summary>
+    /// Уже объявил ли конвоир о том, что заметил цель (чтобы не повторяться).
+    /// </summary>
+    [ViewVariables]
+    public bool Spotted;
+
+    /// <summary>
+    /// Последняя точка, к которой прокладывался путь. Нужна, чтобы не сбрасывать
+    /// найденный маршрут каждый тик — перепрокладываем, только когда цель заметно сместилась.
+    /// </summary>
+    [ViewVariables]
+    public EntityCoordinates? LastGoal;
+
+    /// <summary>
+    /// Звук на случай, если оружие выбили из рук — задержание всё равно продолжается.
+    /// </summary>
+    [DataField]
+    public SoundSpecifier StunSound = new SoundPathSpecifier("/Audio/Weapons/egloves.ogg");
 
     /// <summary>
     /// Время следующего действия.
@@ -77,14 +112,20 @@ public sealed partial class ArrestBotComponent : Component
     public TimeSpan NextAction;
 
     /// <summary>
-    /// Время, через которое бот сбросится, если не может завершить задержание.
+    /// Время, через которое арестатор сбросится, если не может завершить задержание.
     /// </summary>
     [DataField]
-    public float Timeout = 60f;
+    public float Timeout = 90f;
 
     /// <summary>
     /// Время окончания таймаута.
     /// </summary>
     [ViewVariables]
     public TimeSpan? TimeoutEndAt;
+
+    /// <summary>
+    /// Слоты, которые не удалось снять в текущем задержании — больше не пробуем.
+    /// </summary>
+    [ViewVariables]
+    public HashSet<string> FailedStripSlots = new();
 }

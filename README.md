@@ -41,6 +41,23 @@
 
 ---
 
+## 🧰 Папка `dev/` — служебные файлы форка
+
+Личные скрипты, заметки и арт-референсы этого форка лежат в `dev/`, чтобы не засорять корень репозитория. Игровой сборке они не нужны. Все скрипты запускаются **из корня репо**:
+
+| Что | Где | Зачем |
+|---|---|---|
+| `gen_adaptive_sprites.py`, `gen_rengoku_inhand.py`, `gen_urban_parallax.py` | `dev/` | Генераторы спрайтов/параллакса (`python3 dev/gen_*.py`), пишут в `Resources/Textures/` |
+| `run_mapping.sh` / `run_mapping.bat`, `MAPPING_README.txt` | `dev/` | Локальный запуск для маппинга (`./dev/run_mapping.sh`), инструкция для мапперов |
+| `package_windows_standalone.sh` | `dev/` | Сборка standalone-билда под Windows (`./dev/package_windows_standalone.sh`), результат в `dist/` |
+| `human_dummy_reference*.png` | `dev/` | Референсы человеческой модельки (4 направления) для рисования одежды, м/ж + версии ×12 |
+| `TODO.md`, `RAID_MODE.md`, `DUEL_SUPPLY_DROP.md` | `dev/` | Заметки по механикам арены (рейд-режим, аирдроп дуэлей) и список задач |
+| `art_backup/`, `crate_mockups/`, `tile_previews/` | `dev/` | Бэкап старых спрайтов, мокапы ящиков, превью тайлов (`dev/tile_previews/gen_tiles.py`) |
+
+Прайс-листы арены — `FULL_ARSENAL_PRICES.md` и `MELEE_ARSENAL_PRICES.md` — остаются в корне (см. `CLAUDE.md`).
+
+---
+
 ## 📄 Лицензия
 
 - Основной код Space Station 14 распространяется под лицензией **[MIT](https://github.com/corvax-team/ss14-wega/blob/master/MIT_LICENSE.TXT)**.

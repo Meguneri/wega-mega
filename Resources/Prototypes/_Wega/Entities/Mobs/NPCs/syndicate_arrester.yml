@@ -1,17 +1,18 @@
-# Снаряжение арестатора Синдиката: станнер в руке, наручники в карманах.
+# Снаряжение арестатора Синдиката: станнер и стан-дубинка в руках, наручники в карманах.
 - type: startingGear
   id: SyndicateArresterGear
   equipment:
-    jumpsuit: ClothingUniformJumpsuitOperative
+    jumpsuit: ClothingUniformJumpsuitTurtleneckTactick
     head: ClothingHeadHelmetSwatSyndicate
     mask: ClothingMaskGasSyndicate
-    eyes: ClothingEyesHudSyndicate
+    eyes: ClothingEyesGlassesSniperThermalSyndie
     gloves: ClothingHandsGlovesCombat
-    outerClothing: ClothingOuterArmorBasic
-    shoes: ClothingShoesBootsCombat
+    outerClothing: ClothingOuterVestWebElite
+    shoes: ClothingShoesBootsJackSec
     pocket1: Handcuffs
     pocket2: Handcuffs
   inhand:
+    - WeaponDisabler
     - Stunbaton
 
 # Человек-арестатор на базе пехотинца Синдиката. Без боевого ИИ:
@@ -19,8 +20,8 @@
 - type: entity
   parent: MobHuman
   id: MobSyndicateArrester
-  name: syndicate arrester
-  description: A relentless Syndicate operative. On command he hunts down the target, stuns it, strips off its armor, cuffs it and drags it to whoever gave the order.
+  name: syndicate escort
+  description: A relentless Syndicate operative. On command he hunts down the target, stuns it, strips off its armor, cuffs it and escorts it to whoever gave the order before jumping away through bluespace.
   components:
   - type: NpcFactionMember
     factions:
@@ -30,12 +31,12 @@
     - SyndicateArresterGear
   - type: InputMover
   - type: MobMover
-  - type: NPCSteering
   - type: ArrestBot
   - type: MovementSpeedModifier
     baseWalkSpeed: 3.5
     baseSprintSpeed: 5.0
-  # Corvax anti-overloot, как у пехотинца Синдиката.
+  # Corvax anti-overloot + уход в блюспейс после доставки цели.
   - type: AutoImplant
     implants:
     - DeathAcidifierImplant
+    - BluespaceLifelineImplant

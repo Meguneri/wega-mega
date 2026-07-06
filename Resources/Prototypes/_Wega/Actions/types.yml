@@ -62,3 +62,17 @@
     icon:
       sprite: Objects/Weapons/Grenades/smoke.rsi
       state: icon
+
+- type: entity
+  parent: BaseAction
+  id: ActionOpenArrestRemote
+  name: Command arrester
+  description: Open the arrester remote and pick a target to detain among the humanoids on the grid.
+  components:
+  - type: Action
+    useDelay: 1
+    icon:
+      sprite: Objects/Misc/handcuffs.rsi
+      state: handcuff
+  - type: InstantAction
+    event: !type:OpenArrestRemoteEvent

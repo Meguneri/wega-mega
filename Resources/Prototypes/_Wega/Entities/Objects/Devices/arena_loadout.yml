@@ -36,10 +36,11 @@
   description: A terminal that lets duelists choose their arena loadout before the fight starts.
   components:
   - type: Sprite
-    sprite: Structures/Machines/telecom_monitor.rsi
+    sprite: Structures/Machines/computers.rsi
     layers:
-    - state: base
-    - state: unshaded
+    - state: computer
+    - state: generic_keyboard
+    - state: comm_syndie
       shader: unshaded
   - type: InteractionOutline
   - type: ActivatableUI

@@ -1,7 +1,7 @@
 - type: entity
   id: ArrestBotRemote
-  name: пульт арест-бота
-  description: Позволяет отдать ближайшему арест-боту приказ задержать выбранную цель.
+  name: пульт конвоира
+  description: Позволяет отдать ближайшему конвоиру Синдиката приказ задержать выбранную цель — тычком или через окно выбора цели.
   parent: BaseItem
   components:
   - type: Sprite
@@ -13,3 +13,8 @@
     delay: 1
   - type: ArrestBotRemote
     botSearchRange: 30
+  - type: ActionsContainer
+  - type: UserInterface
+    interfaces:
+      enum.ArrestRemoteUiKey.Key:
+        type: ArrestRemoteBoundUserInterface
