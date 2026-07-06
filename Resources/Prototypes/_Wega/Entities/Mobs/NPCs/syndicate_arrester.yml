@@ -1,0 +1,41 @@
+# Снаряжение арестатора Синдиката: станнер в руке, наручники в карманах.
+- type: startingGear
+  id: SyndicateArresterGear
+  equipment:
+    jumpsuit: ClothingUniformJumpsuitOperative
+    head: ClothingHeadHelmetSwatSyndicate
+    mask: ClothingMaskGasSyndicate
+    eyes: ClothingEyesHudSyndicate
+    gloves: ClothingHandsGlovesCombat
+    outerClothing: ClothingOuterArmorBasic
+    shoes: ClothingShoesBootsCombat
+    pocket1: Handcuffs
+    pocket2: Handcuffs
+  inhand:
+    - Stunbaton
+
+# Человек-арестатор на базе пехотинца Синдиката. Без боевого ИИ:
+# стоит на месте и выполняет только приказы с пульта арестатора.
+- type: entity
+  parent: MobHuman
+  id: MobSyndicateArrester
+  name: syndicate arrester
+  description: A relentless Syndicate operative. On command he hunts down the target, stuns it, strips off its armor, cuffs it and drags it to whoever gave the order.
+  components:
+  - type: NpcFactionMember
+    factions:
+    - Syndicate
+  - type: Loadout
+    prototypes:
+    - SyndicateArresterGear
+  - type: InputMover
+  - type: MobMover
+  - type: NPCSteering
+  - type: ArrestBot
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 3.5
+    baseSprintSpeed: 5.0
+  # Corvax anti-overloot, как у пехотинца Синдиката.
+  - type: AutoImplant
+    implants:
+    - DeathAcidifierImplant
