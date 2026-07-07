@@ -227,11 +227,50 @@ profile:
     [Test]
     public async Task ImportLustStationProfile()
     {
-        const string path = "/private/tmp/claude-501/-Users-meguneri-Programming-wega-mega/d0a569de-32da-4411-a5d9-41f12d768d9d/scratchpad/lust_export.yml";
-        if (!File.Exists(path))
-            Assert.Ignore($"lust-station export file not present at {path}");
-
-        var yaml = File.ReadAllText(path);
+        // Real file produced by lust-station's own serializer (Sunrise fork). version: 1, legacy
+        // appearance format (flat hair/facialHair) plus fork-specific fields (erp, bodyType, ...).
+        const string yaml = @"profile:
+  preferenceUnavailable: SpawnAsOverflow
+  voice: Voljin
+  _antagPreferences:
+  - Thief
+  _traitPreferences: []
+  _jobAlternativeTitles: {}
+  _loadouts:
+    JobPassenger:
+      entityName: null
+      selectedLoadouts: {}
+      role: JobPassenger
+  name: John Doe
+  flavorText: ''
+  species: Human
+  age: 30
+  spawnPriority: Arrivals
+  erp: Ask
+  virginity: No
+  analVirginity: Yes
+  sex: Male
+  gender: Male
+  bodyType: HumanNormal
+  appearance:
+    height: 1
+    width: 1
+    markings: []
+    skinColor: '#C0A080FF'
+    eyeColor: '#0000FFFF'
+    facialHairColor: '#3F2E12FF'
+    facialHair: HumanFacialHairAbe
+    hairColor: '#A0680AFF'
+    hair: HumanHairAfricanPigtails
+    facialHairMarkingEffect: null
+    facialHairMarkingEffectType: Color
+    hairMarkingEffect: null
+    hairMarkingEffectType: Color
+  _jobPriorities:
+    Passenger: High
+version: 1
+forkId: ''
+";
 
         var server = Pair.Server;
         await server.WaitIdleAsync();
@@ -270,6 +309,82 @@ profile:
             // The whole point of this test: hair color must transfer, not reset to black.
             Assert.That(markings, Has.Some.Contains("HumanHairAfricanPigtails(#A0680AFF)"),
                 $"Hair color lost on cross-server import. Markings: [{string.Join(", ", markings)}]");
+        });
+    }
+
+    /// <summary>
+    /// Imports a realistic random lust-station character (real hairstyle + a description) to verify
+    /// that hair color and flavor text survive the transfer.
+    /// </summary>
+    [Test]
+    public async Task ImportLustStationRealProfile()
+    {
+        // Real random character produced by lust-station's serializer, with a Cyrillic description
+        // and a hairstyle (HumanHairMedfade) that also exists in wega.
+        const string yaml = @"profile:
+  preferenceUnavailable: SpawnAsOverflow
+  voice: MatildaWeasley
+  _antagPreferences: []
+  _traitPreferences: []
+  _jobAlternativeTitles: {}
+  _loadouts: {}
+  name: Иван Иванов
+  flavorText: Высокий мужчина со шрамом на левой щеке. Носит потёртую куртку.
+  species: Human
+  age: 18
+  spawnPriority: None
+  erp: Ask
+  virginity: No
+  analVirginity: Yes
+  sex: Female
+  gender: Female
+  bodyType: HumanNormal
+  appearance:
+    height: 0.9965663
+    width: 1.0756687
+    markings: []
+    skinColor: '#FFEACCFF'
+    eyeColor: '#808080FF'
+    facialHairColor: '#FFFF99FF'
+    facialHair: FacialHairShaved
+    hairColor: '#FFFF99FF'
+    hair: HumanHairMedfade
+    facialHairMarkingEffect: null
+    facialHairMarkingEffectType: Color
+    hairMarkingEffect: null
+    hairMarkingEffectType: Color
+  _jobPriorities:
+    Passenger: High
+version: 1
+forkId: ''
+";
+
+        var server = Pair.Server;
+        await server.WaitIdleAsync();
+
+        await server.WaitAssertion(() =>
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(yaml));
+            var session = server.PlayerMan.Sessions.First();
+            var imported = HumanoidCharacterProfile.FromStream(stream, session);
+
+            var markings = imported.Appearance.Markings.Values
+                .SelectMany(v => v.Values)
+                .SelectMany(m => m)
+                .Select(m => $"{m.MarkingId}({string.Join("|", m.MarkingColors.Select(c => c.ToHex()))})")
+                .ToList();
+
+            TestContext.Out.WriteLine($"Name: '{imported.Name}'");
+            TestContext.Out.WriteLine($"FlavorText: '{imported.FlavorText}'");
+            TestContext.Out.WriteLine($"Markings: [{string.Join(", ", markings)}]");
+
+            // The description (flavor text) must transfer verbatim.
+            Assert.That(imported.FlavorText, Is.EqualTo("Высокий мужчина со шрамом на левой щеке. Носит потёртую куртку."),
+                "Description (flavor text) was lost on import");
+
+            // The hairstyle exists in wega, so both it and its color must survive.
+            Assert.That(markings, Has.Some.Contains("HumanHairMedfade(#FFFF99FF)"),
+                $"Hair or hair color lost. Markings: [{string.Join(", ", markings)}]");
         });
     }
 
