@@ -1,4 +1,5 @@
 using System.Linq;
+using Content.Server.NPC.Pathfinding;
 using Content.Server._Wega.Duel.Components;
 using Content.Server.Chat.Managers;
 using Content.Server.Chat.Systems;
@@ -697,6 +698,10 @@ public sealed partial class ArrestBotSystem : EntitySystem
         }
 
         var steering = _steering.Register(uid, coords);
+
+        // Конвоир может открывать двери (Access) и бампать их. Без этих флагов
+        // pathfinding считает шлюзы непроходимыми и не строит маршрут через станцию.
+        steering.Flags = PathFlags.Interact | PathFlags.Prying;
 
         // Register не сбрасывает залипший NoPath — форсируем повторный поиск пути.
         steering.Status = SteeringStatus.Moving;
