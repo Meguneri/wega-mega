@@ -18,6 +18,8 @@ using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
 using Robust.Shared.Serialization.Manager;
 using Robust.Shared.Serialization.Markdown;
+using Robust.Shared.Serialization.Markdown.Mapping;
+using Robust.Shared.Serialization.Markdown.Sequence;
 using Robust.Shared.Serialization;
 using Robust.Shared.Utility;
 using Robust.Shared;
@@ -743,7 +745,9 @@ namespace Content.Shared.Preferences
                 name = ICNameCaseRegex.Replace(name, m => m.Groups["word"].Value.ToUpper());
             }
 
-            if (string.IsNullOrEmpty(name))
+            name = name.Trim();
+
+            if (string.IsNullOrWhiteSpace(name))
             {
                 name = GetName(Species, gender);
             }
@@ -1175,8 +1179,26 @@ namespace Content.Shared.Preferences
             }
             else if (root["version"].Equals(new YamlScalarNode("2")))
             {
-                var export = serialization.Read<HumanoidProfileExportV2>(root.ToDataNode(), notNullableOverride: true);
-                profile = export.Profile;
+                var rootMapping = (MappingDataNode)root.ToDataNode();
+                // Corvax-Wega-Convert-Edit-start: Files exported before the visual-body refactor still say
+                // version 2 but use the old appearance format (hair fields + flat markings list).
+                if (rootMapping.TryGet<MappingDataNode>("profile", out var profileMapping)
+                    && profileMapping.TryGet<MappingDataNode>("appearance", out var appearanceMapping)
+                    && (appearanceMapping.Has("hair")
+                        || appearanceMapping.TryGet("markings", out var markingsNode) && markingsNode is SequenceDataNode))
+                {
+                    var legacyAppearance = serialization.Read<HumanoidCharacterAppearanceV1>(appearanceMapping, notNullableOverride: true);
+                    profileMapping.Remove("appearance");
+                    var export = serialization.Read<HumanoidProfileExportV2>(rootMapping, notNullableOverride: true);
+                    profile = export.Profile;
+                    profile.Appearance = legacyAppearance.ToV2(profile.Species);
+                }
+                // Corvax-Wega-Convert-Edit-end
+                else
+                {
+                    var export = serialization.Read<HumanoidProfileExportV2>(rootMapping, notNullableOverride: true);
+                    profile = export.Profile;
+                }
             }
             else
             {

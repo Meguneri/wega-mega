@@ -158,23 +158,8 @@ public sealed partial class HumanoidCharacterAppearanceV1
     [DataField("hair")]
     public string HairStyleId;
 
-    // Corvax-Wega-Convert-Edit-start
     [DataField]
-    private object? _hairColor;
-
-    public Color HairColor
-    {
-        get
-        {
-            if (_hairColor is string str)
-                return Color.TryFromHex(str) ?? Color.Black;
-            if (_hairColor is List<object> list && list.Count > 0 && list[0] is string listStr)
-                return Color.TryFromHex(listStr) ?? Color.Black;
-            return Color.Black;
-        }
-        set => _hairColor = value.ToHex();
-    }
-    // Corvax-Wega-Convert-Edit-end
+    public Color HairColor = Color.Black;
 
     [DataField("facialHair")]
     public string FacialHairStyleId;
@@ -195,10 +180,15 @@ public sealed partial class HumanoidCharacterAppearanceV1
     {
         var markingManager = IoCManager.Resolve<MarkingManager>();
 
+        // Corvax-Wega-Convert-Edit: Profiles imported from other servers can reference a species
+        // that doesn't exist here; EnsureValid resets it to the default later, so convert for that.
+        if (!IoCManager.Resolve<IPrototypeManager>().HasIndex(species))
+            species = HumanoidCharacterProfile.DefaultSpecies;
+
         var incomingMarkings = Markings.ShallowClone();
-        if (HairStyleId != string.Empty)
+        if (!string.IsNullOrEmpty(HairStyleId))
             incomingMarkings.Add(new(HairStyleId, new List<Color>() { HairColor }));
-        if (FacialHairStyleId != string.Empty)
+        if (!string.IsNullOrEmpty(FacialHairStyleId))
             incomingMarkings.Add(new(FacialHairStyleId, new List<Color>() { FacialHairColor }));
 
         return new HumanoidCharacterAppearance(EyeColor, SkinColor, markingManager.ConvertMarkings(incomingMarkings, species));

@@ -29,7 +29,11 @@ public sealed partial class HumanoidProfileEditor
             return;
 
         StartExport();
-        await using var file = await _dialogManager.OpenFile(new FileDialogFilters(new FileDialogFilters.Group("yml")), FileAccess.Read);
+        // Old exports may have a .yaml or missing extension depending on the platform's save dialog,
+        // so don't lock the picker to .yml only.
+        await using var file = await _dialogManager.OpenFile(
+            new FileDialogFilters(new FileDialogFilters.Group("yml", "yaml"), new FileDialogFilters.Group("*")),
+            FileAccess.Read);
 
         if (file == null)
         {
@@ -47,7 +51,7 @@ public sealed partial class HumanoidProfileEditor
         }
         catch (Exception exc)
         {
-            _sawmill.Error($"Error when importing profile\n{exc.StackTrace}");
+            _sawmill.Error($"Error when importing profile\n{exc}");
         }
         finally
         {
@@ -77,7 +81,7 @@ public sealed partial class HumanoidProfileEditor
         }
         catch (Exception exc)
         {
-            _sawmill.Error($"Error when exporting profile\n{exc.StackTrace}");
+            _sawmill.Error($"Error when exporting profile\n{exc}");
         }
         finally
         {
