@@ -1,4 +1,3 @@
-using Robust.Shared.Prototypes;
 using Content.Shared.Verbs;
 using Content.Shared.Access.Systems;
 using Content.Shared.Popups;
@@ -13,7 +12,6 @@ namespace Content.Shared.ChangeableReagent;
 
 public sealed partial class ChangeableReagentSystem : EntitySystem
 {
-    [Dependency] private IPrototypeManager _prototypeManager = default!;
     [Dependency] private SharedPopupSystem _popupSystem = default!;
     [Dependency] private SolutionRegenerationSystem _solutionrRagents = default!;
 
