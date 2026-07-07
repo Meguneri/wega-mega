@@ -26,6 +26,11 @@
   - type: NpcFactionMember
     factions:
     - Syndicate
+  - type: Access
+    groups:
+    - AllAccess
+    tags:
+    - SyndicateAgent
   - type: Loadout
     prototypes:
     - SyndicateArresterGear

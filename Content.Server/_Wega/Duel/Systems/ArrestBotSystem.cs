@@ -688,13 +688,19 @@ public sealed partial class ArrestBotSystem : EntitySystem
 
             if (!goalMoved && existing.Status == SteeringStatus.Moving)
                 return;
+
+            // Если цель сдвинулась или бот застрял в NoPath, сбрасываем счётчик неудач
+            // поиска пути — старая ошибка могла быть вызвана закрытой дверью/препятствием,
+            // которое уже исчезло.
+            if (goalMoved || existing.Status == SteeringStatus.NoPath)
+                existing.FailedPathCount = 0;
         }
 
         var steering = _steering.Register(uid, coords);
 
         // Register не сбрасывает залипший NoPath — форсируем повторный поиск пути.
-        if (steering.Status == SteeringStatus.NoPath)
-            steering.Status = SteeringStatus.Moving;
+        steering.Status = SteeringStatus.Moving;
+        steering.FailedPathCount = 0;
 
         bot.LastGoal = coords;
     }
