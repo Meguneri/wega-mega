@@ -132763,7 +132763,7 @@ entities:
     - type: Transform
       pos: 19.54964,13.526009
       parent: 18382
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 7041
     components:
@@ -132779,7 +132779,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorSyndicate
+- proto: TowelColorWhite
   entities:
   - uid: 7071
     components:

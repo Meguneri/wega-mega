@@ -39828,7 +39828,7 @@ entities:
     - type: Transform
       pos: 2.524221,-20.535118
       parent: 2
-- proto: TowelColorBlack
+- proto: TowelColorWhite
   entities:
   - uid: 1781
     components:
@@ -39837,7 +39837,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorBlue
+- proto: TowelColorWhite
   entities:
   - uid: 1777
     components:
@@ -39846,7 +39846,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorBrown
+- proto: TowelColorWhite
   entities:
   - uid: 1778
     components:
@@ -39855,7 +39855,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorDarkBlue
+- proto: TowelColorWhite
   entities:
   - uid: 1786
     components:
@@ -39864,7 +39864,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorGreen
+- proto: TowelColorWhite
   entities:
   - uid: 1782
     components:
@@ -39873,7 +39873,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorMaroon
+- proto: TowelColorWhite
   entities:
   - uid: 1779
     components:
@@ -39882,7 +39882,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorOrange
+- proto: TowelColorWhite
   entities:
   - uid: 1787
     components:
@@ -39891,7 +39891,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorRed
+- proto: TowelColorWhite
   entities:
   - uid: 1783
     components:
@@ -39909,7 +39909,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorYellow
+- proto: TowelColorWhite
   entities:
   - uid: 1788
     components:
@@ -48428,7 +48428,7 @@ entities:
     - type: Transform
       pos: 2.5,-0.5
       parent: 5376
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 5200
     components:

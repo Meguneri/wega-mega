@@ -48638,7 +48638,7 @@ entities:
     - type: Transform
       pos: 2.524221,-20.535118
       parent: 2
-- proto: TowelColorBlack
+- proto: TowelColorWhite
   entities:
   - uid: 2187
     components:
@@ -48647,7 +48647,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorBlue
+- proto: TowelColorWhite
   entities:
   - uid: 2183
     components:
@@ -48656,7 +48656,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorBrown
+- proto: TowelColorWhite
   entities:
   - uid: 2184
     components:
@@ -48665,7 +48665,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorDarkBlue
+- proto: TowelColorWhite
   entities:
   - uid: 2192
     components:
@@ -48674,7 +48674,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorGreen
+- proto: TowelColorWhite
   entities:
   - uid: 2188
     components:
@@ -48683,21 +48683,21 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorLightBlue
+- proto: TowelColorWhite
   entities:
   - uid: 5163
     components:
     - type: Transform
       pos: -15.523461,29.034323
       parent: 2
-- proto: TowelColorLightBrown
+- proto: TowelColorWhite
   entities:
   - uid: 5164
     components:
     - type: Transform
       pos: -8.648439,31.596823
       parent: 2
-- proto: TowelColorMaroon
+- proto: TowelColorWhite
   entities:
   - uid: 2185
     components:
@@ -48706,7 +48706,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorOrange
+- proto: TowelColorWhite
   entities:
   - uid: 2193
     components:
@@ -48715,7 +48715,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorRed
+- proto: TowelColorWhite
   entities:
   - uid: 2189
     components:
@@ -48724,7 +48724,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorSyndicate
+- proto: TowelColorWhite
   entities:
   - uid: 5165
     components:
@@ -48738,7 +48738,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorTeal
+- proto: TowelColorWhite
   entities:
   - uid: 5166
     components:
@@ -48754,7 +48754,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorYellow
+- proto: TowelColorWhite
   entities:
   - uid: 2194
     components:

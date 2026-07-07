@@ -251905,7 +251905,7 @@ entities:
     - type: Transform
       pos: -42.5,-11.5
       parent: 2
-- proto: SpawnPointZookeeper
+- proto: SpawnPointPassenger
   entities:
   - uid: 27719
     components:
@@ -262200,7 +262200,7 @@ entities:
       rot: 3.141592653589793 rad
       pos: 10.964032,-13.186012
       parent: 2
-- proto: TowelColorBlack
+- proto: TowelColorWhite
   entities:
   - uid: 29011
     components:
@@ -262212,28 +262212,28 @@ entities:
     - type: Transform
       pos: 26.695965,43.610897
       parent: 2
-- proto: TowelColorGold
+- proto: TowelColorWhite
   entities:
   - uid: 29013
     components:
     - type: Transform
       pos: 80.51844,-40.19022
       parent: 2
-- proto: TowelColorLightBrown
+- proto: TowelColorWhite
   entities:
   - uid: 29014
     components:
     - type: Transform
       pos: 12.499074,-50.369137
       parent: 2
-- proto: TowelColorMime
+- proto: TowelColorWhite
   entities:
   - uid: 41805
     components:
     - type: Transform
       pos: 90.542915,-28.367023
       parent: 2
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 29015
     components:
@@ -262245,14 +262245,14 @@ entities:
     - type: Transform
       pos: -13.588393,-4.5270324
       parent: 2
-- proto: TowelColorPink
+- proto: TowelColorWhite
   entities:
   - uid: 29017
     components:
     - type: Transform
       pos: -52.04345,-2.4376073
       parent: 2
-- proto: TowelColorPurple
+- proto: TowelColorWhite
   entities:
   - uid: 48973
     components:
@@ -262274,7 +262274,7 @@ entities:
     - type: Transform
       pos: -5.3796635,9.5659485
       parent: 47234
-- proto: TowelColorSilver
+- proto: TowelColorWhite
   entities:
   - uid: 40970
     components:
@@ -262304,7 +262304,7 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorSyndicate
+- proto: TowelColorWhite
   entities:
   - uid: 41786
     components:
@@ -341948,7 +341948,7 @@ entities:
       zoneRadius: 21
     missingComponents:
     - WarpPoint
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 41112
     components:

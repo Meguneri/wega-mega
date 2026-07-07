@@ -55327,7 +55327,7 @@ entities:
     - type: Transform
       pos: 3.5,2.5
       parent: 2
-- proto: SpawnPointZookeeper
+- proto: SpawnPointPassenger
   entities:
   - uid: 5371
     components:
@@ -65952,7 +65952,7 @@ entities:
       parent: 7677
     - type: WarpPoint
       location: Ксенолаборатория
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 6800
     components:

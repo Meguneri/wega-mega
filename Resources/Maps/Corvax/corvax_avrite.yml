@@ -320335,7 +320335,7 @@ entities:
     - type: Transform
       pos: -47.5,-21.5
       parent: 2
-- proto: SpawnPointZookeeper
+- proto: SpawnPointPassenger
   entities:
   - uid: 44929
     components:
@@ -336774,7 +336774,7 @@ entities:
     - type: Transform
       pos: -88.48045,32.65129
       parent: 2
-- proto: TowelColorGreen
+- proto: TowelColorWhite
   entities:
   - uid: 20578
     components:
@@ -336797,14 +336797,14 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 47427
     components:
     - type: Transform
       pos: -26.424202,-87.25286
       parent: 2
-- proto: TowelColorSyndicate
+- proto: TowelColorWhite
   entities:
   - uid: 47428
     components:
@@ -394006,7 +394006,7 @@ entities:
       parent: 56862
     - type: WarpPoint
       location: Каторга "Добрый самаритянин"
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 55202
     components:

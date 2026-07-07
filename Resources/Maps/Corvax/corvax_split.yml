@@ -246496,7 +246496,7 @@ entities:
     - type: Transform
       pos: -43.5,9.5
       parent: 720
-- proto: SpawnPointZookeeper
+- proto: SpawnPointPassenger
   entities:
   - uid: 22844
     components:
@@ -308365,7 +308365,7 @@ entities:
       parent: 46542
     - type: WarpPoint
       location: Пиратская бухта
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 22606
     components:

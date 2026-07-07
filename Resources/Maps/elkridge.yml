@@ -109857,7 +109857,7 @@ entities:
     - type: Transform
       pos: 43.536335,-6.2626333
       parent: 2
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 14472
     components:

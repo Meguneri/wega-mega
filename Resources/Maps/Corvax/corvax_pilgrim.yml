@@ -197975,7 +197975,7 @@ entities:
     - type: Transform
       pos: -56.5,15.5
       parent: 2
-- proto: SpawnPointZookeeper
+- proto: SpawnPointPassenger
   entities:
   - uid: 23020
     components:

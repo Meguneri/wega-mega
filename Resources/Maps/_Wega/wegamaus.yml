@@ -113401,14 +113401,14 @@ entities:
     - type: Transform
       pos: -2.3750982,-11.274648
       parent: 2
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 15154
     components:
     - type: Transform
       pos: -37.7167,-9.489765
       parent: 2
-- proto: TowelColorSyndicate
+- proto: TowelColorWhite
   entities:
   - uid: 15155
     components:
@@ -131310,7 +131310,7 @@ entities:
       parent: 18683
     - type: WarpPoint
       location: Протуберанец
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 18225
     components:

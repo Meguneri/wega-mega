@@ -55409,7 +55409,7 @@ entities:
     - type: Transform
       pos: -30.5,-8.5
       parent: 1668
-- proto: TowelColorCentcom
+- proto: TowelColorWhite
   entities:
   - uid: 2850
     components:
@@ -55421,7 +55421,7 @@ entities:
     - type: Transform
       pos: -38.281086,9.840634
       parent: 1668
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 9338
     components:

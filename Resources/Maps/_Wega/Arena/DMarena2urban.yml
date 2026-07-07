@@ -11395,7 +11395,7 @@ entities:
     - type: Strap
       buckleOffsets:
       - 0,-0.05
-- proto: TowelColorSyndicate
+- proto: TowelColorWhite
   entities:
   - uid: 183
     components:

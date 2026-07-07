@@ -73945,7 +73945,7 @@ entities:
     - type: Transform
       pos: 35.561012,89.6752
       parent: 1
-- proto: TowelColorCentcom
+- proto: TowelColorWhite
   entities:
   - uid: 3290
     components:
@@ -73969,7 +73969,7 @@ entities:
     - type: Transform
       pos: 68.10823,74.703804
       parent: 1
-- proto: TowelColorNT
+- proto: TowelColorWhite
   entities:
   - uid: 9202
     components:

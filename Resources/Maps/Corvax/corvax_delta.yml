@@ -235389,7 +235389,7 @@ entities:
     - type: Transform
       pos: 50.5,8.5
       parent: 2
-- proto: SpawnPointZookeeper
+- proto: SpawnPointPassenger
   entities:
   - uid: 30942
     components:
@@ -246337,7 +246337,7 @@ entities:
     - type: Transform
       pos: 43.700527,-24.265348
       parent: 2
-- proto: TowelColorOrange
+- proto: TowelColorWhite
   entities:
   - uid: 32642
     components:
@@ -281517,7 +281517,7 @@ entities:
       parent: 2
     - type: WarpPoint
       location: Инженерный - Верфь
-- proto: WarpPointBombing
+- proto: WarpPoint
   entities:
   - uid: 37936
     components:
