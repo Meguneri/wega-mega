@@ -1525,3 +1525,5 @@ full-arsenal-elite-sniper-bundle-desc = Вещмешок с противомат
 # SR-127 rifle
 full-arsenal-rifle-bauer127-name = Снайперская винтовка SR-127
 full-arsenal-rifle-bauer127-desc = Тяжёлая противоматериальная снайперская винтовка под патрон 15x115mm. Поддерживает 6 типов магазинов. Значительно замедляет носителя.
+nukie-delivery-medicineborg-bundle-name = Телепорт медицинского киборга Синдиката
+nukie-delivery-medicineborg-bundle-desc = Поставщик редких реагентов, хирургических операций и успешных операций.
