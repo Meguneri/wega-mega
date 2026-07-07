@@ -25,7 +25,7 @@ public sealed partial class ToggleableThermalVisionSystem : EntitySystem
     private void OnVisionShutdown(Entity<ToggleableThermalVisionComponent> ent, ref ComponentShutdown args)
     {
         _actionsSystem.RemoveAction(ent.Comp.ActionEntity);
-        RemComp<ThermalVisionComponent>(ent);
+        RemComp<SunriseThermalVisionComponent>(ent);
     }
 
     private void OnToggleThermalVision(Entity<ToggleableThermalVisionComponent> ent, ref ToggleActionEvent args)
@@ -36,9 +36,9 @@ public sealed partial class ToggleableThermalVisionSystem : EntitySystem
         ent.Comp.Active = !ent.Comp.Active;
 
         if (ent.Comp.Active)
-            EnsureComp<ThermalVisionComponent>(ent);
+            EnsureComp<SunriseThermalVisionComponent>(ent);
         else
-            RemComp<ThermalVisionComponent>(ent);
+            RemComp<SunriseThermalVisionComponent>(ent);
 
         args.Handled = true;
         Dirty(ent, ent.Comp);

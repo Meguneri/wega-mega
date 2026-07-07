@@ -166,7 +166,7 @@
   - type: ComponentToggler
     parent: true
     components:
-    - type: ThermalVision
+    - type: SunriseThermalVision
   - type: ItemToggle
     predictable: false # issues between ToggleCellDraw and ItemToggleActiveSound
     onUse: false

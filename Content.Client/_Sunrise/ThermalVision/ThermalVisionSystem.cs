@@ -23,17 +23,17 @@ public sealed partial class ThermalVisionSystem : EntitySystem
     {
         base.Initialize();
 
-        SubscribeLocalEvent<ThermalVisionComponent, ComponentInit>(OnVisionInit);
-        SubscribeLocalEvent<ThermalVisionComponent, ComponentShutdown>(OnVisionShutdown);
+        SubscribeLocalEvent<SunriseThermalVisionComponent, ComponentInit>(OnVisionInit);
+        SubscribeLocalEvent<SunriseThermalVisionComponent, ComponentShutdown>(OnVisionShutdown);
 
-        SubscribeLocalEvent<ThermalVisionComponent, LocalPlayerAttachedEvent>(OnPlayerAttached);
-        SubscribeLocalEvent<ThermalVisionComponent, LocalPlayerDetachedEvent>(OnPlayerDetached);
+        SubscribeLocalEvent<SunriseThermalVisionComponent, LocalPlayerAttachedEvent>(OnPlayerAttached);
+        SubscribeLocalEvent<SunriseThermalVisionComponent, LocalPlayerDetachedEvent>(OnPlayerDetached);
 
         _throughWallsOverlay = new();
         _overlay = new();
     }
 
-    private void OnPlayerAttached(Entity<ThermalVisionComponent> ent, ref LocalPlayerAttachedEvent args)
+    private void OnPlayerAttached(Entity<SunriseThermalVisionComponent> ent, ref LocalPlayerAttachedEvent args)
     {
         if (_effect == null)
             AddThermalVision(ent.Owner);
@@ -41,12 +41,12 @@ public sealed partial class ThermalVisionSystem : EntitySystem
             RemoveThermalVision();
     }
 
-    private void OnPlayerDetached(Entity<ThermalVisionComponent> ent, ref LocalPlayerDetachedEvent args)
+    private void OnPlayerDetached(Entity<SunriseThermalVisionComponent> ent, ref LocalPlayerDetachedEvent args)
     {
         RemoveThermalVision();
     }
 
-    private void OnVisionInit(Entity<ThermalVisionComponent> ent, ref ComponentInit args)
+    private void OnVisionInit(Entity<SunriseThermalVisionComponent> ent, ref ComponentInit args)
     {
         if (_player.LocalEntity != ent.Owner)
             return;
@@ -57,7 +57,7 @@ public sealed partial class ThermalVisionSystem : EntitySystem
             RemoveThermalVision();
     }
 
-    private void OnVisionShutdown(Entity<ThermalVisionComponent> ent, ref ComponentShutdown args)
+    private void OnVisionShutdown(Entity<SunriseThermalVisionComponent> ent, ref ComponentShutdown args)
     {
         if (_player.LocalEntity != ent.Owner)
             return;

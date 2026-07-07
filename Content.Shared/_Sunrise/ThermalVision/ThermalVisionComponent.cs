@@ -4,6 +4,6 @@ namespace Content.Shared._Sunrise.ThermalVision;
 
 [RegisterComponent]
 [NetworkedComponent]
-public sealed partial class ThermalVisionComponent : Component
+public sealed partial class SunriseThermalVisionComponent : Component
 {
 }

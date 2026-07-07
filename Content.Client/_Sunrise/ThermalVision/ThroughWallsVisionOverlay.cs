@@ -44,7 +44,7 @@ public sealed class ThroughWallsVisionOverlay : Overlay
         if (playerEntity == null)
             return false;
 
-        if (!_entityManager.HasComponent<ThermalVisionComponent>(playerEntity))
+        if (!_entityManager.HasComponent<SunriseThermalVisionComponent>(playerEntity))
             return false;
 
         return true;
