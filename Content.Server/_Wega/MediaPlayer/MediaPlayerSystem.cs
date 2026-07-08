@@ -240,6 +240,9 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
         var session = args.SenderSession;
 
+        if (!await EnsureToolsAsync(session))
+            return;
+
         try
         {
             var (exitCode, stdout, stderr) = await RunYtdlp(
@@ -282,6 +285,9 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
         try
         {
+            if (!await EnsureToolsAsync(session))
+                return;
+
             _sawmill.Info($"{session.Name} requested track: {idOrUrl}");
 
             // Resolve metadata first so we can refuse over-long tracks before downloading.
@@ -367,7 +373,13 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
     private async Task<(int ExitCode, string Stdout, string Stderr)> RunYtdlp(string arguments)
     {
-        var ytdlpPath = ResolveYtdlpPath(_cfg.GetCVar(WegaCVars.MediaPlayerYtdlpPath));
+        // Prefer the path resolved by provisioning; fall back to the configured one.
+        var ytdlpPath = _resolvedYtdlp ?? ResolveYtdlpPath(_cfg.GetCVar(WegaCVars.MediaPlayerYtdlpPath));
+
+        // Point yt-dlp at our downloaded ffmpeg when it isn't on PATH.
+        if (_resolvedFfmpegDir != null)
+            arguments = $"--ffmpeg-location \"{_resolvedFfmpegDir}\" " + arguments;
+
         var psi = new ProcessStartInfo
         {
             FileName = ytdlpPath,

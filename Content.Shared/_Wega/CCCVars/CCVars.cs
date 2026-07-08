@@ -45,10 +45,23 @@ public sealed partial class WegaCVars
         CVarDef.Create("wega.media_player_volume", 0.5f, CVar.CLIENTONLY | CVar.ARCHIVE);
 
     /// <summary>
-    /// Path to the yt-dlp executable on the server host. ffmpeg must also be available in PATH.
+    /// Path to the yt-dlp executable on the server host. If not found, the server auto-downloads it
+    /// (see <see cref="MediaPlayerAutoDownload"/>).
     /// </summary>
     public static readonly CVarDef<string> MediaPlayerYtdlpPath =
         CVarDef.Create("wega.media_player_ytdlp_path", "yt-dlp", CVar.SERVERONLY);
+
+    /// <summary>
+    /// Path to ffmpeg on the server host. Empty = look in PATH, then auto-download (Windows).
+    /// </summary>
+    public static readonly CVarDef<string> MediaPlayerFfmpegPath =
+        CVarDef.Create("wega.media_player_ffmpeg_path", "", CVar.SERVERONLY);
+
+    /// <summary>
+    /// If yt-dlp/ffmpeg aren't found, auto-download them into the server's data folder on first use.
+    /// </summary>
+    public static readonly CVarDef<bool> MediaPlayerAutoDownload =
+        CVarDef.Create("wega.media_player_auto_download", true, CVar.SERVERONLY);
 
     /// <summary>
     /// Maximum allowed track duration in seconds. Longer tracks are refused before download.
