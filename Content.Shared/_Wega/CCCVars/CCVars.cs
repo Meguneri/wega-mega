@@ -36,6 +36,27 @@ public sealed partial class WegaCVars
         CVarDef.Create("wega.barks_volume", 0f, CVar.CLIENTONLY | CVar.ARCHIVE);
 
     /*
+        Media Player CVars
+    */
+    /// <summary>
+    /// Personal volume (gain) of the global media player, per client.
+    /// </summary>
+    public static readonly CVarDef<float> MediaPlayerVolume =
+        CVarDef.Create("wega.media_player_volume", 0.5f, CVar.CLIENTONLY | CVar.ARCHIVE);
+
+    /// <summary>
+    /// Path to the yt-dlp executable on the server host. ffmpeg must also be available in PATH.
+    /// </summary>
+    public static readonly CVarDef<string> MediaPlayerYtdlpPath =
+        CVarDef.Create("wega.media_player_ytdlp_path", "yt-dlp", CVar.SERVERONLY);
+
+    /// <summary>
+    /// Maximum allowed track duration in seconds. Longer tracks are refused before download.
+    /// </summary>
+    public static readonly CVarDef<int> MediaPlayerMaxDuration =
+        CVarDef.Create("wega.media_player_max_duration", 900, CVar.SERVERONLY);
+
+    /*
         Night Light System CVars
     */
     /// <summary>

@@ -13,6 +13,9 @@ arena-loadout-uplink-desc = 40 ТК на любой синдикатский н�
 arena-loadout-harpoon-name = Гарпунер
 arena-loadout-harpoon-desc = Арена-гарпун + броня. Тяни врага к себе или улетай на стену.
 
+arena-loadout-punisher-name = Каратель
+arena-loadout-punisher-desc = Энерговинтовка «Каратель» + броня. Клейми цель первым выстрелом, детонируй вторым.
+
 arena-loadout-terminal-empty = Терминал пуст: нет доступных наборов.
 arena-loadout-selected = Выбран набор: { $loadoutName }.
 arena-loadout-delivered = Вы получили набор: { $loadoutName }.

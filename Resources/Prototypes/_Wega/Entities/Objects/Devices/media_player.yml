@@ -1,0 +1,12 @@
+- type: entity
+  id: MediaPlayerDevice
+  name: медиа-плеер
+  description: Портативный плеер для управления музыкой на станции. Используйте в руке, чтобы открыть окно управления.
+  parent: BaseItem
+  components:
+  - type: Sprite
+    sprite: _Wega/Objects/Devices/media_player.rsi
+    state: icon
+  - type: Item
+    size: Small
+  - type: MediaPlayerController

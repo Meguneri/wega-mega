@@ -1,0 +1,130 @@
+# «Каратель» — двуручная энерговинтовка для арены. Самозаряжающаяся батарея на 2 выстрела
+# (полный заряд за 5 c). Держится в двух руках — в одной руке разброс большой. На корпусе
+# индикатор заряда, при выстреле вылетает гильза. Попал в бойца — клеймо (~5 c); попал по
+# заклеймённому — детонация: добивающий разряд с отбросом. Логику клейма ведёт ArenaPunisherSystem.
+- type: entity
+  name: каратель
+  parent: [ BaseItem, BaseGunWieldable ]
+  id: WeaponArenaPunisher
+  description: "Арена-энерговинтовка «Каратель». Первый выстрел клеймит цель, второй — детонирует клеймо: добивающий разряд с отбросом. Точна только в двух руках."
+  categories: [ DoNotMap ]
+  components:
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Guns/Battery/arena_punisher.rsi
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-unshaded-2
+      map: ["enum.GunVisualLayers.MagUnshaded"]
+      shader: unshaded
+  # Индикатор заряда на корпусе: 2 деления (mag-unshaded-1..2).
+  - type: MagazineVisuals
+    magState: mag
+    steps: 3
+    zeroVisible: false
+  - type: Appearance
+  - type: Item
+    size: Normal
+  - type: Clothing
+    sprite: _Wega/Objects/Weapons/Guns/Battery/arena_punisher.rsi
+    quickEquip: false
+    slots:
+    - Back
+    - suitStorage
+  - type: Gun
+    fireRate: 2
+    selectedMode: SemiAuto
+    availableModes:
+    - SemiAuto
+    clumsyProof: true
+    soundGunshot:
+      path: /Audio/Weapons/Guns/Gunshots/laser.ogg
+    soundEmpty: null
+  - type: BatteryAmmoProvider
+    proto: ArenaBrandBolt
+    fireCost: 50 # 100 заряда / 50 = ровно 2 заряда
+  - type: Battery
+    maxCharge: 100
+    startingCharge: 100
+  # Оба заряда восстанавливаются РАЗОМ: после выстрела пауза 5 c, затем мгновенный долив до полного.
+  - type: BatterySelfRecharger
+    autoRechargeRate: 500     # после паузы доливает оба заряда почти мгновенно
+    autoRechargePauseTime: 5  # 5 c ожидания с момента последнего выстрела
+  # Косметический выброс отработанной ячейки при выстреле.
+  - type: CasingEjectOnShot
+    casing: ArenaSpentCell
+  - type: PointLight
+    radius: 1.6
+    energy: 1.3
+    color: "#26e0ff" # циановая подсветка «Карателя»
+    netsync: false
+
+# Снаряд-клеймо. Урон в упор небольшой; вся соль — в детонации по ArenaPunisherSystem.
+- type: entity
+  name: brand bolt
+  parent: BaseBullet
+  id: ArenaBrandBolt
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: Sprite
+    noRot: false
+    sprite: Objects/Weapons/Guns/Projectiles/projectiles_tg.rsi
+    color: "#ff2d2d" # красный «карающий» луч
+    layers:
+    - state: heavylaser
+      shader: unshaded
+  - type: Projectile
+    damage:
+      types:
+        Heat: 8
+  - type: BrandBolt
+    brandDuration: 5
+    knockback: 6
+    detonateDamage:
+      types:
+        Heat: 22
+  - type: TimedDespawn
+    lifetime: 2
+
+# Отработанная энергоячейка — вылетает при выстреле для «фидбека». Свой спрайт (маленькая
+# разряженная ячейка, не латунь), самоочистка через 30 c, чтобы не засорять арену.
+- type: entity
+  parent: BaseItem
+  id: ArenaSpentCell
+  name: отработанная ячейка
+  description: Разряженная энергоячейка «Карателя». Годится только на выброс.
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Guns/Ammunition/arena_spent_cell.rsi
+    state: icon
+  - type: Item
+    size: Tiny
+  - type: Tag
+    tags:
+    - Trash
+  - type: TimedDespawn
+    lifetime: 30
+
+# Визуальный маркер клейма: красный прицел над заклеймённым бойцом. Спавнится/удаляется
+# ArenaPunisherSystem'ом, следует за целью. TimedDespawn — страховка на случай, если снять забыли.
+- type: entity
+  name: brand mark
+  id: ArenaBrandEffect
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: Sprite
+    drawdepth: Effects
+    noRot: true
+    offset: "0, 0.4"
+    sprite: _Wega/Effects/brand.rsi
+    layers:
+    - state: icon
+      shader: unshaded
+  - type: PointLight
+    radius: 2
+    energy: 2
+    color: "#ff2d2d"
+    netsync: false
+  - type: TimedDespawn
+    lifetime: 8

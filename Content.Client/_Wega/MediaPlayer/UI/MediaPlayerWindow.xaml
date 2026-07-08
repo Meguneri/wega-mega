@@ -1,0 +1,70 @@
+<controls:FancyWindow xmlns="https://spacestation14.io"
+        xmlns:controls="clr-namespace:Content.Client.UserInterface.Controls"
+        xmlns:xe="clr-namespace:Content.Client.UserInterface.XamlExtensions"
+        Title="{Loc 'ui-media-player-title'}"
+        SetSize="560 620"
+        MinSize="480 520">
+    <BoxContainer Orientation="Vertical" VerticalExpand="True" HorizontalExpand="True" Margin="10">
+
+        <!-- Search / direct URL -->
+        <BoxContainer Orientation="Horizontal" HorizontalExpand="True">
+            <LineEdit Name="SearchField"
+                      PlaceHolder="{Loc 'ui-media-player-search-placeholder'}"
+                      HorizontalExpand="True" />
+            <Button Name="SearchButton" Text="{Loc 'ui-media-player-search-button'}" Margin="4 0 0 0" />
+            <Button Name="PlayUrlButton" Text="{Loc 'ui-media-player-play-url-button'}" Margin="4 0 0 0" />
+        </BoxContainer>
+
+        <Label Name="StatusLabel" Text="" Margin="2 6 0 6" />
+
+        <!-- Results -->
+        <ItemList Name="ResultsList" VerticalExpand="True" Margin="0 0 0 8" SelectMode="Single" />
+
+        <!-- Now playing card -->
+        <PanelContainer StyleClasses="BackgroundPanel">
+            <BoxContainer Orientation="Vertical" Margin="14 12 14 12">
+
+                <BoxContainer Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextureRect Name="NoteIcon"
+                                 Texture="{xe:Tex '/Textures/Interface/Actions/actions_borg.rsi/musical-module.png'}"
+                                 Stretch="KeepAspectCentered"
+                                 MinSize="24 24"
+                                 Margin="0 0 8 0"
+                                 VerticalAlignment="Center" />
+                    <Label Name="NowPlayingLabel" Text="{Loc 'ui-media-player-nothing'}"
+                           StyleClasses="LabelHeading" Align="Center" ClipText="True" />
+                </BoxContainer>
+
+                <!-- Progress -->
+                <ProgressBar Name="ProgressBar" MinValue="0" MaxValue="1" Value="0"
+                             MinHeight="10" Margin="0 12 0 4" HorizontalExpand="True" />
+
+                <BoxContainer Orientation="Horizontal" HorizontalExpand="True">
+                    <Label Name="TimeCurrentLabel" Text="0:00" StyleClasses="LabelSubText" />
+                    <Control HorizontalExpand="True" />
+                    <Label Name="TimeTotalLabel" Text="0:00" StyleClasses="LabelSubText" />
+                </BoxContainer>
+
+                <!-- Transport: three equal-width buttons -->
+                <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 10 0 0" SeparationOverride="6">
+                    <Button Name="PlayButton" Text="{Loc 'ui-media-player-play-button'}"
+                            StyleClasses="ButtonColorGreen" HorizontalExpand="True" Disabled="True" />
+                    <Button Name="PauseButton" Text="{Loc 'ui-media-player-pause-button'}"
+                            HorizontalExpand="True" Disabled="True" />
+                    <Button Name="StopButton" Text="{Loc 'ui-media-player-stop-button'}"
+                            StyleClasses="ButtonColorRed" HorizontalExpand="True" Disabled="True" />
+                </BoxContainer>
+
+                <!-- Volume -->
+                <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 12 0 0" VerticalAlignment="Center">
+                    <Label Text="{Loc 'ui-media-player-volume-label'}" VerticalAlignment="Center" />
+                    <Slider Name="VolumeSlider" MinValue="0" MaxValue="1" HorizontalExpand="True"
+                            Margin="10 0 10 0" VerticalAlignment="Center" />
+                    <Label Name="VolumePercentLabel" Text="50%" StyleClasses="LabelSubText"
+                           MinWidth="38" Align="Right" VerticalAlignment="Center" />
+                </BoxContainer>
+
+            </BoxContainer>
+        </PanelContainer>
+    </BoxContainer>
+</controls:FancyWindow>

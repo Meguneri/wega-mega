@@ -64,6 +64,18 @@
     - id: PillCanisterBicaridine
       amount: 1
 
+- type: arenaLoadout
+  id: ArenaLoadoutPunisher
+  name: arena-loadout-punisher-name
+  description: arena-loadout-punisher-desc
+  category: Special
+  startingGear: ArenaLoadoutPunisherGear
+  contents:
+    - id: Stimpack
+      amount: 1
+    - id: PillCanisterBicaridine
+      amount: 1
+
 - type: startingGear
   id: ArenaLoadoutSniperGear
   equipment:
@@ -134,6 +146,20 @@
     shoes: ClothingShoesBootsCombatFilled
     gloves: ClothingHandsGlovesCombat
     back: WeaponArenaHarpoon
+    belt: ClothingBeltMilitaryWebbing
+  storage:
+    belt:
+      - Stimpack
+      - PillCanisterBicaridine
+
+- type: startingGear
+  id: ArenaLoadoutPunisherGear
+  equipment:
+    head: ClothingHeadHatGladiator
+    outerClothing: ClothingOuterArmorBasic
+    shoes: ClothingShoesBootsCombatFilled
+    gloves: ClothingHandsGlovesCombat
+    back: WeaponArenaPunisher
     belt: ClothingBeltMilitaryWebbing
   storage:
     belt:

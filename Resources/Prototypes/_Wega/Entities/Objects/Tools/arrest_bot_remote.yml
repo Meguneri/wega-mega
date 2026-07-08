@@ -5,8 +5,8 @@
   parent: BaseItem
   components:
   - type: Sprite
-    sprite: Objects/Devices/pda.rsi
-    state: pda
+    sprite: _Wega/Objects/Devices/convoy_remote.rsi
+    state: icon
   - type: Item
     size: Small
   - type: UseDelay

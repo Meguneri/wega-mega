@@ -1,0 +1,21 @@
+<widgets:MediaPlayerIndicator xmlns="https://spacestation14.io"
+        xmlns:widgets="clr-namespace:Content.Client._Wega.MediaPlayer.UI"
+        xmlns:xe="clr-namespace:Content.Client.UserInterface.XamlExtensions"
+        VerticalExpand="False"
+        HorizontalExpand="False"
+        Visible="False">
+    <PanelContainer Name="BackgroundPanel" StyleClasses="BackgroundPanel" HorizontalAlignment="Center">
+        <BoxContainer Orientation="Horizontal" Margin="6 3 8 3" VerticalAlignment="Center">
+            <TextureRect Name="Icon"
+                         Texture="{xe:Tex '/Textures/Interface/Actions/actions_borg.rsi/musical-module.png'}"
+                         Stretch="KeepAspectCentered"
+                         MinSize="20 20"
+                         VerticalAlignment="Center" />
+            <Label Name="TitleLabel"
+                   Text=""
+                   Margin="6 0 0 0"
+                   VerticalAlignment="Center"
+                   ClipText="True" />
+        </BoxContainer>
+    </PanelContainer>
+</widgets:MediaPlayerIndicator>

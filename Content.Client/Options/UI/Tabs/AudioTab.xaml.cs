@@ -43,6 +43,12 @@ public sealed partial class AudioTab : Control
             scale: ContentAudioSystem.TtsMultiplier);
         // Corvax-TTS-End
 
+        // Corvax-Wega-MediaPlayer-start
+        Control.AddOptionPercentSlider(
+            WegaCVars.MediaPlayerVolume,
+            SliderVolumeMediaPlayer);
+        // Corvax-Wega-MediaPlayer-end
+
         Control.AddOptionPercentSlider(
             CVars.MidiVolume,
             SliderVolumeMidi,

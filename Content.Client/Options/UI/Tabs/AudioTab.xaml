@@ -9,6 +9,7 @@
                 <ui:OptionSlider Name="SliderVolumeMaster" Title="{Loc 'ui-options-master-volume'}"
                                  Margin="0 0 0 8" />
                 <!-- Corvax-Wega-Barks-start --><ui:OptionSlider Name="SliderVolumeTts" Title="{Loc 'ui-options-tts-volume'}" /><!-- Corvax-Wega-Barks-end -->
+                <!-- Corvax-Wega-MediaPlayer-start --><ui:OptionSlider Name="SliderVolumeMediaPlayer" Title="{Loc 'ui-options-media-player-volume'}" /><!-- Corvax-Wega-MediaPlayer-end -->
                 <!-- Corvax-TTS-Start --><ui:OptionSlider Name="SliderVolumeBarks" Title="{Loc 'ui-options-barks-volume'}" /><!-- Corvax-TTS-End -->
                 <ui:OptionSlider Name="SliderVolumeMidi" Title="{Loc 'ui-options-midi-volume'}" />
                 <ui:OptionSlider Name="SliderVolumeAmbientMusic" Title="{Loc 'ui-options-ambient-music-volume'}" />
