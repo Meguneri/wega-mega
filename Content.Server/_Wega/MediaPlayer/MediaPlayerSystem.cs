@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -366,9 +367,10 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
     private async Task<(int ExitCode, string Stdout, string Stderr)> RunYtdlp(string arguments)
     {
+        var ytdlpPath = ResolveYtdlpPath(_cfg.GetCVar(WegaCVars.MediaPlayerYtdlpPath));
         var psi = new ProcessStartInfo
         {
-            FileName = _cfg.GetCVar(WegaCVars.MediaPlayerYtdlpPath),
+            FileName = ytdlpPath,
             Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -379,14 +381,37 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        using var proc = Process.Start(psi)
-                         ?? throw new InvalidOperationException("Failed to start yt-dlp");
+        // yt-dlp looks for ffmpeg in PATH and in the current directory. Set the working
+        // directory to the folder containing yt-dlp so the bundled ffmpeg is found.
+        var ytdlpDir = Path.GetDirectoryName(Path.GetFullPath(ytdlpPath));
+        if (!string.IsNullOrEmpty(ytdlpDir) && Directory.Exists(ytdlpDir))
+        {
+            psi.WorkingDirectory = ytdlpDir;
+        }
 
-        var stdoutTask = proc.StandardOutput.ReadToEndAsync();
-        var stderrTask = proc.StandardError.ReadToEndAsync();
-        await proc.WaitForExitAsync();
+        Process proc;
+        try
+        {
+            proc = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start yt-dlp");
+        }
+        catch (Win32Exception)
+        {
+            var path = psi.FileName;
+            _sawmill.Error(
+                $"yt-dlp executable not found at '{path}'. Install yt-dlp and add it to PATH, " +
+                "or set the CVar 'wega.media_player_ytdlp_path' to its full path. " +
+                "ffmpeg must also be available in PATH.");
+            return (1, "", $"yt-dlp not found: {path}");
+        }
 
-        return (proc.ExitCode, await stdoutTask, await stderrTask);
+        using (proc)
+        {
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+            var stderrTask = proc.StandardError.ReadToEndAsync();
+            await proc.WaitForExitAsync();
+
+            return (proc.ExitCode, await stdoutTask, await stderrTask);
+        }
     }
 
     private List<MediaSearchResult> ParseSearchResults(string json)
@@ -415,6 +440,26 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         }
 
         return results;
+    }
+
+    private static string ResolveYtdlpPath(string configuredPath)
+    {
+        // If the user supplied an absolute path, trust it.
+        if (Path.IsPathRooted(configuredPath) && File.Exists(configuredPath))
+            return configuredPath;
+
+        // Otherwise, try to resolve it relative to the server executable's directory.
+        // This lets you simply drop yt-dlp.exe and ffmpeg.exe next to the server binary.
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        var localPath = Path.Combine(baseDir, configuredPath);
+        if (File.Exists(localPath))
+            return localPath;
+
+        var localExePath = Path.Combine(baseDir, configuredPath + ".exe");
+        if (File.Exists(localExePath))
+            return localExePath;
+
+        return configuredPath;
     }
 
     /// <summary>
