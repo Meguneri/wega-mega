@@ -53,6 +53,9 @@ cmd-duelscorereset-help = Использование: { $command }
 cmd-duelscorereset-invalid-args = Неверные аргументы. Использование: { $command }
 cmd-duelscorereset-result = Счёт обнулён на аренах: { $count }.
 
+# Усиление для проигравшего 3 раза подряд
+duel-arena-loser-minion-spawned = { $name } получает миньона-помощника после серии поражений!
+
 # Команда arenazone — управление зоной арены (шторм + авиаудары)
 cmd-arenazone-desc = Управляет зоной дуэльной арены: включает или выключает шторм и/или авиаудары на ближайшей арене.
 cmd-arenazone-help = Использование: { $command } <on|off>

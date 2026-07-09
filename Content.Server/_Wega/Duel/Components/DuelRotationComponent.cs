@@ -20,6 +20,7 @@ public sealed partial class DuelRotationComponent : Component, IDuelScoreStore
 {
     Dictionary<NetUserId, int> IDuelScoreStore.Scores => Scores;
     Dictionary<NetUserId, string> IDuelScoreStore.ScoreNames => ScoreNames;
+    Dictionary<NetUserId, int> IDuelScoreStore.LosingStreaks => LosingStreaks;
     NetUserId? IDuelScoreStore.StreakUser { get => StreakUser; set => StreakUser = value; }
     int IDuelScoreStore.Streak { get => Streak; set => Streak = value; }
 
@@ -66,6 +67,11 @@ public sealed partial class DuelRotationComponent : Component, IDuelScoreStore
     /// Последнее известное имя игрока (NetUserId → имя) для отображения общего счёта.
     /// </summary>
     public readonly Dictionary<NetUserId, string> ScoreNames = new();
+
+    /// <summary>
+    /// Текущая серия поражений по игрокам (NetUserId → число поражений подряд).
+    /// </summary>
+    public readonly Dictionary<NetUserId, int> LosingStreaks = new();
 
     /// <summary>
     /// Игрок, выигравший прошлый раунд, и его текущая серия побед подряд (сквозь арены).

@@ -53,6 +53,7 @@ public sealed partial record ArenaLoadoutItem
     public int Amount { get; init; } = 1;
 }
 
+[Serializable, NetSerializable]
 public enum ArenaLoadoutUiKey : byte
 {
     Key,

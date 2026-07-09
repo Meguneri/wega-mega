@@ -1,5 +1,6 @@
 using System.Linq;
 using Content.Server._Wega.Duel.Components;
+using Content.Shared._Wega.Duel.Components;
 using Content.Server.Botany.Components;
 using Content.Server.Chat.Managers;
 using Content.Server.Construction.Components;
@@ -470,6 +471,16 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
                 continue;
 
             QueueDel(logUid);
+        }
+
+        // 4. Миньоны-помощники (усиление для проигравшего 3 раза подряд).
+        var minionQuery = EntityQueryEnumerator<ArenaLoserMinionComponent, TransformComponent>();
+        while (minionQuery.MoveNext(out var minionUid, out _, out _))
+        {
+            if (!InRange(minionUid, origin, originGrid, range))
+                continue;
+
+            QueueDel(minionUid);
         }
 
         // 3b. Все магические руны со свитка рун (MagicRune) на гриде арены — удаляем блэнкетом,

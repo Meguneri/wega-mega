@@ -76,6 +76,14 @@ public sealed partial class MediaPlayerWindow : FancyWindow
 
         ApplyStyle();
         UpdateNowPlaying();
+
+        // Restore previous search results when reopening the window.
+        _results = _mediaPlayer.LastSearchResults;
+        if (_results.Count > 0)
+        {
+            StatusLabel.Text = Loc.GetString("ui-media-player-results", ("count", _results.Count));
+            PopulateResultsList();
+        }
     }
 
     /// <summary>
@@ -228,8 +236,9 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     private void PlayOrPause()
     {
         var state = _mediaPlayer.LastState;
-        if (state?.TrackId != null && state.Playing)
+        if (state?.TrackId != null)
         {
+            // Track is loaded: toggle pause/resume on the server.
             _mediaPlayer.RequestPause();
             return;
         }
@@ -261,7 +270,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     {
         ResultsList.Clear();
         SetEnabled(PlayPauseButton, false);
-        _results = ev.Results;
+        _results = _mediaPlayer.LastSearchResults;
         SetSearching(false);
 
         if (ev.Error != null)
@@ -271,9 +280,14 @@ public sealed partial class MediaPlayerWindow : FancyWindow
             return;
         }
 
-        StatusLabel.Text = Loc.GetString("ui-media-player-results", ("count", ev.Results.Count));
+        StatusLabel.Text = Loc.GetString("ui-media-player-results", ("count", _results.Count));
+        PopulateResultsList();
+    }
 
-        foreach (var result in ev.Results)
+    private void PopulateResultsList()
+    {
+        ResultsList.Clear();
+        foreach (var result in _results)
         {
             var title = MediaPlayerSystem.SanitizeTitle(result.Title);
             var uploader = result.Uploader.Length > 0

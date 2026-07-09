@@ -16,6 +16,9 @@ public interface IDuelScoreStore
     /// <summary>Последние известные имена игроков (NetUserId → имя) для табло.</summary>
     Dictionary<NetUserId, string> ScoreNames { get; }
 
+    /// <summary>Поражения по игрокам (NetUserId → число поражений подряд).</summary>
+    Dictionary<NetUserId, int> LosingStreaks { get; }
+
     /// <summary>Игрок текущей серии побед подряд.</summary>
     NetUserId? StreakUser { get; set; }
 

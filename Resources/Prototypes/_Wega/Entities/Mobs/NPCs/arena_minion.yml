@@ -1,0 +1,78 @@
+- type: entity
+  id: BulletArenaMinion
+  name: снаряд миньона
+  description: Лучший друг неудачника.
+  parent: BaseBullet
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Projectiles/projectiles2.rsi
+    layers:
+    - state: bullet
+      color: "#ff00ff"
+      shader: unshaded
+  - type: Projectile
+    damage:
+      types:
+        Piercing: 8
+    deleteOnCollide: true
+
+- type: entity
+  id: ArenaLoserMinion
+  name: миньон затаённой обиды
+  description: Крошечный дрон, который помогает бойцу, проигравшему слишком много дуэлей подряд. Следует за хозяином, лечит его или стреляет в ближайшего врага.
+  parent: BaseSimpleMob
+  save: false
+  components:
+  - type: Sprite
+    drawdepth: Mobs
+    sprite: _Wega/Mobs/arena_loser_minion.rsi
+    layers:
+    - state: red
+      map: [ "enum.DamageStateVisualLayers.Base" ]
+      shader: unshaded
+  - type: RandomSprite
+    available:
+    - enum.DamageStateVisualLayers.Base:
+        red: ""
+    - enum.DamageStateVisualLayers.Base:
+        purple: ""
+    - enum.DamageStateVisualLayers.Base:
+        orange: ""
+    - enum.DamageStateVisualLayers.Base:
+        blue: ""
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeCircle
+          radius: 0.25
+        density: 10
+        mask:
+        - FlyingMobMask
+        layer:
+        - Opaque
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 30
+      behaviors:
+      - !type:DoActsBehavior
+        acts: ["Destruction"]
+  - type: ArenaLoserMinion
+    actionCooldown: 2
+    followRadius: 2
+    attackRadius: 12
+    healThreshold: 0.5
+    healAmount: 10
+    healDamageType: Brute
+    projectileProto: BulletArenaMinion
+    projectileSpeed: 15
+    moveSpeed: 5
+  - type: TimedDespawn
+    lifetime: 300
+  - type: Tag
+    tags:
+    - CannotSuicide
+    - StunImmune

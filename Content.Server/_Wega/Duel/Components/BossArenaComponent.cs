@@ -13,6 +13,7 @@ public sealed partial class BossArenaComponent : Component, IDuelScoreStore
 {
     Dictionary<NetUserId, int> IDuelScoreStore.Scores => Scores;
     Dictionary<NetUserId, string> IDuelScoreStore.ScoreNames => ScoreNames;
+    Dictionary<NetUserId, int> IDuelScoreStore.LosingStreaks => LosingStreaks;
     NetUserId? IDuelScoreStore.StreakUser { get => StreakUser; set => StreakUser = value; }
     int IDuelScoreStore.Streak { get => Streak; set => Streak = value; }
 
@@ -25,6 +26,11 @@ public sealed partial class BossArenaComponent : Component, IDuelScoreStore
     /// Последние известные имена игроков (NetUserId → имя) для табло.
     /// </summary>
     public readonly Dictionary<NetUserId, string> ScoreNames = new();
+
+    /// <summary>
+    /// Текущая серия поражений по игрокам (NetUserId → число поражений подряд).
+    /// </summary>
+    public readonly Dictionary<NetUserId, int> LosingStreaks = new();
 
     /// <summary>
     /// Игрок текущей серии побед подряд.

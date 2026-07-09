@@ -48,7 +48,7 @@
                 <!-- Transport: combined play/pause + stop -->
                 <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 10 0 0" SeparationOverride="6">
                     <Button Name="PlayPauseButton" Text="{Loc 'ui-media-player-play-button'}"
-                            HorizontalExpand="True" SizeFlagsStretchRatio="2" MinHeight="40" Disabled="True" />
+                            HorizontalExpand="True" SizeFlagsStretchRatio="1" MinHeight="40" Disabled="True" />
                     <Button Name="StopButton" Text="{Loc 'ui-media-player-stop-button'}"
                             HorizontalExpand="True" SizeFlagsStretchRatio="1" MinHeight="40" Disabled="True" />
                 </BoxContainer>

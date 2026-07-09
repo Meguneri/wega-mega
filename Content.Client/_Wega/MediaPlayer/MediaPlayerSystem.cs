@@ -50,6 +50,11 @@ public sealed class MediaPlayerSystem : EntitySystem
     private float _volume;
 
     /// <summary>
+    /// Last search results received from the server, kept so reopening the window restores the list.
+    /// </summary>
+    public List<MediaSearchResult> LastSearchResults { get; private set; } = [];
+
+    /// <summary>
     /// Last playback state received from the server, for UI display.
     /// </summary>
     public MediaPlayerStateEvent? LastState { get; private set; }
@@ -98,7 +103,11 @@ public sealed class MediaPlayerSystem : EntitySystem
 
         SubscribeNetworkEvent<MediaPlayerTrackChunkEvent>(OnTrackChunk);
         SubscribeNetworkEvent<MediaPlayerStateEvent>(OnState);
-        SubscribeNetworkEvent<MediaPlayerSearchResponseEvent>(ev => SearchReceived?.Invoke(ev));
+        SubscribeNetworkEvent<MediaPlayerSearchResponseEvent>(ev =>
+        {
+            LastSearchResults = [.. ev.Results];
+            SearchReceived?.Invoke(ev);
+        });
         SubscribeNetworkEvent<MediaPlayerStatusEvent>(ev => StatusReceived?.Invoke(ev));
         SubscribeNetworkEvent<OpenMediaPlayerEvent>(_ => OpenWindow());
     }

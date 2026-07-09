@@ -46,6 +46,7 @@ public sealed class DuelArenaSystem : EntitySystem
     [Dependency] private InventorySystem _inventory = default!;
     [Dependency] private AudioSystem _audio = default!;
     [Dependency] private DuelReadySystem _readySystem = default!;
+    [Dependency] private ArenaLoserMinionSystem _minionSystem = default!;
     [Dependency] private DuelArenaRestoreSystem _restoreSystem = default!;
     [Dependency] private ArenaLoadoutSystem _loadoutSystem = default!;
     [Dependency] private ArenaStormSystem _stormSystem = default!;
@@ -296,6 +297,37 @@ public sealed class DuelArenaSystem : EntitySystem
         // Выдаём выбранные наборы снаряжения каждому дуэлянту.
         _loadoutSystem.EquipDuelists(comp.Duelists);
 
+        // Усиление для проигравшего 3 раза подряд: миньон-помощник.
+        DuelRotationComponent? ctrl = null;
+        var inRotation = comp.RotationController is { } ctrlUid
+            && TryComp(ctrlUid, out ctrl);
+        IDuelScoreStore store = inRotation ? ctrl! : comp;
+
+        Log.Info($"[duel-arena-loserminion] ArmDuel: {comp.Duelists.Count} duelists, store={(inRotation ? "rotation" : "arena")}, losing streaks count={store.LosingStreaks.Count}");
+
+        foreach (var duelist in comp.Duelists)
+        {
+            var user = GetUser(duelist);
+            if (user == null)
+            {
+                Log.Info($"[duel-arena-loserminion] duelist {ToPrettyString(duelist)} has no user/mind");
+                continue;
+            }
+
+            var streak = store.LosingStreaks.GetValueOrDefault(user.Value);
+            Log.Info($"[duel-arena-loserminion] duelist {SafeName(duelist)} user={user.Value} streak={streak}");
+
+            if (streak < 3)
+                continue;
+
+            var coords = Transform(duelist).Coordinates;
+            var minion = _minionSystem.SpawnMinion(duelist, coords);
+            Log.Info($"[duel-arena-loserminion] spawned minion {ToPrettyString(minion)} for {SafeName(duelist)}");
+            _chatManager.DispatchServerAnnouncement(
+                Loc.GetString("duel-arena-loser-minion-spawned", ("name", SafeName(duelist))),
+                Color.Pink);
+        }
+
         // Звук старта дуэли играет штатный DuelStartSoundEmitter на карте
         // (EmitGlobalSoundOnSignal по сигналу DuelFight) — здесь дублировать не нужно.
     }
@@ -391,6 +423,7 @@ public sealed class DuelArenaSystem : EntitySystem
 
             comp.Scores.Clear();
             comp.ScoreNames.Clear();
+            comp.LosingStreaks.Clear();
             comp.StreakUser = null;
             comp.Streak = 0;
             cleared++;
@@ -405,6 +438,7 @@ public sealed class DuelArenaSystem : EntitySystem
 
             boss.Scores.Clear();
             boss.ScoreNames.Clear();
+            boss.LosingStreaks.Clear();
             boss.StreakUser = null;
             boss.Streak = 0;
             cleared++;
@@ -419,6 +453,7 @@ public sealed class DuelArenaSystem : EntitySystem
 
             rot.Scores.Clear();
             rot.ScoreNames.Clear();
+            rot.LosingStreaks.Clear();
             rot.StreakUser = null;
             rot.Streak = 0;
             cleared++;
@@ -555,6 +590,23 @@ public sealed class DuelArenaSystem : EntitySystem
                 store.Streak = 1;
             }
 
+            // Проигравшие получают +1 к серии поражений; победитель сбрасывает свою.
+            foreach (var loser in losers)
+            {
+                var loserUser = GetUser(loser);
+                if (loserUser != null)
+                {
+                    store.LosingStreaks[loserUser.Value] = store.LosingStreaks.GetValueOrDefault(loserUser.Value) + 1;
+                    Log.Info($"[duel-arena-loserminion] ConcludeDuel loser {SafeName(loser)} streak={store.LosingStreaks[loserUser.Value]}");
+                }
+            }
+
+            if (winnerUser != null)
+            {
+                store.LosingStreaks[winnerUser.Value] = 0;
+                Log.Info($"[duel-arena-loserminion] ConcludeDuel winner {SafeName(winner.Value)} streak reset to 0");
+            }
+
             msg = Loc.GetString("duel-arena-concluded-winner",
                 ("winner", winnerName),
                 ("streak", store.Streak),
@@ -563,9 +615,16 @@ public sealed class DuelArenaSystem : EntitySystem
         }
         else
         {
-            // Никого живого — ничья: серия прерывается.
+            // Никого живого — ничья: серия побед прерывается, все участники получают +1 поражение.
             store.StreakUser = null;
             store.Streak = 0;
+
+            foreach (var duelist in arena.Duelists)
+            {
+                var user = GetUser(duelist);
+                if (user != null)
+                    store.LosingStreaks[user.Value] = store.LosingStreaks.GetValueOrDefault(user.Value) + 1;
+            }
 
             var andSep = $" {Loc.GetString("duel-arena-connector-and")} ";
             var names = string.Join(andSep, arena.Duelists.Select(SafeName));

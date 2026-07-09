@@ -4108,18 +4108,3 @@ entities:
     - type: Transform
       pos: 6.5,25.5
       parent: 1
-- proto: ArenaLoadoutTerminal
-  entities:
-  - uid: 584
-    components:
-    - type: Transform
-      pos: 5.5,0.5
-      parent: 1
-    - type: Godmode
-  - uid: 585
-    components:
-    - type: Transform
-      pos: 25.5,30.5
-      parent: 1
-    - type: Godmode
-...

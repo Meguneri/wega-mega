@@ -19,6 +19,7 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
 
     Dictionary<NetUserId, int> IDuelScoreStore.Scores => Scores;
     Dictionary<NetUserId, string> IDuelScoreStore.ScoreNames => ScoreNames;
+    Dictionary<NetUserId, int> IDuelScoreStore.LosingStreaks => LosingStreaks;
     NetUserId? IDuelScoreStore.StreakUser { get => StreakUser; set => StreakUser = value; }
     int IDuelScoreStore.Streak { get => Streak; set => Streak = value; }
 
@@ -112,6 +113,12 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     /// с именами даже тех бойцов, кого нет в текущем бою. Сбрасывается вместе со <see cref="Scores"/>.
     /// </summary>
     public readonly Dictionary<NetUserId, string> ScoreNames = new();
+
+    /// <summary>
+    /// Текущая серия поражений по игрокам (NetUserId → число поражений подряд).
+    /// Сбрасывается при победе; растёт при проигрыше/ничьей.
+    /// </summary>
+    public readonly Dictionary<NetUserId, int> LosingStreaks = new();
 
     /// <summary>
     /// Игрок, выигравший прошлый бой, и его текущая серия побед подряд.

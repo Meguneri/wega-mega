@@ -15179,18 +15179,3 @@ entities:
       rot: -1.5707963267948966 rad
       pos: 9.548491,25.222164
       parent: 2
-- proto: ArenaLoadoutTerminal
-  entities:
-  - uid: 1910
-    components:
-    - type: Transform
-      pos: 22.5,0.5
-      parent: 2
-    - type: Godmode
-  - uid: 1911
-    components:
-    - type: Transform
-      pos: 18.5,40.5
-      parent: 2
-    - type: Godmode
-...
