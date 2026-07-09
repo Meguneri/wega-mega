@@ -12,7 +12,9 @@ using Content.Shared.Damage.Components;
 using Content.Shared.FixedPoint;
 using Content.Shared.Humanoid;
 using Content.Shared._Wega.Duel;
+using Content.Shared._Wega.Duel.Components;
 using Content.Shared.Maps;
+using Content.Shared.Mind;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
 using Robust.Shared.GameObjects;
@@ -444,6 +446,90 @@ public sealed class DuelArenaSystemTest : GameTest
         {
             Assert.That(damageableSystem.GetTotalDamage(fighter1), Is.EqualTo(FixedPoint2.Zero), "Боец в центре не должен получать урон");
             Assert.That(damageableSystem.GetTotalDamage(fighter2), Is.GreaterThan(FixedPoint2.Zero), "Боец за пределами зоны должен получить урон");
+        });
+    }
+
+    /// <summary>
+    /// Проигравший 3 дуэли подряд должен получить миньона-помощника на старте следующей дуэли.
+    /// Бойцам прикрепляются разумы с NetUserId — как у реальных игроков (счёт ведётся по игроку).
+    /// </summary>
+    [Test]
+    public async Task LoserMinionSpawnsAfterThreeLossesTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mindSystem = server.System<SharedMindSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var winnerSession = await server.AddDummySession("MinionWinner");
+        var loserSession = await server.AddDummySession("MinionLoser");
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            fighter1 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            fighter2 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            var mind1 = mindSystem.CreateMind(winnerSession.UserId, "MinionWinner");
+            mindSystem.TransferTo(mind1, fighter1);
+            var mind2 = mindSystem.CreateMind(loserSession.UserId, "MinionLoser");
+            mindSystem.TransferTo(mind2, fighter2);
+        });
+
+        // Три поражения fighter2 подряд.
+        for (var round = 1; round <= 3; round++)
+        {
+            var r = round;
+            await server.WaitAssertion(() =>
+            {
+                var startEv = new SignalReceivedEvent("Open");
+                entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+
+                var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+                Assert.That(arena.IsActive, Is.True, $"Дуэль {r} должна начаться");
+
+                DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+                damageableSystem.TryChangeDamage(fighter2, damage, true);
+
+                Assert.That(arena.IsActive, Is.False, $"Дуэль {r} должна завершиться");
+                Assert.That(arena.LosingStreaks.GetValueOrDefault(loserSession.UserId), Is.EqualTo(r),
+                    $"После дуэли {r} серия поражений должна быть {r}");
+            });
+
+            // Пережидаем дебаунс сигнала старта (0.5 c) перед следующим раундом.
+            await pair.RunTicksSync(20);
+        }
+
+        // Четвёртая дуэль: у проигравшего серия 3 — на старте должен появиться миньон.
+        await server.WaitAssertion(() =>
+        {
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True, "Четвёртая дуэль должна начаться");
+
+            EntityUid? minionOwner = null;
+            var query = entManager.EntityQueryEnumerator<ArenaLoserMinionComponent>();
+            while (query.MoveNext(out _, out var minion))
+                minionOwner = minion.MinionOwner;
+
+            Assert.That(minionOwner, Is.Not.Null, "Миньон должен заспавниться у проигравшего 3 раза подряд");
+            Assert.That(minionOwner, Is.EqualTo(fighter2), "Миньон должен принадлежать проигравшему");
         });
     }
 

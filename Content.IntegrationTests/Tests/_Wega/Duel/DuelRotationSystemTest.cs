@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Content.IntegrationTests.Fixtures;
 using Content.Server._Wega.Duel.Components;
 using Content.Server._Wega.Duel.Systems;
+using Content.Shared._Wega.Duel.Components;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Prototypes;
 using Content.Shared.Damage.Systems;
@@ -247,5 +249,133 @@ public sealed class DuelRotationSystemTest : GameTest
 
             Assert.That(arena1.Scores.Count, Is.EqualTo(0), "Счёт не должен дублироваться на трекере арены");
         });
+    }
+
+    /// <summary>
+    /// Хаб-сценарий: в ротации боец, проигравший 3 раунда подряд (с автоматическим переносом между
+    /// аренами), должен получить миньона-помощника на старте следующего раунда. Серия поражений
+    /// живёт на контроллере ротации и не должна теряться при смене арен.
+    /// </summary>
+    [Test]
+    public async Task RotationLoserMinionSpawnsAfterThreeLossesTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mindSystem = server.System<SharedMindSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var winnerSession = await server.AddDummySession("RotMinionWinner");
+        var loserSession = await server.AddDummySession("RotMinionLoser");
+
+        var testMap1 = await pair.CreateTestMap();
+        var testMap2 = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid tracker1 = default;
+        EntityUid tracker2 = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap1.Grid, testMap1.Tile.Tile);
+            ExpandGrid(mapSystem, testMap2.Grid, testMap2.Tile.Tile);
+
+            var tile1 = testMap1.Tile;
+            var coords1 = new EntityCoordinates(tile1.GridUid, tile1.GridIndices.X, tile1.GridIndices.Y);
+            var tile2 = testMap2.Tile;
+            var coords2 = new EntityCoordinates(tile2.GridUid, tile2.GridIndices.X, tile2.GridIndices.Y);
+
+            controller = entManager.SpawnEntity(null, coords1);
+            var rotation = entManager.AddComponent<DuelRotationComponent>(controller);
+            rotation.Loaded = true;
+            rotation.LoadedArenas[0] = testMap1.MapId;
+            rotation.LoadedArenas[1] = testMap2.MapId;
+
+            tracker1 = entManager.SpawnEntity("DuelArenaTracker", coords1);
+            entManager.GetComponent<DuelArenaComponent>(tracker1).RotationController = controller;
+            tracker2 = entManager.SpawnEntity("DuelArenaTracker", coords2);
+            entManager.GetComponent<DuelArenaComponent>(tracker2).RotationController = controller;
+
+            entManager.SpawnEntity("DuelArenaSpawnMarker", coords1.Offset(new Vector2(1, 0)));
+            entManager.SpawnEntity("DuelArenaSpawnMarker1", coords1.Offset(new Vector2(1, 1)));
+            entManager.SpawnEntity("DuelArenaSpawnMarker", coords2.Offset(new Vector2(2, 0)));
+            entManager.SpawnEntity("DuelArenaSpawnMarker1", coords2.Offset(new Vector2(2, 2)));
+
+            fighter1 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 0)));
+            fighter2 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 1)));
+
+            var mind1 = mindSystem.CreateMind(winnerSession.UserId, "RotMinionWinner");
+            mindSystem.TransferTo(mind1, fighter1);
+            var mind2 = mindSystem.CreateMind(loserSession.UserId, "RotMinionLoser");
+            mindSystem.TransferTo(mind2, fighter2);
+        });
+
+        // Три раунда подряд: как в игре — кнопка старта на арене, где стоят бойцы; fighter2
+        // проигрывает; ротация переносит бойцов на другую арену (без автозапуска раунда).
+        for (var round = 1; round <= 3; round++)
+        {
+            var r = round;
+            await server.WaitAssertion(() =>
+            {
+                var tracker = TrackerOnFightersMap(entManager, fighter2, tracker1, tracker2);
+                var startEv = new SignalReceivedEvent("Open");
+                entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+
+                var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+                Assert.That(arena.IsActive, Is.True, $"Раунд {r} должен начаться по кнопке");
+
+                DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+                damageableSystem.TryChangeDamage(fighter2, damage, true);
+
+                Assert.That(arena.IsActive, Is.False, $"Раунд {r} должен завершиться");
+
+                var rotation = entManager.GetComponent<DuelRotationComponent>(controller);
+                Assert.That(rotation.LosingStreaks.GetValueOrDefault(loserSession.UserId), Is.EqualTo(r),
+                    $"После раунда {r} серия поражений на контроллере должна быть {r}");
+            });
+
+            // Пережидаем дебаунс кнопки старта (0.5 c) и даём переносу осесть.
+            await pair.RunTicksSync(20);
+        }
+
+        // Четвёртый раунд (снова по кнопке): у проигравшего серия 3 — должен появиться миньон.
+        await server.WaitAssertion(() =>
+        {
+            var tracker = TrackerOnFightersMap(entManager, fighter2, tracker1, tracker2);
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True, "Четвёртый раунд должен начаться по кнопке");
+
+            EntityUid? minionOwner = null;
+            var query = entManager.EntityQueryEnumerator<ArenaLoserMinionComponent>();
+            while (query.MoveNext(out _, out var minion))
+                minionOwner = minion.MinionOwner;
+
+            Assert.That(minionOwner, Is.Not.Null,
+                "Миньон должен заспавниться у проигравшего 3 раунда подряд в ротации");
+            Assert.That(minionOwner, Is.EqualTo(fighter2), "Миньон должен принадлежать проигравшему");
+        });
+    }
+
+    /// <summary>
+    /// Возвращает трекер той арены, на карте которой сейчас стоит боец — как игрок, жмущий кнопку
+    /// старта на своей арене.
+    /// </summary>
+    private static EntityUid TrackerOnFightersMap(IEntityManager entManager, EntityUid fighter, params EntityUid[] trackers)
+    {
+        var map = entManager.GetComponent<TransformComponent>(fighter).MapID;
+        foreach (var tracker in trackers)
+        {
+            if (entManager.GetComponent<TransformComponent>(tracker).MapID == map)
+                return tracker;
+        }
+
+        throw new InvalidOperationException("Боец стоит на карте без трекера арены");
     }
 }
