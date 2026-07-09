@@ -15,7 +15,7 @@ media-player-error-download = Не удалось скачать трек.
 
 # Окно плеера
 ui-media-player-title = Медиа-плеер
-ui-media-player-search-placeholder = Название трека или ссылка на YouTube...
+ui-media-player-search-placeholder = Название трека или ссылка...
 ui-media-player-search-button = Найти
 ui-media-player-searching-button = Ищу…
 ui-media-player-searching = Идёт поиск треков, подождите…
@@ -25,7 +25,7 @@ ui-media-player-play-url-button = По ссылке
 ui-media-player-pause-button = ⏸ Пауза
 ui-media-player-resume-button = ▶ Продолжить
 ui-media-player-stop-button = ■ Стоп
-ui-media-player-volume-label = Громкость (личная)
+ui-media-player-volume-label = Громкость
 ui-media-player-nothing = Ничего не играет
 ui-media-player-now-playing = Сейчас играет: { $title } ({ $duration })
 ui-media-player-indicator-paused = ⏸ { $title }
