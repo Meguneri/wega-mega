@@ -1,0 +1,127 @@
+# Arena decorative floor tiles (Wega). Appear in the tile spawn menu.
+# Names carry the "(Arena)" suffix via localization (tiles-arena-*).
+# itemDrop is left at the ContentTileDefinition default (FloorTileItemSteel).
+
+- type: tile
+  id: FloorArenaCopper
+  parent: BaseStationTile
+  name: tiles-arena-copper
+  sprite: /Textures/_Wega/Tiles/arena/copper.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaSteelHex
+  parent: BaseStationTile
+  name: tiles-arena-steel-hex
+  sprite: /Textures/_Wega/Tiles/arena/steel_hex.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaBrick
+  parent: BaseStationTile
+  name: tiles-arena-brick
+  sprite: /Textures/_Wega/Tiles/arena/brick.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaTerrazzo
+  parent: BaseStationTile
+  name: tiles-arena-terrazzo
+  sprite: /Textures/_Wega/Tiles/arena/terrazzo.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaCobblestone
+  parent: BaseStationTile
+  name: tiles-arena-cobblestone
+  sprite: /Textures/_Wega/Tiles/arena/cobblestone.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaSandstone
+  parent: BaseStationTile
+  name: tiles-arena-sandstone
+  sprite: /Textures/_Wega/Tiles/arena/sandstone.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaMedical
+  parent: BaseStationTile
+  name: tiles-arena-medical
+  sprite: /Textures/_Wega/Tiles/arena/medical.png
+  footstepSounds:
+    collection: FootstepTile
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaSecurity
+  parent: BaseStationTile
+  name: tiles-arena-security
+  sprite: /Textures/_Wega/Tiles/arena/security.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaCeramic
+  parent: BaseStationTile
+  name: tiles-arena-ceramic
+  sprite: /Textures/_Wega/Tiles/arena/ceramic.png
+  footstepSounds:
+    collection: FootstepTile
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaServer
+  parent: BaseStationTile
+  name: tiles-arena-server
+  sprite: /Textures/_Wega/Tiles/arena/server.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
