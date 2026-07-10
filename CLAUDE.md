@@ -2,15 +2,41 @@
 
 Guidance for working in this repository (a fork of ss14-wega / Space Station 14).
 
-## Dependency injection convention (RA0049 / RA0051)
+## RepoWise first
 
-The RobustToolbox analyzer enforces how `[Dependency]` fields must be declared.
-Every time `RobustToolbox` is updated from upstream, custom code that doesn't
-follow this convention fails the build. Always write dependency-injected types
-this way:
+RepoWise (the MCP server documented in `.claude/CLAUDE.md`) is the **primary source of truth** about this project. Use it before reading source.
 
-- The class **must be `partial`** (RA0049).
-- `[Dependency]` fields **must not be `readonly`** (RA0051).
+- Prefer RepoWise's served bytes (`get_context` skeletons, `get_symbol` bodies) over a raw `Read`, and avoid mass file reads / repo-wide `grep`/`find` when RepoWise already has the answer.
+- RepoWise has priority **but may be stale** — its index is pinned to a commit, so uncommitted or newer changes may not be reflected. When RepoWise contradicts the working tree, **trust the working tree.** Re-verify against it on any `stale_warning`, `bounds: approximate`, `confidence: low`, or when the file is uncommitted.
+
+## Analysis workflow
+
+Before analysis:
+
+1. Use RepoWise to get the architecture and dependencies (`get_overview`, `get_answer`, `get_context`, `get_risk`, `get_why`).
+2. From what it returns, determine the **minimal set of files** needed for the task.
+3. Justify why each file in that set is needed. **If more than 5 files are required, explain why before reading them.**
+
+During analysis:
+
+4. After each file, re-evaluate whether the next one is still needed.
+5. Stop as soon as the hypothesis is confirmed — do not keep reading.
+6. Never read files "just in case" / "for confidence".
+7. Every **High-severity** conclusion must be independently re-verified against the working tree (not just RepoWise).
+
+## Parallel agents
+
+Do not spawn multiple agents automatically. Use parallel agents only when **all** of these hold:
+
+- the subsystems are genuinely independent;
+- parallelism actually reduces wall-clock time;
+- the analysis volume is genuinely large.
+
+Otherwise work with a single agent. Optimise for solving the stated task with the **minimum** actions — do not chase maximal coverage for its own sake.
+
+## Dependency injection (RA0049 / RA0051)
+
+Types with `[Dependency]` fields must be `partial`, and `[Dependency]` fields must **not** be `readonly`.
 
 ```csharp
 public sealed partial class MySystem : EntitySystem
@@ -19,40 +45,12 @@ public sealed partial class MySystem : EntitySystem
 }
 ```
 
-This applies to `EntitySystem`s, `IConsoleCommand`s, `Overlay`s, and any other
-type that uses `[Dependency]` fields. Upstream already follows this standard, so
-keeping our `_Wega` / `_Starlight` / `_RMC14` / `_Sunrise` code aligned avoids
-recurring errors after every upstream sync.
+Applies to `EntitySystem`s, `IConsoleCommand`s, `Overlay`s, and anything else using `[Dependency]`.
 
-## Full Arsenal / arena price list
+## Arsenal pools
 
-`FULL_ARSENAL_PRICES.md` is the human-readable price list for the Full Arsenal
-arena crates (`CrateSyndicateFullArsenal*`). It must stay in sync with the
-`FullArsenal` listings in
-`Resources/Prototypes/_Wega/Catalog/full_arsenal_pool.yml`.
+When you touch an arsenal pool, keep these in sync:
 
-**Always update `FULL_ARSENAL_PRICES.md` whenever you touch the arena / Full
-Arsenal pool** — adding, removing, or repricing any `FullArsenal` listing. Put
-each item in the matching category table with its display name, entity id, and
-TC cost.
-
-`MELEE_ARSENAL_PRICES.md` is the same kind of price list for the Melee Arsenal
-crate, kept in sync with the `MeleeArsenal` listings in
-`Resources/Prototypes/_Wega/Catalog/melee_arsenal_pool.yml`.
-
-**Always update `MELEE_ARSENAL_PRICES.md` whenever you touch the Melee Arsenal
-pool**, the same way as the Full Arsenal list. Any new melee weapon, shield, or
-armor added to the Full Arsenal pool must also be added to the Melee Arsenal
-pool (melee/armor items belong in both crates) and to both price lists.
-
-## Full Arsenal items must be translated (ru-RU)
-
-Every item available in the Full Arsenal pool
-(`Resources/Prototypes/_Wega/Catalog/full_arsenal_pool.yml`) **must have a
-Russian name and description** — both the listing (`full-arsenal-*-name` /
-`-desc` keys) and the product entity itself (`ent-<EntityId>` in a `ru-RU`
-`.ftl`). When you add or port a weapon, bundle, or any other `productEntity`
-into the pool, add its `ru-RU` locale in the same change. No Full Arsenal entry
-should ever display an English name or description in game. Ported weapons keep
-their model designation (e.g. `АС-12 «Минотавр»`, `АШ-12`), but the name and
-description still get a `ru-RU` entry so nothing falls back to English.
+- **Full Arsenal** — `full_arsenal_pool.yml` ↔ `FULL_ARSENAL_PRICES.md` (name, entity id, TC cost per category).
+- **Melee Arsenal** — `melee_arsenal_pool.yml` ↔ `MELEE_ARSENAL_PRICES.md`. Any melee/shield/armor item added to Full Arsenal must also go in the Melee pool and both price lists.
+- **ru-RU** — every Full Arsenal item needs a Russian name and description: the listing keys (`full-arsenal-*-name` / `-desc`) and the entity (`ent-<EntityId>`). Ported weapons keep their model designation (e.g. `АС-12 «Минотавр»`) but still get a `ru-RU` entry so nothing falls back to English.

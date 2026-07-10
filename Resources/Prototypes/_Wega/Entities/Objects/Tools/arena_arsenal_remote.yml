@@ -1,0 +1,22 @@
+# Пульт арсенала арены — задаёт тир FullArsenal-крейтов, спавнящихся у бойцов каждый раунд.
+- type: entity
+  id: ArenaArsenalRemote
+  name: пульт арсенала арены
+  description: Задаёт тир арсенал-крейтов (FullArsenal), которые появляются у бойцов в начале каждого раунда. Выбор применяется ко всем аренам и заменяет прежний тир.
+  parent: BaseItem
+  components:
+  - type: Sprite
+    sprite: _Wega/Objects/Devices/convoy_remote.rsi
+    state: icon
+  - type: Item
+    size: Small
+  - type: ArenaArsenalRemote
+    crates:
+    - CrateSyndicateFullArsenal
+    - CrateSyndicateFullArsenalPlus
+    - CrateSyndicateFullArsenalMega
+    - CrateSyndicateMeleeArsenal
+  - type: UserInterface
+    interfaces:
+      enum.ArenaArsenalRemoteUiKey.Key:
+        type: ArenaArsenalRemoteBoundUserInterface

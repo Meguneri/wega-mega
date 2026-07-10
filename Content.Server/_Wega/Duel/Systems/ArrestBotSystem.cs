@@ -557,6 +557,17 @@ public sealed partial class ArrestBotSystem : EntitySystem
         if (!Exists(target) || !IsValidTarget(target) || target == user)
             return;
 
+        // Ре-валидация на сервере — список в UI фильтруется только визуально. Повторяем те же
+        // ограничения: цель на том же гриде, что и оператор, жива и ещё не под арестом. Иначе
+        // модифицированный клиент мог бы натравить бота на кого угодно на любом гриде или
+        // перенацелить уже занятого бота.
+        var userGrid = Transform(user).GridUid;
+        if (userGrid != null && Transform(target).GridUid != userGrid)
+            return;
+
+        if (_mobState.IsDead(target) || IsBeingArrested(target))
+            return;
+
         if (CommandNearestBot(target, user))
             _popup.PopupEntity(Loc.GetString("arrest-bot-dispatched", ("target", MetaData(target).EntityName)), user, user);
         else

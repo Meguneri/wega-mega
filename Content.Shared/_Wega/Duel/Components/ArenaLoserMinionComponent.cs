@@ -41,9 +41,12 @@ public sealed partial class ArenaLoserMinionComponent : Component
     [DataField]
     public float HealAmount = 10f;
 
-    /// <summary>Тип урона лечения (отрицательное значение = лечение).</summary>
+    /// <summary>
+    /// Явный список противников (дуэлянты той же арены). Если пуст, миньон стреляет
+    /// в ближайшего живого моба в радиусе атаки.
+    /// </summary>
     [DataField]
-    public string HealDamageType = "Brute";
+    public List<EntityUid> Enemies = new();
 
     /// <summary>Прототип снаряда, который миньон запускает во врагов.</summary>
     [DataField]

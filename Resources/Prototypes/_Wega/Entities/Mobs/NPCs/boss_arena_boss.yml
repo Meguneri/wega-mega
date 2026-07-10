@@ -1,4 +1,18 @@
-# Босс босс-арены — простой ближнобойный босс.
+# Босс босс-арены — бронированный ближнобойный босс.
+# Бьёт СОБСТВЕННЫМ (природным) MeleeWeapon, который усиливается по фазам
+# (см. BossArenaBossComponent/ApplyPhaseBuffs — множители применяются к компоненту MeleeWeapon
+# самого босса). Поэтому оружие в руки НЕ даём: иначе фаза-множители урона не работали бы.
+# Гир BossArenaGear — только броня и обмундирование (защита + узнаваемый вид, чтобы босс не был голым).
+- type: startingGear
+  id: BossArenaGear
+  equipment:
+    jumpsuit: ClothingUniformJumpsuitColorDarkGreen
+    outerClothing: ClothingOuterArmorBulletproof
+    head: ClothingHeadHelmetBasic
+    mask: ClothingMaskGas
+    gloves: ClothingHandsGlovesCombat
+    shoes: ClothingShoesBootsCombat
+
 - type: entity
   parent: MobHuman
   id: MobBossArena
@@ -8,6 +22,10 @@
   - type: NpcFactionMember
     factions:
     - RaidBoss
+  # Броня и одежда: раньше босс спавнился голым MobHuman. Оружие в руки не кладём (см. шапку файла).
+  - type: Loadout
+    prototypes:
+    - BossArenaGear
   - type: RandomHumanoidAppearance
     randomizeName: false
   - type: MobThresholds
@@ -16,13 +34,11 @@
       400: PreCritical
       500: Critical
       600: Dead
-  - type: MovementSpeedModifier
-    baseWalkSpeed: 2.2
-    baseSprintSpeed: 3.5
+  # Природный удар босса. Базовый урон масштабируется по фазам (phaseDamageMultipliers: 1.0/1.2/1.5).
   - type: MeleeWeapon
     damage:
       types:
-        Blunt: 18
+        Blunt: 25
     altDisarm: false
   - type: BossArenaBoss
     phaseThresholds:
@@ -36,6 +52,8 @@
     - 1.0
     - 1.2
     - 1.5
+  # RaidBossCompound: удерживает точку (без блуждания) и вступает в бой по видимости.
+  # Дальний бой — при наличии ствола в руке, иначе ближний. У босса ствола нет → сразу ближний.
   - type: HTN
     rootTask:
-      task: SimpleHumanoidHostileCompound
+      task: RaidBossCompound

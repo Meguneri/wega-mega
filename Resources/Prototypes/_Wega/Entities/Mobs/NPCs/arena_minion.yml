@@ -28,19 +28,8 @@
     drawdepth: Mobs
     sprite: _Wega/Mobs/arena_loser_minion.rsi
     layers:
-    - state: red
-      map: [ "enum.DamageStateVisualLayers.Base" ]
+    - state: blue
       shader: unshaded
-  - type: RandomSprite
-    available:
-    - enum.DamageStateVisualLayers.Base:
-        red: ""
-    - enum.DamageStateVisualLayers.Base:
-        purple: ""
-    - enum.DamageStateVisualLayers.Base:
-        orange: ""
-    - enum.DamageStateVisualLayers.Base:
-        blue: ""
   - type: Fixtures
     fixtures:
       fix1:
@@ -52,11 +41,17 @@
         - FlyingMobMask
         layer:
         - Opaque
+  # Металлический корпус: режет холодное/пулевое, чуть держит удары. Раньше дрон падал с одного
+  # выстрела, потому что не имел брони.
+  - type: Damageable
+    damageModifierSet: Metallic
+  # Разрушается при накоплении урона. Порог поднят с 30 до 90 — с бронёй это ~3-4 попадания,
+  # а не «с одного выстрела».
   - type: Destructible
     thresholds:
     - trigger:
         !type:DamageTrigger
-        damage: 30
+        damage: 90
       behaviors:
       - !type:DoActsBehavior
         acts: ["Destruction"]
@@ -66,7 +61,6 @@
     attackRadius: 12
     healThreshold: 0.5
     healAmount: 10
-    healDamageType: Brute
     projectileProto: BulletArenaMinion
     projectileSpeed: 15
     moveSpeed: 5
