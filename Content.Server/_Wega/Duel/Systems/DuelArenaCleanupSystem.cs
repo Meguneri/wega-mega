@@ -35,6 +35,7 @@ using Content.Shared.Weapons.Ranged.Components;
 using Robust.Shared.Containers;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
+using Robust.Shared.Placement;
 using Robust.Shared.Prototypes;
 
 namespace Content.Server._Wega.Duel.Systems;
@@ -128,6 +129,48 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         // самоудаляется. Если упаковка была выдана ареной — пробрасываем метку на содержимое
         // рекурсивно, иначе пачка/зажигалка/гипопен (и сигарета во рту) остаются после боя.
         SubscribeLocalEvent<ArenaIssuedItemComponent, SpawnItemsOnUsedEvent>(OnIssuedSpawnedItems);
+
+        // Всё, что игрок вручную достаёт из спавн-меню (система placement), исключаем из очистки и
+        // восстановления арены: помечаем ArenaCleanupExempt и снимаем метку «выдано ареной», если она
+        // успела навеситься в ComponentStartup (placement спавнит сущность, а событие шлёт уже после —
+        // см. PlacementManager). Так наспавненное вручную снаряжение/декор переживает конец раунда.
+        SubscribeLocalEvent<PlacementEntityEvent>(OnPlacement);
+    }
+
+    private void OnPlacement(PlacementEntityEvent ev)
+    {
+        // Erase не создаёт сущность; реагируем только на ручной спавн реальным игроком.
+        if (ev.PlacementEventAction != PlacementEventAction.Create || ev.PlacerNetUserId == null)
+            return;
+        if (!Exists(ev.EditedEntity))
+            return;
+
+        MarkExemptRecursive(ev.EditedEntity);
+    }
+
+    /// <summary>
+    /// Помечает сущность и всё вложенное как исключённое из очисток арены и снимает уже навешенную метку
+    /// «выдано ареной». Живых существ не трогает (их инвентарь — их собственность, а мобов очистка и так
+    /// не удаляет).
+    /// </summary>
+    private void MarkExemptRecursive(EntityUid uid)
+    {
+        if (HasComp<MobStateComponent>(uid))
+            return;
+
+        EnsureComp<ArenaCleanupExemptComponent>(uid);
+        RemComp<ArenaIssuedItemComponent>(uid);
+
+        // Пристёгнутая одежда (шлем хардсьюта и т.п.) лежит не в контейнере, а в слоте — тегируем явно.
+        if (TryComp<ToggleableClothingComponent>(uid, out var toggleable) && toggleable.ClothingUid != null)
+            MarkExemptRecursive(toggleable.ClothingUid.Value);
+
+        if (!TryComp<ContainerManagerComponent>(uid, out var manager))
+            return;
+
+        foreach (var c in _container.GetAllContainers(uid, manager))
+            foreach (var contained in c.ContainedEntities)
+                MarkExemptRecursive(contained);
     }
 
     private void OnIssuedSpawnedItems(EntityUid uid, ArenaIssuedItemComponent comp, SpawnItemsOnUsedEvent args)
@@ -316,6 +359,10 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         if (HasComp<MobStateComponent>(uid))
             return;
 
+        // Достали из спавн-меню — не помечаем как выданное аренной, чтобы очистка его не тронула.
+        if (HasComp<ArenaCleanupExemptComponent>(uid))
+            return;
+
         EnsureComp<ArenaIssuedItemComponent>(uid);
 
         // Пристёгнутая одежда (шлем хардсьюта и т.п.): её сущность (ClothingUid) при
@@ -402,6 +449,12 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             if (!InRange(itemUid, origin, originGrid, range))
                 continue;
 
+            // Исключённое из очистки (достали из спавн-меню, помечено ArenaCleanupExempt) не трогаем —
+            // как и во всех проходах ниже. Иначе реальное оружие из RandomSpawner (потомок exempt-обёртки),
+            // помеченное ArenaIssued в OnGunStartup, удалялось бы в конце раунда.
+            if (HasComp<ArenaCleanupExemptComponent>(itemUid))
+                continue;
+
             // Подстраховка: живое существо (боец) никогда не считается выданным снаряжением и не
             // удаляется. Если метка как-то на него попала (например, со старого бага коробки) —
             // снимаем её и пропускаем, чтобы очистка не убила игрока.
@@ -457,6 +510,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         {
             if (!InRange(puddleUid, origin, originGrid, range))
                 continue;
+            if (HasComp<ArenaCleanupExemptComponent>(puddleUid))
+                continue;
 
             QueueDel(puddleUid);
         }
@@ -469,6 +524,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
                 continue;
             if (Transform(logUid).Anchored)
                 continue;
+            if (HasComp<ArenaCleanupExemptComponent>(logUid))
+                continue;
 
             QueueDel(logUid);
         }
@@ -478,6 +535,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         while (minionQuery.MoveNext(out var minionUid, out _, out _))
         {
             if (!InRange(minionUid, origin, originGrid, range))
+                continue;
+            if (HasComp<ArenaCleanupExemptComponent>(minionUid))
                 continue;
 
             QueueDel(minionUid);
@@ -493,6 +552,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         {
             if (!InRange(runeUid, origin, originGrid, range))
                 continue;
+            if (HasComp<ArenaCleanupExemptComponent>(runeUid))
+                continue;
 
             QueueDel(runeUid);
         }
@@ -507,6 +568,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
                 continue;
             if (!InRange(girderUid, origin, originGrid, range))
                 continue;
+            if (HasComp<ArenaCleanupExemptComponent>(girderUid))
+                continue;
 
             QueueDel(girderUid);
         }
@@ -520,6 +583,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
                 continue;
             if (!InRange(bulbUid, origin, originGrid, range))
                 continue;
+            if (HasComp<ArenaCleanupExemptComponent>(bulbUid))
+                continue;
 
             QueueDel(bulbUid);
         }
@@ -531,6 +596,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             if (ProtoId(shardUid)?.StartsWith("ShardGlass") != true)
                 continue;
             if (!InRange(shardUid, origin, originGrid, range))
+                continue;
+            if (HasComp<ArenaCleanupExemptComponent>(shardUid))
                 continue;
 
             QueueDel(shardUid);
@@ -549,6 +616,8 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             if (!bundle.MarkIssuedItems)
                 continue;
             if (!InRange(crateUid, origin, originGrid, range))
+                continue;
+            if (HasComp<ArenaCleanupExemptComponent>(crateUid))
                 continue;
 
             QueueDel(crateUid);

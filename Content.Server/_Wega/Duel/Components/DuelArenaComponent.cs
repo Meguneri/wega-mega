@@ -1,3 +1,5 @@
+using System.Numerics;
+using Content.Shared.Decals;
 using Robust.Shared.Audio;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
@@ -16,6 +18,14 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     /// <summary>Звук в момент завершения дуэли (победа/ничья).</summary>
     [DataField]
     public SoundSpecifier? EndSound = new SoundPathSpecifier("/Audio/_Wega/Duel/duel_end.ogg");
+
+    /// <summary>
+    /// Крейт арсенала (FullArsenal SurplusBundle), который спавнится у каждого спавн-маркера при
+    /// старте раунда. Задаётся командой/пультом и ПЕРЕЗАПИСЫВАЕТСЯ целиком — никакого наложения тиров:
+    /// сменил 120→40 ТК, и следующий раунд спавнит только 40. null — крейты не спавнить.
+    /// </summary>
+    [DataField]
+    public EntProtoId? ArsenalCrate = "CrateSyndicateFullArsenal";
 
     Dictionary<NetUserId, int> IDuelScoreStore.Scores => Scores;
     Dictionary<NetUserId, string> IDuelScoreStore.ScoreNames => ScoreNames;
@@ -160,61 +170,51 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     public TimeSpan? GateCloseAt;
 
     /// <summary>
-    /// Снимок исходной (пристайн) планировки стен арены: тайл грида → прототип стены.
-    /// Пополняется при КАЖДОМ старте дуэли (мерж: новые тайлы добавляются, старые записи не
-    /// перезаписываются) — так снимок самовосстанавливается, даже если первый проход вышел
-    /// неполным. После каждой дуэли по снимку восстанавливаются разрушенные стены.
+    /// Пристайн-планировка ВСЕХ заякоренных конструкций арены: тайл грида → список конструкций на
+    /// нём (стены, окна, решётки, светильники, столы, перила, двери, постеры, растения и т.п.). На
+    /// одном тайле их может быть несколько (окно поверх решётки, светильник на стене), поэтому
+    /// значение — список. После каждой дуэли по снимку восстанавливается всё разрушенное.
+    /// Инфраструктура с сигнальными связями (трекер, кнопки, шлюзы, спавнеры — всё с device-link)
+    /// в снимок НЕ попадает: её нельзя пересоздавать, иначе рвутся линковки сигналов.
     /// </summary>
-    public readonly Dictionary<Vector2i, EntProtoId> WallSnapshot = new();
+    public readonly Dictionary<Vector2i, List<ArenaStructure>> StructureSnapshot = new();
 
     /// <summary>
-    /// Тайл пола под каждой стеной снимка. Если за бой пол под стеной уничтожили (дыра в
-    /// космос), стену нельзя заякорить — сначала восстанавливаем пол по этому снимку.
+    /// Пол по ВСЕМУ гриду арены: тайл → плитка. Если за бой пол уничтожили (дыра в космос),
+    /// восстанавливаем его по этому снимку — иначе на тайле не заякорить конструкцию, а сам провал
+    /// остался бы. Снимаются только непустые тайлы, поэтому «лишний» пол мы никогда не срезаем.
     /// </summary>
-    public readonly Dictionary<Vector2i, Tile> WallTileSnapshot = new();
+    public readonly Dictionary<Vector2i, Tile> TileSnapshot = new();
 
     /// <summary>
-    /// Снимок исходной расстановки светильников арены: тайл грида → прототип светильника.
-    /// Пополняется при КАЖДОМ старте дуэли (мерж, как у стен). После каждой дуэли по снимку
-    /// чинятся/переставляются разбитые лампы и уничтоженные светильники любого типа.
+    /// Свободные (не заякоренные) предметы-декор арены: прототип + позиция + поворот. Плюшевые
+    /// игрушки, шахматы, безделушки, вывески и прочий разбрасываемый инвентарь карты. После боя все
+    /// свободные предметы на гриде удаляются и раскладываются заново по этому снимку — так их
+    /// позиции и количество точно совпадают с исходными.
     /// </summary>
-    public readonly Dictionary<Vector2i, EntProtoId> LightSnapshot = new();
+    public readonly List<ArenaProp> PropSnapshot = new();
 
     /// <summary>
-    /// Поворот (к какой стене примонтирован) каждого светильника снимка — чтобы переставленный
-    /// заново светильник смотрел в ту же сторону, что и оригинал.
+    /// Декали арены (нанесённые на пол метки: кровь-декор, надписи, разметка). После боя все декали
+    /// грида стираются и накатываются заново по этому снимку — так с пола пропадает боевая кровь и
+    /// подпалины, а исходная разметка возвращается.
     /// </summary>
-    public readonly Dictionary<Vector2i, Angle> LightRotationSnapshot = new();
+    public readonly List<Decal> DecalSnapshot = new();
 
     /// <summary>
-    /// Снимок исходной расстановки решёток арены (обычных и заводных): тайл грида → прототип решётки.
-    /// Хранится отдельно от стен, потому что на одном тайле решётка может соседствовать с окном
-    /// (окна строятся поверх решёток) — раздельные снимки восстанавливают и решётку, и окно.
-    /// Пополняется при КАЖДОМ старте дуэли (мерж, как у стен). После боя сломанные/уничтоженные
-    /// решётки чинятся или ставятся заново.
+    /// Снимок арены (конструкции + пол + предметы + декали) уже снят. Снимаем РОВНО ОДИН РАЗ — при
+    /// первом старте дуэли, пока арена пристайн (стены целы, боевой крови/мусора ещё нет). Повторный
+    /// мерж на каждом старте забетонировал бы в «эталон» уцелевший после боя мусор и сдвинутые
+    /// предметы, поэтому снимок фиксируется один раз и дальше служит эталоном для восстановления.
     /// </summary>
-    public readonly Dictionary<Vector2i, EntProtoId> GrilleSnapshot = new();
+    public bool SnapshotCaptured;
 
     /// <summary>
-    /// Тайл пола под каждой решёткой снимка — чтобы восстановить пол, если его уничтожили за бой.
-    /// </summary>
-    public readonly Dictionary<Vector2i, Tile> GrilleTileSnapshot = new();
-
-    /// <summary>
-    /// Отложенное восстановление стен: выставляется при завершении/сбросе дуэли, выполняется
+    /// Отложенное восстановление арены: выставляется при завершении/сбросе дуэли, выполняется
     /// в Update на следующем тике — вне стека события смерти (MobStateChanged), где удаление
     /// и спавн сущностей могут конфликтовать с обработкой урона.
     /// </summary>
-    public bool PendingWallRestore;
-
-    /// <summary>
-    /// Отложенное вооружение раунда ротации: выставляется, когда контроллер переносит бойцов на
-    /// эту арену (см. <c>DuelRotationSystem.MoveAndStart</c>), и срабатывает в Update на СЛЕДУЮЩЕМ
-    /// тике. Нужно потому, что перенос и полное исцеление проигравшего происходят синхронно в
-    /// ConcludeDuel: если вооружать сразу, GetAliveInRange может не увидеть бойцов (грид ещё не
-    /// обновился / воскрешённый ещё не «жив»), раунд не вооружится и «дуэль начата» не объявится.
-    /// </summary>
-    public bool PendingRotationArm;
+    public bool PendingRestore;
 
     /// <summary>
     /// Время последней обработки сигнала старта (порт Open). Используется для дебаунса: один и тот
@@ -255,4 +255,32 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     /// <summary>Звук подтверждения готовности (играется рядом с кнопкой).</summary>
     [DataField]
     public SoundSpecifier? ReadySound = new SoundPathSpecifier("/Audio/_Wega/Duel/duel_ready.ogg");
+}
+
+/// <summary>Одна заякоренная конструкция снимка арены: прототип и поворот (для настенных объектов).</summary>
+public struct ArenaStructure
+{
+    public EntProtoId Proto;
+    public Angle Rotation;
+
+    public ArenaStructure(EntProtoId proto, Angle rotation)
+    {
+        Proto = proto;
+        Rotation = rotation;
+    }
+}
+
+/// <summary>Один свободный предмет-декор снимка арены: прототип, локальная позиция на гриде и поворот.</summary>
+public struct ArenaProp
+{
+    public EntProtoId Proto;
+    public Vector2 Position;
+    public Angle Rotation;
+
+    public ArenaProp(EntProtoId proto, Vector2 position, Angle rotation)
+    {
+        Proto = proto;
+        Position = position;
+        Rotation = rotation;
+    }
 }

@@ -32,6 +32,7 @@
     scanRange: 200
     scanInterval: 0.5
     returnGrace: 20
+    bossPrototype: MobBossArena
     minionPrototypes:
       - MobXenoDrone
     minionPhaseStart: 1

@@ -217,17 +217,17 @@ public sealed class DuelRotationSystem : EntitySystem
         // Только переносим бойцов на арену — раунд НЕ вооружаем автоматически.
         // Старт объявляется лишь после нажатия кнопки старта на самой арене (как и первый раунд),
         // иначе «дуэль началась» печаталось бы до нажатия кнопки.
-        MoveAndStart(comp, nextIndex, duelists, startRound: false);
+        MoveAndStart(comp, nextIndex, duelists);
     }
 
     /// <summary>
-    /// Переносит бойцов на арену с индексом <paramref name="arenaIndex"/> (из загруженных) и, если
-    /// <paramref name="startRound"/> — сразу вооружает там раунд. Общий код для перехода между
-    /// раундами (<see cref="AdvanceToNextArena"/>, со стартом) и для входа с хаба по кнопке
-    /// (<see cref="OnEntryActivate"/>, только перенос). Если арена не загружена или на ней нет
+    /// Переносит бойцов на арену с индексом <paramref name="arenaIndex"/> (из загруженных) на их
+    /// спавн-маркеры. Общий код для перехода между раундами (<see cref="AdvanceToNextArena"/>) и для
+    /// входа с хаба по кнопке (<see cref="OnEntryActivate"/>). Раунд НЕ вооружается автоматически —
+    /// старт объявляется кнопкой старта на самой арене. Если арена не загружена или на ней нет
     /// спавн-маркеров — тихо ничего не делаем (с предупреждением в лог).
     /// </summary>
-    private void MoveAndStart(DuelRotationComponent comp, int arenaIndex, IReadOnlyCollection<EntityUid> fighters, bool startRound)
+    private void MoveAndStart(DuelRotationComponent comp, int arenaIndex, IReadOnlyCollection<EntityUid> fighters)
     {
         if (!comp.LoadedArenas.TryGetValue(arenaIndex, out var map))
         {
@@ -313,16 +313,6 @@ public sealed class DuelRotationSystem : EntitySystem
         }
 
         comp.CurrentArena = arenaIndex;
-
-        if (!startRound)
-            return;
-
-        // Запускаем раунд на арене: её трекер просканирует прибывших бойцов, сделает снимок
-        // стен и объявит старт. Трекер ищем на карте арены.
-        if (TryGetArenaTracker(map, out var tracker))
-            RaiseLocalEvent(tracker, new RotationRoundStartEvent());
-        else
-            Log.Warning($"[duel-rotation] на арене (индекс {arenaIndex}) не найден трекер DuelArena — раунд не стартовал");
     }
 
     /// <summary>
@@ -372,7 +362,7 @@ public sealed class DuelRotationSystem : EntitySystem
                 fighters.Add(mob);
         }
 
-        MoveAndStart(ctrl, comp.ArenaIndex, fighters, startRound: false);
+        MoveAndStart(ctrl, comp.ArenaIndex, fighters);
     }
 
     /// <summary>
@@ -481,18 +471,4 @@ public sealed class DuelRotationSystem : EntitySystem
         return result.OrderBy(s => s.Index).Select(s => s.Uid).ToList();
     }
 
-    /// <summary>Первый трекер дуэли на карте.</summary>
-    private bool TryGetArenaTracker(MapId mapId, out EntityUid tracker)
-    {
-        var query = EntityQueryEnumerator<DuelArenaComponent, TransformComponent>();
-        while (query.MoveNext(out var uid, out _, out var xform))
-        {
-            if (xform.MapID != mapId)
-                continue;
-            tracker = uid;
-            return true;
-        }
-        tracker = default;
-        return false;
-    }
 }

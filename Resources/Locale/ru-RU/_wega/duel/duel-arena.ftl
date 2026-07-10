@@ -63,3 +63,18 @@ cmd-arenazone-invalid-args = Неверные аргументы. Использ
 cmd-arenazone-no-arena = Не найдено дуэльной арены на текущей карте.
 cmd-arenazone-off-result = Зона отключена: шторм — { $storm }, авиаудары — { $airstrike }.
 cmd-arenazone-on-result = Зона включена: шторм — { $storm }, авиаудары — { $airstrike }.
+
+# Команда arenaarsenal — задаёт тир арсенал-крейта, спавнящегося у спавн-маркеров каждый раунд
+cmd-arenaarsenal-desc = Задаёт тир арсенал-крейта (FullArsenal), спавнящегося у спавн-маркеров каждой арены при старте раунда. Применяется ко всем аренам и полностью заменяет прежний тир.
+cmd-arenaarsenal-help = Использование: { $command } <прототип-крейта | off>
+cmd-arenaarsenal-invalid-args = Неверные аргументы. Использование: { $command } <прототип-крейта | off>
+cmd-arenaarsenal-bad-crate = Прототип «{ $crate }» не найден или не является арсенал-крейтом (нет компонента SurplusBundle).
+cmd-arenaarsenal-set-result = Тир арсенала задан: { $crate }. Обновлено арен: { $count }.
+cmd-arenaarsenal-off-result = Спавн арсенал-крейтов отключён. Обновлено арен: { $count }.
+
+# Пульт арсенала арены (ArenaArsenalRemoteSystem)
+arena-arsenal-remote-title = Пульт арсенала арены
+arena-arsenal-remote-info = Выберите тир арсенал-крейтов. Применяется ко всем аренам и действует со следующего раунда.
+arena-arsenal-remote-current = { $name } (текущий)
+arena-arsenal-remote-off = Отключить спавн крейтов
+arena-arsenal-remote-applied = Тир арсенала: { $tier }. Обновлено арен: { $count }.

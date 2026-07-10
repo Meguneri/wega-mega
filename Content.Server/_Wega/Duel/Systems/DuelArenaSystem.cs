@@ -20,8 +20,10 @@ using Robust.Shared.Audio;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Localization;
 using Robust.Shared.Network;
+using Robust.Shared.Random;
 using Robust.Shared.Timing;
 using System.Linq;
+using System.Numerics;
 
 namespace Content.Server._Wega.Duel.Systems;
 
@@ -48,15 +50,44 @@ public sealed class DuelArenaSystem : EntitySystem
     [Dependency] private DuelReadySystem _readySystem = default!;
     [Dependency] private ArenaLoserMinionSystem _minionSystem = default!;
     [Dependency] private DuelArenaRestoreSystem _restoreSystem = default!;
-    [Dependency] private ArenaLoadoutSystem _loadoutSystem = default!;
     [Dependency] private ArenaStormSystem _stormSystem = default!;
+    [Dependency] private IRobustRandom _random = default!;
+
+    // Восемь соседних тайлов вокруг спавн-маркера (радиус 1). Крейт кладём на случайный из них,
+    // но не на сам маркер, чтобы боец не заспавнился внутри ящика.
+    private static readonly Vector2[] ArsenalCrateOffsets =
+    {
+        new(1, 0), new(-1, 0), new(0, 1), new(0, -1),
+        new(1, 1), new(1, -1), new(-1, 1), new(-1, -1),
+    };
+
+    /// <summary>
+    /// Спавнит текущий арсенал-крейт (<see cref="DuelArenaComponent.ArsenalCrate"/>) у каждого
+    /// спавн-маркера арены — на случайном соседнем тайле. Крейт помечен markIssuedItems, поэтому
+    /// очистка арены снесёт его после боя.
+    /// </summary>
+    private void SpawnArsenalCrates(EntityUid arenaUid, DuelArenaComponent comp)
+    {
+        if (comp.ArsenalCrate is not { } crateProto)
+            return;
+
+        var arenaGrid = Transform(arenaUid).GridUid;
+        var query = EntityQueryEnumerator<DuelArenaSpawnComponent, TransformComponent>();
+        while (query.MoveNext(out _, out _, out var xform))
+        {
+            if (xform.GridUid != arenaGrid)
+                continue;
+
+            var coords = xform.Coordinates.Offset(_random.Pick(ArsenalCrateOffsets));
+            Spawn(crateProto, coords);
+        }
+    }
 
     public override void Initialize()
     {
         base.Initialize();
         SubscribeLocalEvent<DuelArenaComponent, ComponentInit>(OnInit);
         SubscribeLocalEvent<DuelArenaComponent, SignalReceivedEvent>(OnSignalReceived);
-        SubscribeLocalEvent<DuelArenaComponent, RotationRoundStartEvent>(OnRotationRoundStart);
         SubscribeLocalEvent<MobStateChangedEvent>(OnMobStateChanged);
     }
 
@@ -72,24 +103,14 @@ public sealed class DuelArenaSystem : EntitySystem
         var query = EntityQueryEnumerator<DuelArenaComponent>();
         while (query.MoveNext(out var uid, out var comp))
         {
-            // Отложенное восстановление стен: запланировано в ConcludeDuel/ResetDuel, выполняем
+            // Отложенное восстановление арены: запланировано в ConcludeDuel/ResetDuel, выполняем
             // здесь — на тике ПОСЛЕ завершения боя, вне стека события смерти (MobStateChanged).
-            // Удаление/спавн стен прямо из обработчика смертельного удара могло конфликтовать
+            // Удаление/спавн сущностей прямо из обработчика смертельного удара могло конфликтовать
             // с обработкой урона и срывать восстановление.
-            if (comp.PendingWallRestore)
+            if (comp.PendingRestore)
             {
-                comp.PendingWallRestore = false;
-                _restoreSystem.RestoreWalls(uid, comp);
-                _restoreSystem.RestoreGrilles(uid, comp);
-                _restoreSystem.RestoreLights(uid, comp);
-            }
-
-            // Отложенное вооружение раунда ротации: бойцы перенесены на эту арену на прошлом тике,
-            // теперь грид/состояние осели — ArmDuel корректно увидит их и объявит «дуэль начата».
-            if (comp.PendingRotationArm)
-            {
-                comp.PendingRotationArm = false;
-                ArmDuel(uid, comp);
+                comp.PendingRestore = false;
+                _restoreSystem.RestoreArena(uid, comp);
             }
 
             // Истёк grace-период после боя — шлём на шлюзы баз сигнал закрытия.
@@ -246,7 +267,7 @@ public sealed class DuelArenaSystem : EntitySystem
         if (comp.IsActive)
             return;
 
-        comp.PendingWallRestore = false;
+        comp.PendingRestore = false;
 
         var duelists = GetAliveInRange(uid, comp);
         if (duelists.Count < 2)
@@ -264,13 +285,10 @@ public sealed class DuelArenaSystem : EntitySystem
             comp.Duelists.Add(d);
         comp.IsActive = true;
 
-        // Пока стены ещё целы (бой только начинается) — мержим их планировку в снимок,
-        // чтобы после дуэли восстановить разрушенное. Мерж на каждом старте: новые тайлы
-        // добавляются, старые не перезаписываются — снимок самовосстанавливается, даже
-        // если какой-то из проходов вышел неполным.
-        _restoreSystem.SnapshotWalls(uid, comp);
-        _restoreSystem.SnapshotGrilles(uid, comp);
-        _restoreSystem.SnapshotLights(uid, comp);
+        // Пока арена ещё цела (бой только начинается) — снимаем её эталон (пол + конструкции +
+        // свободные предметы + декали), чтобы после дуэли восстановить всё разрушенное. Реально
+        // снимок берётся ровно один раз — при первом старте на нетронутой арене (см. SnapshotArena).
+        _restoreSystem.SnapshotArena(uid, comp);
 
         // Отменяем grace-период предыдущей дуэли — иначе Update отправит сигнал закрытия
         // шлюзов уже во время нового боя.
@@ -294,8 +312,8 @@ public sealed class DuelArenaSystem : EntitySystem
         _chatManager.DispatchServerAnnouncement(
             Loc.GetString("duel-arena-started", ("fighters", names)), Color.Gold);
 
-        // Выдаём выбранные наборы снаряжения каждому дуэлянту.
-        _loadoutSystem.EquipDuelists(comp.Duelists);
+        // Спавним арсенал-крейты текущего тира у спавн-маркеров арены.
+        SpawnArsenalCrates(uid, comp);
 
         // Усиление для проигравшего 3 раза подряд: миньон-помощник.
         DuelRotationComponent? ctrl = null;
@@ -303,26 +321,18 @@ public sealed class DuelArenaSystem : EntitySystem
             && TryComp(ctrlUid, out ctrl);
         IDuelScoreStore store = inRotation ? ctrl! : comp;
 
-        Log.Info($"[duel-arena-loserminion] ArmDuel: {comp.Duelists.Count} duelists, store={(inRotation ? "rotation" : "arena")}, losing streaks count={store.LosingStreaks.Count}");
-
         foreach (var duelist in comp.Duelists)
         {
             var user = GetUser(duelist);
             if (user == null)
-            {
-                Log.Info($"[duel-arena-loserminion] duelist {ToPrettyString(duelist)} has no user/mind");
                 continue;
-            }
 
             var streak = store.LosingStreaks.GetValueOrDefault(user.Value);
-            Log.Info($"[duel-arena-loserminion] duelist {SafeName(duelist)} user={user.Value} streak={streak}");
-
             if (streak < 3)
                 continue;
 
             var coords = Transform(duelist).Coordinates;
-            var minion = _minionSystem.SpawnMinion(duelist, coords);
-            Log.Info($"[duel-arena-loserminion] spawned minion {ToPrettyString(minion)} for {SafeName(duelist)}");
+            _minionSystem.SpawnMinion(duelist, coords, comp.Duelists);
             _chatManager.DispatchServerAnnouncement(
                 Loc.GetString("duel-arena-loser-minion-spawned", ("name", SafeName(duelist))),
                 Color.Pink);
@@ -330,18 +340,6 @@ public sealed class DuelArenaSystem : EntitySystem
 
         // Звук старта дуэли играет штатный DuelStartSoundEmitter на карте
         // (EmitGlobalSoundOnSignal по сигналу DuelFight) — здесь дублировать не нужно.
-    }
-
-    /// <summary>
-    /// Режим ротации: контроллер перенёс бойцов на эту арену и просит вооружить раунд.
-    /// Вооружение НЕ выполняется сразу: перенос и полное исцеление проигравшего происходят
-    /// синхронно в ConcludeDuel, когда грид/состояние ещё не «осели». Ставим флаг и вооружаем
-    /// на следующем тике в Update, когда GetAliveInRange уже корректно увидит прибывших бойцов
-    /// и объявит старт.
-    /// </summary>
-    private void OnRotationRoundStart(EntityUid uid, DuelArenaComponent comp, RotationRoundStartEvent args)
-    {
-        comp.PendingRotationArm = true;
     }
 
     private void OnSignalReceived(EntityUid uid, DuelArenaComponent comp, ref SignalReceivedEvent args)
@@ -387,9 +385,9 @@ public sealed class DuelArenaSystem : EntitySystem
         // Шлюзы закроем через ReturnGrace секунд — чтобы бойцы успели вернуться в свои базы.
         comp.GateCloseAt = _timing.CurTime + TimeSpan.FromSeconds(comp.ReturnGrace);
 
-        // Стены чиним на следующем тике (см. Update) — вне стека текущего события,
-        // чтобы арена была целой к следующему раунду.
-        comp.PendingWallRestore = true;
+        // Арену восстанавливаем на следующем тике (см. Update) — вне стека текущего события,
+        // чтобы она была целой к следующему раунду.
+        comp.PendingRestore = true;
     }
 
     /// <summary>
@@ -552,7 +550,10 @@ public sealed class DuelArenaSystem : EntitySystem
         // Состав боя фиксируем до очистки списка — нужен для перехода на следующую арену.
         var roundDuelists = arena.Duelists.ToList();
 
-        EntityUid? winner = aliveDuelists.Count == 1 ? aliveDuelists[0] : null;
+        // При forceDraw (таймаут / внезапная смерть) исход всегда ничья, даже если формально остался
+        // один «активный» боец: второй мог отойти за пределы грида арены. Иначе таймаут присуждал бы
+        // победу вопреки параметру forceDraw и комментарию StartSuddenDeath («ничья»).
+        EntityUid? winner = !forceDraw && aliveDuelists.Count == 1 ? aliveDuelists[0] : null;
 
         // Запоминаем актуальные имена всех бойцов этого боя по их NetUserId — чтобы общий счёт
         // ниже отображался с именами, даже если кто-то из них не участвует в следующих раундах.
@@ -597,15 +598,11 @@ public sealed class DuelArenaSystem : EntitySystem
                 if (loserUser != null)
                 {
                     store.LosingStreaks[loserUser.Value] = store.LosingStreaks.GetValueOrDefault(loserUser.Value) + 1;
-                    Log.Info($"[duel-arena-loserminion] ConcludeDuel loser {SafeName(loser)} streak={store.LosingStreaks[loserUser.Value]}");
                 }
             }
 
             if (winnerUser != null)
-            {
                 store.LosingStreaks[winnerUser.Value] = 0;
-                Log.Info($"[duel-arena-loserminion] ConcludeDuel winner {SafeName(winner.Value)} streak reset to 0");
-            }
 
             msg = Loc.GetString("duel-arena-concluded-winner",
                 ("winner", winnerName),
@@ -652,6 +649,10 @@ public sealed class DuelArenaSystem : EntitySystem
         if (scoreboard != null)
             msg += "\n" + Loc.GetString("duel-arena-scoreboard", ("scores", scoreboard));
 
+        // Удаляем миньонов проигравших этого боя независимо от позиции: победитель мог увести дрона
+        // с грида арены, и радиусная CleanupArea его бы не достала.
+        _minionSystem.RemoveMinionsForOwners(roundDuelists);
+
         // Убираем снаряжение и объявляем результат одним сообщением.
         _cleanup.CleanupArea(arenaUid, arena.CleanupRange);
         _chatManager.DispatchServerAnnouncement(msg, Color.Gold);
@@ -662,11 +663,11 @@ public sealed class DuelArenaSystem : EntitySystem
                 if (Exists(d))
                     _audio.PlayPvs(arena.EndSound, d);
 
-        // Восстанавливаем разрушенные за бой стены на следующем тике (см. Update): сразу по
-        // завершении, но вне стека события смерти — удаление/спавн стен из обработчика
-        // смертельного удара могло срывать восстановление. RestoreWalls сам отодвигает
-        // бойцов с тайлов под стенами, так что никого не зажмёт.
-        arena.PendingWallRestore = true;
+        // Восстанавливаем разрушенную за бой арену на следующем тике (см. Update): сразу по
+        // завершении, но вне стека события смерти — удаление/спавн сущностей из обработчика
+        // смертельного удара могло срывать восстановление. RestoreArena сам отодвигает
+        // бойцов с тайлов под конструкциями, так что никого не зажмёт.
+        arena.PendingRestore = true;
 
         // Сигнал закрытия шлюзов шлём не сразу, а через ReturnGrace секунд: дуэлянты
         // возвращаются в базы по открытым шлюзам, и только потом те закрываются (см. Update).

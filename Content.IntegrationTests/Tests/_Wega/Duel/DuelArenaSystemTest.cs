@@ -309,8 +309,8 @@ public sealed class DuelArenaSystemTest : GameTest
             Assert.That(entManager.GetComponent<TransformComponent>(wall).Anchored, Is.True, "Тестовая стена должна быть заякорена");
 
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
-            restoreSystem.SnapshotWalls(tracker, arena);
-            Assert.That(arena.WallSnapshot.ContainsKey(wallTile), Is.True, "Стена должна попасть в снимок");
+            restoreSystem.SnapshotArena(tracker, arena);
+            Assert.That(arena.StructureSnapshot.ContainsKey(wallTile), Is.True, "Стена должна попасть в снимок");
 
             // Убираем стену, имитируя разрушение.
             entManager.DeleteEntity(wall);
@@ -322,8 +322,8 @@ public sealed class DuelArenaSystemTest : GameTest
         await server.WaitAssertion(() =>
         {
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
-            arena.PendingWallRestore = true;
-            restoreSystem.RestoreWalls(tracker, arena);
+            arena.PendingRestore = true;
+            restoreSystem.RestoreArena(tracker, arena);
 
             var grid = (testMap.Grid.Owner, testMap.Grid.Comp);
             var anchored = new List<EntityUid>();
@@ -534,7 +534,7 @@ public sealed class DuelArenaSystemTest : GameTest
     }
 
     [Test]
-    public async Task ArmDuelResetsPendingWallRestoreTest()
+    public async Task ArmDuelResetsPendingRestoreTest()
     {
         var pair = Pair;
         var server = pair.Server;
@@ -563,7 +563,7 @@ public sealed class DuelArenaSystemTest : GameTest
         await server.WaitAssertion(() =>
         {
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
-            arena.PendingWallRestore = true;
+            arena.PendingRestore = true;
 
             // ArmDuel должен сбросить флаг отложенного восстановления сразу при старте.
             var startEv = new SignalReceivedEvent("Open");
@@ -576,7 +576,7 @@ public sealed class DuelArenaSystemTest : GameTest
         {
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной");
-            Assert.That(arena.PendingWallRestore, Is.False, "ArmDuel должен сбросить PendingWallRestore");
+            Assert.That(arena.PendingRestore, Is.False, "ArmDuel должен сбросить PendingRestore");
         });
     }
 }

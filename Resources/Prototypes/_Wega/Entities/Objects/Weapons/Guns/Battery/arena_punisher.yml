@@ -39,7 +39,8 @@
     clumsyProof: true
     soundGunshot:
       path: /Audio/Weapons/Guns/Gunshots/laser.ogg
-    soundEmpty: null
+    soundEmpty: # «клик» во время 5-секундной перезарядки — фидбек, что оружие заряжается
+      path: /Audio/Weapons/Guns/Empty/empty_beep.ogg
   - type: BatteryAmmoProvider
     proto: ArenaBrandBolt
     fireCost: 50 # 100 заряда / 50 = ровно 2 заряда
@@ -116,7 +117,7 @@
   - type: Sprite
     drawdepth: Effects
     noRot: true
-    offset: "0, 0.4"
+    offset: "0, 1.1" # выше головы бойца, чтобы не перекрывать лицо
     sprite: _Wega/Effects/brand.rsi
     layers:
     - state: icon

@@ -42,7 +42,6 @@
   - type: WorldTargetAction
     event: !type:ProjectileSpellEvent
       prototype: ProjectileIcicle
-      speed: 25
   - type: SpeakOnAction
     sentence: action-speech-spell-icicle-shot
   - type: Magic

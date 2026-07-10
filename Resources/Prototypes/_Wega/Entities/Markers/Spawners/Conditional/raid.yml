@@ -22,8 +22,9 @@
     layers:
       - state: pink
   - type: RaidController
-    # Путь к карте-локации рейда. ОБЯЗАТЕЛЬНО заменить на свою карту.
-    raidMap: /Maps/_Wega/Raid/raid_location.yml
+    # Путь к карте-локации рейда. Дефолт — готовая арена (чтобы прототип грузился); при маппинге
+    # ОБЯЗАТЕЛЬНО заменить на свою карту рейда.
+    raidMap: /Maps/_Wega/Arena/arena_duel_31.yml
     raidDuration: 900
     # Предупреждения «на выход» за N секунд до конца.
     warningTimes:

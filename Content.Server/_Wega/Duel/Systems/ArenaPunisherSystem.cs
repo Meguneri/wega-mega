@@ -3,6 +3,7 @@ using Content.Shared._Wega.Duel;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Mobs.Components;
+using Content.Shared.Mobs.Systems;
 using Content.Shared.Popups;
 using Content.Shared.Projectiles;
 using Content.Shared.Throwing;
@@ -16,13 +17,14 @@ namespace Content.Server._Wega.Duel.Systems;
 /// «Каратель»: снаряд ставит клеймо на бойца, второй выстрел по заклеймённому детонирует его —
 /// доп. урон и отбрасывание. Клеймо гаснет само по таймеру. Пока висит — над целью красный прицел.
 /// </summary>
-public sealed class ArenaPunisherSystem : EntitySystem
+public sealed partial class ArenaPunisherSystem : EntitySystem
 {
-    [Dependency] private readonly IGameTiming _timing = default!;
-    [Dependency] private readonly DamageableSystem _damageable = default!;
-    [Dependency] private readonly SharedPopupSystem _popup = default!;
-    [Dependency] private readonly ThrowingSystem _throwing = default!;
-    [Dependency] private readonly SharedTransformSystem _transform = default!;
+    [Dependency] private IGameTiming _timing = default!;
+    [Dependency] private DamageableSystem _damageable = default!;
+    [Dependency] private SharedPopupSystem _popup = default!;
+    [Dependency] private ThrowingSystem _throwing = default!;
+    [Dependency] private SharedTransformSystem _transform = default!;
+    [Dependency] private MobStateSystem _mobState = default!;
 
     private static readonly EntProtoId BrandEffect = "ArenaBrandEffect";
 
@@ -36,8 +38,8 @@ public sealed class ArenaPunisherSystem : EntitySystem
     {
         var target = args.Target;
 
-        // Клеймим только живых бойцов.
-        if (!HasComp<MobStateComponent>(target))
+        // Клеймим только живых бойцов — трупы не клеймим и не детонируем.
+        if (!HasComp<MobStateComponent>(target) || _mobState.IsDead(target))
             return;
 
         var shooter = args.Shooter;
