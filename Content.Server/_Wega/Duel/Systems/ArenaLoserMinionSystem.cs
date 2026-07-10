@@ -59,27 +59,38 @@ public sealed class ArenaLoserMinionSystem : EntitySystem
 
             // Следуем за владельцем, если отстали.
             var offset = ownerPos - minionPos;
-            if (offset.Length() > minion.FollowRadius)
+            var dist = offset.Length();
+            if (dist > minion.FollowRadius)
             {
-                var dir = offset.Normalized();
+                var dir = dist > 0 ? offset.Normalized() : Vector2.UnitX;
                 _physics.SetLinearVelocity(uid, dir * minion.MoveSpeed, body: phys);
+                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} following owner {ToPrettyString(minion.MinionOwner)} dist={dist:0.00}");
             }
             else
             {
                 _physics.SetLinearVelocity(uid, Vector2.Zero, body: phys);
             }
 
-            // Если владелец ранен — лечим.
-            if (TryComp<DamageableComponent>(minion.MinionOwner, out var damageable) &&
+            // Лечим только если рядом с владельцем.
+            if (dist <= minion.FollowRadius + 0.5f &&
+                TryComp<DamageableComponent>(minion.MinionOwner, out var damageable) &&
                 _damageable.GetTotalDamage((minion.MinionOwner, damageable)) > 0)
             {
+                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} healing owner {ToPrettyString(minion.MinionOwner)}");
                 HealOwner(uid, minion);
                 continue;
             }
 
             // Иначе ищем цель и стреляем.
             if (TryFindTarget(minion, ownerPos, out var target))
+            {
+                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} shooting target {ToPrettyString(target)}");
                 ShootAt(uid, minion, target);
+            }
+            else
+            {
+                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} no target found");
+            }
         }
     }
 

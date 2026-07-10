@@ -56,20 +56,20 @@
     thresholds:
     - trigger:
         !type:DamageTrigger
-        damage: 30
+        damage: 120
       behaviors:
       - !type:DoActsBehavior
         acts: ["Destruction"]
   - type: ArenaLoserMinion
-    actionCooldown: 2
+    actionCooldown: 2.5
     followRadius: 2
     attackRadius: 12
     healThreshold: 0.5
-    healAmount: 10
+    healAmount: 6
     healDamageType: Brute
     projectileProto: BulletArenaMinion
     projectileSpeed: 15
-    moveSpeed: 5
+    moveSpeed: 6.5
   - type: TimedDespawn
     lifetime: 300
   - type: Tag
