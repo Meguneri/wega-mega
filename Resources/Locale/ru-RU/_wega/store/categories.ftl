@@ -10,6 +10,7 @@ store-category-ert-engineering = Инженерные инструменты
 store-category-ert-materials = Ресурсы
 store-category-ert-flatpack = Упаковки
 store-category-ert-medicine = Медицина
+
 # Void
 store-category-void-survival = Выживание
 store-category-void-food = Еда
@@ -35,3 +36,5 @@ store-category-spellbook-arena-ice = ❄ Ледяная магия
 store-category-spellbook-arena-dark = Тёмная магия
 store-category-spellbook-arena-air = 🌬 Магия воздуха
 store-category-spellbook-arena-lust = Магия похоти
+# Revolution
+store-category-support = общая поддержка
