@@ -315,7 +315,12 @@ public sealed partial class DuelArenaRestoreSystem : EntitySystem
                 {
                     var ent = Spawn(exp.Proto, coords);
                     _transform.SetLocalRotation(ent, exp.Rotation);
-                    if (_transform.AnchorEntity(ent))
+
+                    // Конструкции (стены/окна/решётки/мебель) спавнятся УЖЕ заякоренными (anchored: true в
+                    // прототипе). Повторный AnchorEntity добавил бы ту же сущность в ячейку снапгрида второй
+                    // раз → debug-ассерт AddToSnapGridCell (в release — дубликат в сетке). Поэтому якорим
+                    // только то, что заспавнилось не заякоренным.
+                    if (Transform(ent).Anchored || _transform.AnchorEntity(ent))
                     {
                         RestoreBulb(ent); // no-op, если это не светильник
                         respawned++;

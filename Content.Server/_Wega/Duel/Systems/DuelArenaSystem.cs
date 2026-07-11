@@ -67,6 +67,11 @@ public sealed class DuelArenaSystem : EntitySystem
     /// Спавнит текущий арсенал-крейт (<see cref="DuelArenaComponent.ArsenalCrate"/>) у каждого
     /// спавн-маркера арены — на случайном соседнем тайле. Крейт помечен markIssuedItems, поэтому
     /// очистка арены снесёт его после боя.
+    ///
+    /// TODO(arena-arsenal-crates): ВРЕМЕННО НЕ ВЫЗЫВАЕТСЯ (единственный вызов в ArmDuel закомментирован) —
+    /// система работает некорректно: ящики спавнятся по нажатию кнопок (из ArmDuel), а не по концу дуэли /
+    /// при подготовке раунда. Метод оставлен как есть для доработки тайминга; выдаваемая им снаряга
+    /// удаляется корректно, чинить надо именно МОМЕНТ спавна. После переработки — вернуть вызов в ArmDuel.
     /// </summary>
     private void SpawnArsenalCrates(EntityUid arenaUid, DuelArenaComponent comp)
     {
@@ -314,8 +319,13 @@ public sealed class DuelArenaSystem : EntitySystem
         _chatManager.DispatchServerAnnouncement(
             Loc.GetString("duel-arena-started", ("fighters", names)), Color.Gold);
 
-        // Спавним арсенал-крейты текущего тира у спавн-маркеров арены.
-        SpawnArsenalCrates(uid, comp);
+        // TODO(arena-arsenal-crates): система спавна арсенал-крейтов ОТКЛЮЧЕНА — работает некорректно.
+        // Сейчас SpawnArsenalCrates дёргается отсюда, из ArmDuel (т.е. по нажатию кнопки старта/готовности),
+        // из-за чего ящики появляются «после нажатия кнопок», а не в нужный момент раунда (по концу дуэли /
+        // при подготовке следующего раунда). Возможный побочный эффект — из-за этого ломается общая логика
+        // раунда. Снаряжение, которое ящики выдают, при этом удаляется корректно. Переработать тайминг
+        // (перенести спавн в нужную фазу) и снова включить вызов.
+        // SpawnArsenalCrates(uid, comp);
 
         // Усиление для проигравшего 3 раза подряд: миньон-помощник.
         DuelRotationComponent? ctrl = null;
@@ -386,6 +396,12 @@ public sealed class DuelArenaSystem : EntitySystem
 
         // Шлюзы закроем через ReturnGrace секунд — чтобы бойцы успели вернуться в свои базы.
         comp.GateCloseAt = _timing.CurTime + TimeSpan.FromSeconds(comp.ReturnGrace);
+
+        // Убираем выданное снаряжение — как и в ConcludeDuel. Без этого раунд, завершившийся сбросом
+        // (уход бойцов с арены → Scan, ручная кнопка Toggle, таймаут), НЕ чистил гир: восстановление шло
+        // по PendingRestore, а очистка вызывалась только в ConcludeDuel — надетое/выданное переживало.
+        // На этом тике бойцы ещё на гриде арены (ротация не переносила их), поэтому надетое попадёт в зону.
+        _cleanup.CleanupArea(uid, comp.CleanupRange);
 
         // Арену восстанавливаем на следующем тике (см. Update) — вне стека текущего события,
         // чтобы она была целой к следующему раунду.

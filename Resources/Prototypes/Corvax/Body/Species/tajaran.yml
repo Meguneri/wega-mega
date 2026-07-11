@@ -304,20 +304,12 @@
   components:  
   - type: SolutionManager  
     solutions:
-    - SolutionStomach      
-    - SolutionTajaranFood  
+    - SolutionStomach
 
-- type: entity  
-  parent: SolutionFood
-  id: SolutionTajaranFood  
-  categories: [ HideSpawnMenu ]  
-  components:  
-  - type: Solution  
-    solution:  
-      maxVol: 5  
-      reagents:  
-      - ReagentId: UncookedAnimalProteins  
-        Quantity: 5
+# SolutionTajaranFood удалён: пре-заполненный «food»-солюшн (id: food) на желудке таджаранина падал
+# при map-init органа — solution-сущность, лежащая в контейнере органа, роняла сервер debug-ассертом
+# «Entity is in a container after having been detached to null-space». Его не читала ни одна система,
+# так что желудок теперь как у всех видов: только SolutionStomach (id: stomach).
 
 - type: entity
   parent: [ OrganBaseLiver, OrganSpriteHumanInternal, OrganTajaranInternal, OrganTajaranMetabolizer ]

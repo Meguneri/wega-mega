@@ -145,6 +145,13 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         if (!Exists(ev.EditedEntity))
             return;
 
+        // ИСКЛЮЧЕНИЕ: арсенал-ящик арены (SurplusBundle с markIssuedItems), даже поставленный из спавн-меню,
+        // exempt'ить НЕЛЬЗЯ. Его содержимое легитимно помечено ArenaIssued (FillStorage), и очистка обязана
+        // его убирать. Иначе выданный из такого ящика гир, надетый бойцом, переживал бы раунд и уезжал с ним
+        // на следующую арену ротации. Exempt — только для «личных» предметов из меню, не для арсенала арены.
+        if (TryComp<SurplusBundleComponent>(ev.EditedEntity, out var bundle) && bundle.MarkIssuedItems)
+            return;
+
         MarkExemptRecursive(ev.EditedEntity);
     }
 
@@ -443,17 +450,23 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         var originGrid = originXform.GridUid;
 
         // 1. Снаряжение из ящика + гильзы (все помечены ArenaIssuedItemComponent).
+        int diagTotal = 0, diagRange = 0, diagExempt = 0, diagDeleted = 0;
         var issuedQuery = EntityQueryEnumerator<ArenaIssuedItemComponent>();
         while (issuedQuery.MoveNext(out var itemUid, out _))
         {
+            diagTotal++;
             if (!InRange(itemUid, origin, originGrid, range))
                 continue;
+            diagRange++;
 
             // Исключённое из очистки (достали из спавн-меню, помечено ArenaCleanupExempt) не трогаем —
             // как и во всех проходах ниже. Иначе реальное оружие из RandomSpawner (потомок exempt-обёртки),
             // помеченное ArenaIssued в OnGunStartup, удалялось бы в конце раунда.
             if (HasComp<ArenaCleanupExemptComponent>(itemUid))
+            {
+                diagExempt++;
                 continue;
+            }
 
             // Подстраховка: живое существо (боец) никогда не считается выданным снаряжением и не
             // удаляется. Если метка как-то на него попала (например, со старого бага коробки) —
@@ -501,8 +514,12 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             // контейнера каскадно удалит тело соперника вместе с коробкой.
             EjectMobsBeforeDelete(itemUid);
 
+            diagDeleted++;
             QueueDel(itemUid);
         }
+
+        Log.Info($"[duel-arena-cleanup] origin={ToPrettyString(originEntity)} grid={originGrid} " +
+            $"ArenaIssued: всего={diagTotal}, в зоне={diagRange}, исключено(exempt)={diagExempt}, удалено={diagDeleted}");
 
         // 2. Лужи на полу (кровь, химия и т.п.).
         var puddleQuery = EntityQueryEnumerator<PuddleComponent>();
@@ -674,9 +691,24 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             if (targetXform.GridUid == originGrid)
                 return true;
 
-            // Надетые/зажатые предметы лежат в контейнерах инвентаря — у них GridUid == null,
-            // поэтому прямая проверка грида их пропускает (перчатки/очки/импланты переживали
-            // очистку). Резолвим грид по мировой позиции — она проходит через держателя.
+            // Надетое/зажатое/вложенное снаряжение лежит в контейнерах инвентаря: у самой сущности
+            // GridUid == null, а её мировая позиция/MapID у вложенной сущности НЕ всегда разрешаются в
+            // грид держателя (из-за этого надетое снаряжение переживало очистку). Надёжно — подняться по
+            // цепочке трансформ-родителей до бойца и проверить ЕГО грид: если любой предок стоит на гриде
+            // арены, предмет считается на арене. Ограничитель в 32 шага — страховка от циклов.
+            var probe = targetXform;
+            for (var i = 0; i < 32; i++)
+            {
+                if (probe.GridUid == originGrid)
+                    return true;
+
+                var parent = probe.ParentUid;
+                if (!parent.IsValid())
+                    break;
+                probe = Transform(parent);
+            }
+
+            // Запасной путь — по мировой позиции (предметы прямо на гриде без разрешённого GridUid).
             var wornPos = _transform.GetMapCoordinates(targetXform);
             return _mapManager.TryFindGridAt(wornPos, out var gridUid, out _) && gridUid == originGrid;
         }
