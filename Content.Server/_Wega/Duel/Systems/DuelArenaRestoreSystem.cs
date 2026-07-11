@@ -366,15 +366,30 @@ public sealed partial class DuelArenaRestoreSystem : EntitySystem
 
     private void RestoreProps(EntityUid grid, DuelArenaComponent comp)
     {
-        // Удаляем ВСЕ помеченные предметы-декор в зоне арены — включая подобранные бойцами в инвентарь
-        // (их GridUid == null, поэтому грид резолвим по мировой позиции держателя) — и раскладываем набор
-        // заново по снимку. Так количество и позиции точно совпадают с эталоном, а унесённый за бой
-        // предмет не порождает дубль. Собираем список до удаления: Del во время обхода query нельзя.
-        var toDelete = new List<EntityUid>();
-        var query = EntityQueryEnumerator<ArenaMapPropComponent, TransformComponent>();
-        while (query.MoveNext(out var uid, out _, out _))
+        // Сбрасываем весь слой свободных предметов арены и раскладываем эталон заново. Собираем в множество
+        // (Del во время обхода query нельзя), из двух источников:
+        var toDelete = new HashSet<EntityUid>();
+
+        // 1) Помеченные предметы-декор ГДЕ УГОДНО в зоне арены — включая подобранные бойцами в инвентарь
+        //    (их GridUid == null, поэтому грид резолвим по мировой позиции держателя): так унесённый за бой
+        //    предмет не порождает дубль после переспавна.
+        var markedQuery = EntityQueryEnumerator<ArenaMapPropComponent, TransformComponent>();
+        while (markedQuery.MoveNext(out var uid, out _, out _))
         {
             if (OnArenaGrid(uid, grid))
+                toDelete.Add(uid);
+        }
+
+        // 2) Любой свободный восстанавливаемый предмет, лежащий ПРЯМО на полу арены: сдвинутый за бой декор и,
+        //    главное, боевой «мусор» от разрушенного реквизита (битая посуда, осколки, обломки), который в
+        //    снимок не попал и метки не имеет — иначе он остаётся лежать/торчать в восстановленных стенах.
+        //    Снаряжение (ArenaIssued) и предметы из спавн-меню (exempt) IsRestorableProp сюда не пускает.
+        var looseQuery = EntityQueryEnumerator<ItemComponent, TransformComponent>();
+        while (looseQuery.MoveNext(out var uid, out _, out var xform))
+        {
+            if (xform.GridUid != grid || xform.Anchored || xform.ParentUid != grid)
+                continue;
+            if (IsRestorableProp(uid))
                 toDelete.Add(uid);
         }
 
