@@ -75,6 +75,83 @@
     - SkavGearGunner
     - SkavGearSprayer
 
+# ── Специализированные дикие ──────────────────────────────────────────────────
+# Эти типы рандомизируются на спавнерах (см. RaidSkavSpawner). Каждый вариант имеет свою роль:
+#   • Rusher — быстрый и хрупкий, ближний бой;
+#   • Sniper — медленный, точный, дальний бой;
+#   • Heavy — тяжёлая броня, много здоровья, ПП/дробовик.
+
+- type: entity
+  parent: MobSkavBase
+  id: MobSkavRusher
+  name: дикий-забегун
+  description: Быстрый падальщик. Слаб бронёй, но успеет вонзить нож, пока ты целишься.
+  components:
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 3.0
+    baseSprintSpeed: 4.2
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      60: PreCritical
+      80: Critical
+      120: Dead
+  - type: RaidSkavAccuracy
+    accuracyDegrees: 70
+    shootDelay: 0.5
+    rotationSpeedDegrees: 120
+  - type: Loadout
+    prototypes:
+    - SkavGearKnifer
+    - SkavGearSpear
+    - SkavGearMauler
+
+- type: entity
+  parent: MobSkavBase
+  id: MobSkavSniper
+  name: дикий-снайпер
+  description: Медлительный, но меткий. Держит дистанцию и стреляет редко, но больно.
+  components:
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 1.4
+    baseSprintSpeed: 2.0
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      70: PreCritical
+      90: Critical
+      130: Dead
+  - type: RaidSkavAccuracy
+    accuracyDegrees: 8
+    shootDelay: 0.4
+    rotationSpeedDegrees: 50
+  - type: Loadout
+    prototypes:
+    - SkavGearSniper
+
+- type: entity
+  parent: MobSkavBase
+  id: MobSkavHeavy
+  name: дикий-тяжеловес
+  description: Бронированный громила. Медлителен, но выдерживает много урона и держит огнём.
+  components:
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 1.5
+    baseSprintSpeed: 2.2
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      150: PreCritical
+      200: Critical
+      300: Dead
+  - type: RaidSkavAccuracy
+    accuracyDegrees: 25
+    shootDelay: 0.25
+    rotationSpeedDegrees: 80
+  - type: Loadout
+    prototypes:
+    - SkavGearHeavy
+
 # ── База боссов ───────────────────────────────────────────────────────────────
 - type: entity
   abstract: true

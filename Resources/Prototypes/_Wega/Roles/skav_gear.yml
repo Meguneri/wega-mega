@@ -116,6 +116,45 @@
     - MagazinePistolSubMachineGun
     - MagazinePistolSubMachineGun
 
+# ── Специализированные дикие ──────────────────────────────────────────────────
+- type: startingGear
+  id: SkavGearSniper
+  equipment:
+    jumpsuit: ClothingUniformJumpsuitColorGrey
+    outerClothing: ClothingOuterVestHazard
+    head: ClothingHeadHatGreysoft
+    mask: ClothingMaskGas
+    gloves: ClothingHandsGlovesColorBlack
+    shoes: ClothingShoesBootsCombat
+    back: ClothingBackpack
+  inhand:
+    - WeaponRifleAk
+  storage:
+    back:
+    - IngotSilver1
+    # Запасные магазины — лут с трупа + авто-перезарядка.
+    - MagazineRifle
+    - MagazineRifle
+
+- type: startingGear
+  id: SkavGearHeavy
+  equipment:
+    jumpsuit: ClothingUniformJumpsuitPrisoner
+    outerClothing: ClothingOuterArmorBulletproof
+    head: ClothingHeadHelmetBasic
+    mask: ClothingMaskGas
+    gloves: ClothingHandsGlovesCombat
+    shoes: ClothingShoesBootsCombat
+    back: ClothingBackpackDuffel
+  inhand:
+    - WeaponSubMachineGunDrozd
+  storage:
+    back:
+    - IngotGold1
+    # Запасные магазины — лут с трупа + авто-перезарядка.
+    - MagazinePistolSubMachineGun
+    - MagazinePistolSubMachineGun
+
 # ── Боссы: всегда лучше (броня + точный ствол + ценности) ──────────────────────
 - type: startingGear
   id: SkavBossGearRifle

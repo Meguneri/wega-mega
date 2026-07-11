@@ -11,6 +11,7 @@ public sealed class MediaSearchResult
     public string Id = string.Empty;
     public string Title = string.Empty;
     public string Uploader = string.Empty;
+    public string ThumbnailUrl = string.Empty;
     public int DurationSeconds;
 }
 
@@ -99,4 +100,14 @@ public sealed class MediaPlayerStateEvent(string? trackId, string title, float d
     public float Position { get; } = position;
 
     public bool Playing { get; } = playing;
+}
+
+/// <summary>
+/// Server sends a processed thumbnail (PNG) for a single search result to the requesting client.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MediaPlayerThumbnailEvent(string trackId, byte[] pngData) : EntityEventArgs
+{
+    public string TrackId { get; } = trackId;
+    public byte[] PngData { get; } = pngData;
 }

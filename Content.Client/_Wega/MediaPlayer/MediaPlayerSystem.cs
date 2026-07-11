@@ -1,8 +1,10 @@
+using System.IO;
 using System.Text;
 using Content.Client._Wega.MediaPlayer.UI;
 using Content.Shared.CCVar;
 using Content.Shared.MediaPlayer;
 using Robust.Client.Audio;
+using Robust.Client.Graphics;
 using Robust.Client.ResourceManagement;
 using Robust.Shared.Audio;
 using Robust.Shared.Audio.Components;
@@ -21,6 +23,7 @@ public sealed class MediaPlayerSystem : EntitySystem
 {
     [Dependency] private IConfigurationManager _cfg = default!;
     [Dependency] private IResourceManager _res = default!;
+    [Dependency] private IClyde _clyde = default!;
     [Dependency] private AudioSystem _audio = default!;
 
     private ISawmill _sawmill = default!;
@@ -40,6 +43,9 @@ public sealed class MediaPlayerSystem : EntitySystem
 
     // Completed track data by id.
     private readonly Dictionary<string, byte[]> _tracks = new();
+
+    // Cached thumbnail textures by track id.
+    private readonly Dictionary<string, Texture> _thumbnails = new();
 
     // Active playback.
     private EntityUid? _streamEntity;
@@ -91,6 +97,11 @@ public sealed class MediaPlayerSystem : EntitySystem
     public event Action<MediaPlayerSearchResponseEvent>? SearchReceived;
     public event Action<MediaPlayerStatusEvent>? StatusReceived;
 
+    /// <summary>
+    /// Fired when a thumbnail finishes downloading. Argument is the track id.
+    /// </summary>
+    public event Action<string>? ThumbnailLoaded;
+
     public override void Initialize()
     {
         base.Initialize();
@@ -109,6 +120,7 @@ public sealed class MediaPlayerSystem : EntitySystem
             SearchReceived?.Invoke(ev);
         });
         SubscribeNetworkEvent<MediaPlayerStatusEvent>(ev => StatusReceived?.Invoke(ev));
+        SubscribeNetworkEvent<MediaPlayerThumbnailEvent>(OnThumbnail);
         SubscribeNetworkEvent<OpenMediaPlayerEvent>(_ => OpenWindow());
     }
 
@@ -155,6 +167,33 @@ public sealed class MediaPlayerSystem : EntitySystem
     public void RequestPause()
     {
         RaiseNetworkEvent(new MediaPlayerPauseRequestEvent());
+    }
+
+    /// <summary>
+    /// Returns a cached thumbnail texture for the given track id, or null if it hasn't loaded yet.
+    /// </summary>
+    public Texture? GetThumbnail(string id)
+    {
+        _thumbnails.TryGetValue(id, out var texture);
+        return texture;
+    }
+
+    internal void OnThumbnail(MediaPlayerThumbnailEvent ev)
+    {
+        if (_thumbnails.ContainsKey(ev.TrackId))
+            return;
+
+        try
+        {
+            using var stream = new MemoryStream(ev.PngData);
+            var texture = _clyde.LoadTextureFromPNGStream(stream);
+            _thumbnails[ev.TrackId] = texture;
+            ThumbnailLoaded?.Invoke(ev.TrackId);
+        }
+        catch (Exception e)
+        {
+            _sawmill.Debug($"Failed to load thumbnail texture: {e.Message}");
+        }
     }
 
     /// <summary>

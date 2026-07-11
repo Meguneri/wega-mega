@@ -299,7 +299,7 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
     /// </summary>
     public bool IsOnActiveArenaGrid(EntityUid target)
     {
-        var pos = Transform(target).MapPosition;
+        var pos = _transform.GetMapCoordinates(target);
         var gridUnderTarget = _mapManager.TryFindGridAt(pos, out var gridUid, out _) ? gridUid : (EntityUid?)null;
 
         var query = EntityQueryEnumerator<DuelArenaComponent>();
@@ -317,7 +317,7 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             // Космос/без грида: запасной охват по дистанции до маяка.
             if (arenaGrid == null)
             {
-                var arenaPos = Transform(arenaUid).MapPosition;
+                var arenaPos = _transform.GetMapCoordinates(arenaUid);
                 if (arenaPos.MapId == pos.MapId && (arenaPos.Position - pos.Position).Length() <= arena.ScanRange)
                     return true;
             }
@@ -407,7 +407,7 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
     private bool IsInActiveDuelRange(EntityUid target)
     {
         var targetXform = Transform(target);
-        var pos = targetXform.MapPosition;
+        var pos = _transform.GetMapCoordinates(targetXform);
         var targetGrid = targetXform.GridUid;
         var query = EntityQueryEnumerator<DuelArenaComponent>();
         while (query.MoveNext(out var arenaUid, out var arena))
@@ -423,7 +423,7 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
     private bool IsDuelActiveNearby(EntityUid originEntity, float range)
     {
         var originXform = Transform(originEntity);
-        var origin = originXform.MapPosition;
+        var origin = _transform.GetMapCoordinates(originXform);
         var originGrid = originXform.GridUid;
         var query = EntityQueryEnumerator<DuelArenaComponent>();
         while (query.MoveNext(out var arenaUid, out var arena))
@@ -439,7 +439,7 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
     public void CleanupArea(EntityUid originEntity, float range)
     {
         var originXform = Transform(originEntity);
-        var origin = originXform.MapPosition;
+        var origin = _transform.GetMapCoordinates(originXform);
         var originGrid = originXform.GridUid;
 
         // 1. Снаряжение из ящика + гильзы (все помечены ArenaIssuedItemComponent).
@@ -677,12 +677,12 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
             // Надетые/зажатые предметы лежат в контейнерах инвентаря — у них GridUid == null,
             // поэтому прямая проверка грида их пропускает (перчатки/очки/импланты переживали
             // очистку). Резолвим грид по мировой позиции — она проходит через держателя.
-            var wornPos = targetXform.MapPosition;
+            var wornPos = _transform.GetMapCoordinates(targetXform);
             return _mapManager.TryFindGridAt(wornPos, out var gridUid, out _) && gridUid == originGrid;
         }
 
         // Космос/без грида: запасной охват по дистанции.
-        var pos = targetXform.MapPosition;
+        var pos = _transform.GetMapCoordinates(targetXform);
         if (pos.MapId != origin.MapId)
             return false;
         return (pos.Position - origin.Position).Length() <= range;

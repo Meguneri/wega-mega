@@ -41,7 +41,7 @@ public sealed class BossArenaSystem : EntitySystem
     [Dependency] private MovementSpeedModifierSystem _movementSpeed = default!;
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private SharedMindSystem _mind = default!;
-    [Dependency] private DuelArenaSystem _duel = default!;
+    [Dependency] private DuelArenaScoreSystem _score = default!;
 
     public override void Initialize()
     {
@@ -379,7 +379,7 @@ public sealed class BossArenaSystem : EntitySystem
                 comp.Streak = 1;
             }
 
-            var scoreboard = _duel.BuildScoreboard(comp);
+            var scoreboard = _score.BuildScoreboard(comp);
             if (scoreboard != null)
                 _chatManager.DispatchServerAnnouncement(
                     Loc.GetString("boss-arena-scoreboard", ("scores", scoreboard)), Color.Gold);
@@ -419,7 +419,7 @@ public sealed class BossArenaSystem : EntitySystem
     private HashSet<EntityUid> GetAliveParticipants(EntityUid uid, BossArenaComponent comp)
     {
         var trackerXform = Transform(uid);
-        var trackerPos = trackerXform.MapPosition;
+        var trackerPos = _transform.GetMapCoordinates(trackerXform);
         var trackerGrid = trackerXform.GridUid;
 
         var alive = new HashSet<EntityUid>();
@@ -435,7 +435,7 @@ public sealed class BossArenaSystem : EntitySystem
             }
             else
             {
-                var mobPos = mobXform.MapPosition;
+                var mobPos = _transform.GetMapCoordinates(mobXform);
                 if (mobPos.MapId != trackerPos.MapId)
                     continue;
                 if ((mobPos.Position - trackerPos.Position).Length() > comp.ScanRange)

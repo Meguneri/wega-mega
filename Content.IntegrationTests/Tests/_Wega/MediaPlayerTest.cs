@@ -1,4 +1,5 @@
 using Content.IntegrationTests.Fixtures;
+using Content.Shared.MediaPlayer;
 using Robust.Shared.ContentPack;
 using Robust.Shared.Utility;
 using ClientMediaPlayer = Content.Client.MediaPlayer.MediaPlayerSystem;
@@ -115,6 +116,32 @@ public sealed class MediaPlayerTest : GameTest
         {
             var sys = client.System<ClientMediaPlayer>();
             Assert.That(sys.IsPlaying, Is.False, "Client kept playing after server stop");
+        });
+    }
+
+    /// <summary>
+    /// Server sends a PNG thumbnail to the client; the client must load it and keep it cached.
+    /// </summary>
+    [Test]
+    public async Task ThumbnailEventLoadsTextureOnClient()
+    {
+        var client = Pair.Client;
+        await client.WaitIdleAsync();
+
+        // 1x1 black PNG.
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+
+        await client.WaitPost(() =>
+        {
+            var sys = client.System<ClientMediaPlayer>();
+            sys.OnThumbnail(new MediaPlayerThumbnailEvent("thumb-test", png));
+        });
+
+        await client.WaitAssertion(() =>
+        {
+            var sys = client.System<ClientMediaPlayer>();
+            Assert.That(sys.GetThumbnail("thumb-test"), Is.Not.Null, "Client did not load the thumbnail texture");
         });
     }
 }

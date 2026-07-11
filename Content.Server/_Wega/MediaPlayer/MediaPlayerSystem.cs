@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -11,12 +12,16 @@ using Content.Shared.Interaction.Events;
 using Content.Shared.MediaPlayer;
 using Robust.Server.GameObjects;
 using Robust.Server.Player;
+using Robust.Shared.Asynchronous;
 using Robust.Shared.Configuration;
 using Robust.Shared.ContentPack;
 using Robust.Shared.Enums;
 using Robust.Shared.Network;
 using Robust.Shared.Player;
 using Robust.Shared.Timing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace Content.Server.MediaPlayer;
 
@@ -33,11 +38,16 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IPlayerManager _playerManager = default!;
     [Dependency] private IResourceManager _resource = default!;
+    [Dependency] private ITaskManager _taskManager = default!;
 
     private ISawmill _sawmill = default!;
 
     private const int ChunkSize = 128 * 1024;
     private const string CacheFolder = "media_player";
+    private const int ThumbnailWidth = 120;
+
+    private readonly Dictionary<string, byte[]> _thumbnailCache = new();
+    private readonly object _thumbnailCacheLock = new();
 
     private CurrentTrack? _current;
     private bool _busy;
@@ -257,6 +267,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
             var results = ParseSearchResults(stdout);
             RaiseNetworkEvent(new MediaPlayerSearchResponseEvent(results, null), session);
+            BeginThumbnailDownloads(results, session);
         }
         catch (Exception e)
         {
@@ -445,6 +456,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
                 Id = id,
                 Title = entry.TryGetProperty("title", out var title) ? title.GetString() ?? id : id,
                 Uploader = entry.TryGetProperty("uploader", out var up) ? up.GetString() ?? "" : "",
+                ThumbnailUrl = GetThumbnailUrl(entry),
                 DurationSeconds = entry.TryGetProperty("duration", out var dur) && dur.ValueKind == JsonValueKind.Number
                     ? (int)dur.GetDouble()
                     : 0,
@@ -452,6 +464,119 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         }
 
         return results;
+    }
+
+    private static string GetThumbnailUrl(JsonElement entry)
+    {
+        // Prefer the largest thumbnail from the dedicated array.
+        if (entry.TryGetProperty("thumbnails", out var thumbs) && thumbs.ValueKind == JsonValueKind.Array)
+        {
+            string? bestUrl = null;
+            var bestArea = 0;
+
+            foreach (var thumb in thumbs.EnumerateArray())
+            {
+                if (!thumb.TryGetProperty("url", out var urlProp))
+                    continue;
+
+                var url = urlProp.GetString();
+                if (string.IsNullOrEmpty(url))
+                    continue;
+
+                var width = thumb.TryGetProperty("width", out var w) && w.ValueKind == JsonValueKind.Number
+                    ? w.GetInt32()
+                    : 0;
+                var height = thumb.TryGetProperty("height", out var h) && h.ValueKind == JsonValueKind.Number
+                    ? h.GetInt32()
+                    : 0;
+                var area = width * height;
+
+                if (area <= bestArea)
+                    continue;
+
+                bestArea = area;
+                bestUrl = url;
+            }
+
+            if (!string.IsNullOrEmpty(bestUrl))
+                return bestUrl;
+        }
+
+        // Fallback to the single default thumbnail.
+        if (entry.TryGetProperty("thumbnail", out var thumbUrl) && thumbUrl.ValueKind == JsonValueKind.String)
+            return thumbUrl.GetString() ?? string.Empty;
+
+        return string.Empty;
+    }
+
+    private void BeginThumbnailDownloads(List<MediaSearchResult> results, ICommonSession session)
+    {
+        foreach (var result in results)
+        {
+            if (string.IsNullOrEmpty(result.ThumbnailUrl))
+                continue;
+
+            var id = result.Id;
+            var url = result.ThumbnailUrl;
+            _ = Task.Run(async () => await DownloadThumbnailAsync(id, url, session));
+        }
+    }
+
+    private async Task DownloadThumbnailAsync(string trackId, string url, ICommonSession session)
+    {
+        try
+        {
+            byte[]? pngData;
+            lock (_thumbnailCacheLock)
+            {
+                _thumbnailCache.TryGetValue(url, out pngData);
+            }
+
+            if (pngData == null)
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("wega-mega-mediaplayer");
+
+                var data = await http.GetByteArrayAsync(url);
+                if (data.Length == 0)
+                    return;
+
+                using var image = Image.Load<Rgba32>(data);
+                if (image.Width <= 0 || image.Height <= 0)
+                    return;
+
+                if (image.Width > ThumbnailWidth)
+                {
+                    var height = Math.Max(1, (int)(image.Height * (ThumbnailWidth / (float)image.Width)));
+                    image.Mutate(x => x.Resize(ThumbnailWidth, height));
+                }
+
+                using var ms = new MemoryStream();
+                image.SaveAsPng(ms);
+                pngData = ms.ToArray();
+
+                lock (_thumbnailCacheLock)
+                {
+                    _thumbnailCache[url] = pngData;
+                }
+            }
+
+            _taskManager.RunOnMainThread(() =>
+            {
+                try
+                {
+                    RaiseNetworkEvent(new MediaPlayerThumbnailEvent(trackId, pngData), session);
+                }
+                catch (Exception e)
+                {
+                    _sawmill.Debug($"Failed to send thumbnail to {session.Name}: {e.Message}");
+                }
+            });
+        }
+        catch (Exception e)
+        {
+            _sawmill.Debug($"Failed to download thumbnail for {trackId}: {e.Message}");
+        }
     }
 
     private static string ResolveYtdlpPath(string configuredPath)

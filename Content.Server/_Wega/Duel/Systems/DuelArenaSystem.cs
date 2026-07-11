@@ -51,6 +51,8 @@ public sealed class DuelArenaSystem : EntitySystem
     [Dependency] private ArenaLoserMinionSystem _minionSystem = default!;
     [Dependency] private DuelArenaRestoreSystem _restoreSystem = default!;
     [Dependency] private ArenaStormSystem _stormSystem = default!;
+    [Dependency] private SharedTransformSystem _transform = default!;
+    [Dependency] private DuelArenaScoreSystem _score = default!;
     [Dependency] private IRobustRandom _random = default!;
 
     // Восемь соседних тайлов вокруг спавн-маркера (радиус 1). Крейт кладём на случайный из них,
@@ -222,7 +224,7 @@ public sealed class DuelArenaSystem : EntitySystem
     private HashSet<EntityUid> GetAliveInRange(EntityUid uid, DuelArenaComponent comp)
     {
         var trackerXform = Transform(uid);
-        var trackerPos = trackerXform.MapPosition;
+        var trackerPos = _transform.GetMapCoordinates(trackerXform);
         var trackerGrid = trackerXform.GridUid;
 
         var alive = new HashSet<EntityUid>();
@@ -240,7 +242,7 @@ public sealed class DuelArenaSystem : EntitySystem
             else
             {
                 // Космос/без грида: запасной охват по дистанции.
-                var mobPos = mobXform.MapPosition;
+                var mobPos = _transform.GetMapCoordinates(mobXform);
                 if (mobPos.MapId != trackerPos.MapId)
                     continue;
                 if ((mobPos.Position - trackerPos.Position).Length() > comp.ScanRange)
@@ -323,7 +325,7 @@ public sealed class DuelArenaSystem : EntitySystem
 
         foreach (var duelist in comp.Duelists)
         {
-            var user = GetUser(duelist);
+            var user = _score.GetUser(duelist);
             if (user == null)
                 continue;
 
@@ -412,81 +414,10 @@ public sealed class DuelArenaSystem : EntitySystem
     /// </summary>
     public int ResetAllScores()
     {
-        var cleared = 0;
-        var query = EntityQueryEnumerator<DuelArenaComponent>();
-        while (query.MoveNext(out _, out var comp))
-        {
-            if (comp.Scores.Count == 0)
-                continue;
-
-            comp.Scores.Clear();
-            comp.ScoreNames.Clear();
-            comp.LosingStreaks.Clear();
-            comp.StreakUser = null;
-            comp.Streak = 0;
-            cleared++;
-        }
-
-        // Счёт босс-арен тоже обнуляем.
-        var bossQuery = EntityQueryEnumerator<BossArenaComponent>();
-        while (bossQuery.MoveNext(out _, out var boss))
-        {
-            if (boss.Scores.Count == 0)
-                continue;
-
-            boss.Scores.Clear();
-            boss.ScoreNames.Clear();
-            boss.LosingStreaks.Clear();
-            boss.StreakUser = null;
-            boss.Streak = 0;
-            cleared++;
-        }
-
-        // Общий счёт контроллеров ротации — тоже обнуляем.
-        var rotQuery = EntityQueryEnumerator<DuelRotationComponent>();
-        while (rotQuery.MoveNext(out _, out var rot))
-        {
-            if (rot.Scores.Count == 0)
-                continue;
-
-            rot.Scores.Clear();
-            rot.ScoreNames.Clear();
-            rot.LosingStreaks.Clear();
-            rot.StreakUser = null;
-            rot.Streak = 0;
-            cleared++;
-        }
-
+        var cleared = _score.ResetAllScores();
         if (cleared > 0)
             _chatManager.DispatchServerAnnouncement(Loc.GetString("duel-arena-scores-reset"), Color.Gold);
-
         return cleared;
-    }
-
-    /// <summary>
-    /// Возвращает идентификатор игрока, управляющего телом, или null для тел без разума (NPC).
-    /// </summary>
-    public NetUserId? GetUser(EntityUid body)
-    {
-        return _mind.TryGetMind(body, out _, out var mind) ? mind.UserId : null;
-    }
-
-    /// <summary>
-    /// Собирает строку общего счёта: «Имя — N», сортировка по убыванию побед, затем по имени.
-    /// Источник — одиночная арена или контроллер ротации (см. <see cref="IDuelScoreStore"/>).
-    /// Возвращает null, если счёта ещё нет.
-    /// </summary>
-    public string? BuildScoreboard(IDuelScoreStore store)
-    {
-        if (store.Scores.Count == 0)
-            return null;
-
-        var entries = store.Scores
-            .OrderByDescending(kv => kv.Value)
-            .ThenBy(kv => store.ScoreNames.GetValueOrDefault(kv.Key, "?"))
-            .Select(kv => $"{store.ScoreNames.GetValueOrDefault(kv.Key, "?")} — {kv.Value}");
-
-        return string.Join(", ", entries);
     }
 
     private void OnMobStateChanged(MobStateChangedEvent args)
@@ -555,15 +486,6 @@ public sealed class DuelArenaSystem : EntitySystem
         // победу вопреки параметру forceDraw и комментарию StartSuddenDeath («ничья»).
         EntityUid? winner = !forceDraw && aliveDuelists.Count == 1 ? aliveDuelists[0] : null;
 
-        // Запоминаем актуальные имена всех бойцов этого боя по их NetUserId — чтобы общий счёт
-        // ниже отображался с именами, даже если кто-то из них не участвует в следующих раундах.
-        foreach (var duelist in arena.Duelists)
-        {
-            var user = GetUser(duelist);
-            if (user != null)
-                store.ScoreNames[user.Value] = SafeName(duelist);
-        }
-
         string msg;
         if (winner != null)
         {
@@ -575,35 +497,6 @@ public sealed class DuelArenaSystem : EntitySystem
                 ? string.Join(", ", losers.Select(SafeName))
                 : Loc.GetString("duel-arena-losers-fallback");
 
-            // Счёт ведём по игроку (NetUserId), а не по телу: иначе после клона/респавна
-            // боец получает новый EntityUid и счёт каждый раунд начинается заново.
-            var winnerUser = GetUser(winner.Value);
-
-            if (winnerUser != null)
-                store.Scores[winnerUser.Value] = store.Scores.GetValueOrDefault(winnerUser.Value) + 1;
-
-            // Серия побед подряд: растёт, если победил тот же игрок, иначе начинается заново.
-            if (winnerUser != null && store.StreakUser == winnerUser)
-                store.Streak++;
-            else
-            {
-                store.StreakUser = winnerUser;
-                store.Streak = 1;
-            }
-
-            // Проигравшие получают +1 к серии поражений; победитель сбрасывает свою.
-            foreach (var loser in losers)
-            {
-                var loserUser = GetUser(loser);
-                if (loserUser != null)
-                {
-                    store.LosingStreaks[loserUser.Value] = store.LosingStreaks.GetValueOrDefault(loserUser.Value) + 1;
-                }
-            }
-
-            if (winnerUser != null)
-                store.LosingStreaks[winnerUser.Value] = 0;
-
             msg = Loc.GetString("duel-arena-concluded-winner",
                 ("winner", winnerName),
                 ("streak", store.Streak),
@@ -612,21 +505,15 @@ public sealed class DuelArenaSystem : EntitySystem
         }
         else
         {
-            // Никого живого — ничья: серия побед прерывается, все участники получают +1 поражение.
-            store.StreakUser = null;
-            store.Streak = 0;
-
-            foreach (var duelist in arena.Duelists)
-            {
-                var user = GetUser(duelist);
-                if (user != null)
-                    store.LosingStreaks[user.Value] = store.LosingStreaks.GetValueOrDefault(user.Value) + 1;
-            }
-
             var andSep = $" {Loc.GetString("duel-arena-connector-and")} ";
             var names = string.Join(andSep, arena.Duelists.Select(SafeName));
             msg = Loc.GetString("duel-arena-concluded-draw", ("fighters", names));
         }
+
+        // Начисляем победы/поражения и серии в отдельной системе; получаем строку табло.
+        var scoreboard = _score.RecordMatchResult(store, arena.Duelists, winner);
+        if (scoreboard != null)
+            msg += "\n" + Loc.GetString("duel-arena-scoreboard", ("scores", scoreboard));
 
         // Полное исцеление обоих участников по завершении дуэли (поднимает из крита, чинит весь урон).
         foreach (var duelist in arena.Duelists)
@@ -643,11 +530,6 @@ public sealed class DuelArenaSystem : EntitySystem
         }
 
         arena.Duelists.Clear();
-
-        // Дописываем общий накопленный счёт (одиночная арена или контроллер ротации).
-        var scoreboard = BuildScoreboard(store);
-        if (scoreboard != null)
-            msg += "\n" + Loc.GetString("duel-arena-scoreboard", ("scores", scoreboard));
 
         // Удаляем миньонов проигравших этого боя независимо от позиции: победитель мог увести дрона
         // с грида арены, и радиусная CleanupArea его бы не достала.

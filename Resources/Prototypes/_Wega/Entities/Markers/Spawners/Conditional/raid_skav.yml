@@ -1,12 +1,13 @@
 # Спавнеры скавов рейда. Ставятся при маппинге по локации. На базе RandomSpawner: при загрузке
-# карты спавнят моба и самоудаляются. Обычная точка с шансом даёт стрелка вместо рукопашника.
+# карты спавнят моба и самоудаляются. Тип дикого рандомизируется: обычный/забегун чаще,
+# снайпер/тяжеловес — реже.
 
 - type: entity
   id: RaidSkavSpawner
   parent: MarkerBase
   name: Raid Skav Spawner
   suffix: Raid
-  description: Спавнит Дикого со случайным снаряжением при загрузке карты рейда и самоудаляется.
+  description: Спавнит Дикого со случайным типом и снаряжением при загрузке карты рейда и самоудаляется.
   components:
   - type: Sprite
     layers:
@@ -14,6 +15,11 @@
   - type: RandomSpawner
     prototypes:
     - MobSkav
+    - MobSkavRusher
+    rarePrototypes:
+    - MobSkavSniper
+    - MobSkavHeavy
+    rareChance: 0.25
     chance: 1
     deleteSpawnerAfterSpawn: true
 

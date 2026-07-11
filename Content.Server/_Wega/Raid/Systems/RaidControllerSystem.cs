@@ -25,6 +25,7 @@ using Robust.Shared.Maths;
 using Robust.Shared.Player;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
+using Robust.Shared.Utility;
 
 namespace Content.Server._Wega.Raid.Systems;
 
@@ -60,6 +61,7 @@ public sealed partial class RaidControllerSystem : EntitySystem
         SubscribeLocalEvent<RaidControllerComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<RaidEntryComponent, ActivateInWorldEvent>(OnEntryActivate);
         SubscribeLocalEvent<MobStateChangedEvent>(OnMobStateChanged);
+        SubscribeLocalEvent<PlayerDetachedEvent>(OnPlayerDetached);
     }
 
     /// <summary>Погибший в рейде выбывает из списка живых рейдеров (его снаряжение остаётся лутом).</summary>
@@ -79,6 +81,43 @@ public sealed partial class RaidControllerSystem : EntitySystem
             CheckRaidEnd(ctrlUid, comp);
             break;
         }
+    }
+
+    /// <summary>
+    /// Игрок отключился во время активного рейда — экстренно эвакуируем его персонажа на хаб без
+    /// награды. Стартовое снаряжение остаётся при нём; весь найденный в рейде лут (метка
+    /// <see cref="RaidLootComponent"/>) остаётся на локации. Мёртвых не трогаем — их уже обработала
+    /// <see cref="OnMobStateChanged"/>.
+    /// </summary>
+    private void OnPlayerDetached(PlayerDetachedEvent args)
+    {
+        if (!TryGetController(out var ctrlUid, out var ctrl) || !ctrl.Active)
+            return;
+
+        var raider = args.Entity;
+        if (!ctrl.Raiders.Contains(raider))
+            return;
+
+        // Мёртвый рейдер уже выбыл через MobStateChanged; просто чистим список на всякий случай.
+        if (_mobState.IsDead(raider))
+        {
+            ctrl.Raiders.Remove(raider);
+            CheckRaidEnd(ctrlUid, ctrl);
+            return;
+        }
+
+        // Экстренная эвакуация: лут рейда остаётся на локации, снаряжение при персонаже.
+        var loot = new List<EntityUid>();
+        CollectLoot(raider, loot);
+        foreach (var item in loot)
+            QueueDel(item);
+
+        ReturnToHub(ctrlUid, raider);
+        ctrl.Raiders.Remove(raider);
+
+        var name = Comp<MetaDataComponent>(raider).EntityName;
+        _chat.DispatchServerAnnouncement(Loc.GetString("raid-disconnected", ("name", name)), Color.Orange);
+        CheckRaidEnd(ctrlUid, ctrl);
     }
 
     private void OnMapInit(EntityUid uid, RaidControllerComponent comp, MapInitEvent args)
@@ -102,7 +141,8 @@ public sealed partial class RaidControllerSystem : EntitySystem
 
         // Карта рейда ещё не создана в редакторе — не дёргаем загрузчик (иначе движок логирует
         // ERROR «File not found»). До маппинга это нормально: предупреждаем и тихо выходим.
-        if (!_resource.ContentFileExists(comp.RaidMap))
+        // Пустой путь встречается при ручном создании компонента в тестах (карта уже создана вручную).
+        if (string.IsNullOrEmpty(comp.RaidMap.CanonPath) || !_resource.ContentFileExists(comp.RaidMap))
         {
             comp.Loaded = true;
             Log.Warning($"[raid] карта рейда {comp.RaidMap} не найдена — рейд не активирован (создай карту в редакторе)");

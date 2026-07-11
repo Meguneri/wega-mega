@@ -73,6 +73,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         _mediaPlayer.SearchReceived += OnSearchReceived;
         _mediaPlayer.StatusReceived += OnStatusReceived;
         _mediaPlayer.StateUpdated += UpdateNowPlaying;
+        _mediaPlayer.ThumbnailLoaded += OnThumbnailLoaded;
 
         ApplyStyle();
         UpdateNowPlaying();
@@ -183,6 +184,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         _mediaPlayer.SearchReceived -= OnSearchReceived;
         _mediaPlayer.StatusReceived -= OnStatusReceived;
         _mediaPlayer.StateUpdated -= UpdateNowPlaying;
+        _mediaPlayer.ThumbnailLoaded -= OnThumbnailLoaded;
     }
 
     protected override void FrameUpdate(FrameEventArgs args)
@@ -287,13 +289,33 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     private void PopulateResultsList()
     {
         ResultsList.Clear();
-        foreach (var result in _results)
+        for (var i = 0; i < _results.Count; i++)
         {
+            var result = _results[i];
             var title = MediaPlayerSystem.SanitizeTitle(result.Title);
             var uploader = result.Uploader.Length > 0
                 ? $" — {MediaPlayerSystem.SanitizeTitle(result.Uploader)}"
                 : "";
-            ResultsList.AddItem($"[{FormatTime(result.DurationSeconds)}] {title}{uploader}");
+            var text = $"[{FormatTime(result.DurationSeconds)}] {title}{uploader}";
+            var icon = _mediaPlayer.GetThumbnail(result.Id);
+            ResultsList.AddItem(text, icon);
+        }
+    }
+
+    private void OnThumbnailLoaded(string id)
+    {
+        var icon = _mediaPlayer.GetThumbnail(id);
+        if (icon == null)
+            return;
+
+        for (var i = 0; i < _results.Count; i++)
+        {
+            if (_results[i].Id != id)
+                continue;
+
+            var item = ResultsList[i];
+            if (item != null)
+                item.Icon = icon;
         }
     }
 

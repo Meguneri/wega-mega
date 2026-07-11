@@ -25,7 +25,7 @@
     # Путь к карте-локации рейда. Дефолт — готовая арена (чтобы прототип грузился); при маппинге
     # ОБЯЗАТЕЛЬНО заменить на свою карту рейда.
     raidMap: /Maps/_Wega/Arena/arena_duel_31.yml
-    raidDuration: 900
+    raidDuration: 600
     # Предупреждения «на выход» за N секунд до конца.
     warningTimes:
     - 300
@@ -45,7 +45,7 @@
   components:
   - type: RaidController
     raidMap: /Maps/_Wega/Arena/arena_duel_31.yml
-    raidDuration: 180
+    raidDuration: 600
     autoSetup: true
     warningTimes:
     - 60
@@ -151,16 +151,24 @@
     spawnIndex: 3
 
 # ── Точка экстракта (на карту рейда) ──────────────────────────────────────────
+# Видимый маяк: зелёное свечение + пульсирующий glow. Зайти в радиус — мгновенная эвакуация.
 - type: entity
   id: RaidExtractionPoint
   parent: MarkerBase
   name: Raid Extraction Point
   suffix: Raid
-  description: Зона экстракта. Стой в радиусе несколько секунд — эвакуация на хаб со снаряжением.
+  description: Зона экстракта. Зайди в радиус — мгновенная эвакуация на хаб со снаряжением.
   components:
   - type: Sprite
+    sprite: _Wega/Structures/Lighting/light_marker.rsi
     layers:
-      - state: blue
+      - state: base
+      - state: glow
+        shader: unshaded
+  - type: PointLight
+    radius: 3.5
+    energy: 2.0
+    color: "#00FF00"
   - type: RaidExtractionPoint
     range: 1.5
-    extractTime: 10
+    extractTime: 0.1

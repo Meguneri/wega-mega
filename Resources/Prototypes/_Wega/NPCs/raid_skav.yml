@@ -43,7 +43,7 @@
         - !type:HTNPrimitiveTask
           operator: !type:PickAccessibleComponentOperator
             rangeKey: IdleRange
-            targetKey: Target
+            targetKey: TargetCoordinates
             component: Item
         - !type:HTNPrimitiveTask
           operator: !type:MoveToOperator

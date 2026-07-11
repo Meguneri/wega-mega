@@ -5,6 +5,7 @@ raid-extracting = Эвакуация: { $percent }%
 raid-time-warning-min = До конца рейда { $min } мин — выдвигайтесь к эвакуации!
 raid-time-warning-sec = До конца рейда { $sec } сек — БЕГОМ на эвакуацию!
 raid-died = { $name } погиб в рейде. Снаряжение осталось на локации.
+raid-disconnected = { $name } отключился во время рейда и был экстренно эвакуирован. Найденный лут остался на локации.
 
 # Формат уникального имени босса-скава (RandomMetadata).
 name-format-skav-boss = Вожак «{ $part0 } { $part1 }»
