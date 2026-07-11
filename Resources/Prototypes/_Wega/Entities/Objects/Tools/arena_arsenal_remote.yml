@@ -6,7 +6,7 @@
   parent: BaseItem
   components:
   - type: Sprite
-    sprite: _Wega/Objects/Devices/convoy_remote.rsi
+    sprite: _Wega/Objects/Devices/arena_arsenal_remote.rsi
     state: icon
   - type: Item
     size: Small
