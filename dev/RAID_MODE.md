@@ -145,6 +145,309 @@
 Маппинг (минимум на карте рейда): спавны входа, точки экстракта, один `RaidLootField` и один
 `RaidSkavField`. Контроллер сам заселит локацию на каждом заходе.
 
+## Персистентность между сессиями (TODO)
+
+> Сейчас рейд round-scope: стэш, лут и состояние локации сбрасываются при рестарте/реинициализации.
+> Нужно сохранять прогресс игрока даже между закрытыми сессиями.
+
+Ниже — проверенный план, как это сделать в коде. Конкретные классы/файлы указаны; код пока не пишем.
+
+---
+
+### 1. Архитектура: сервер-авторитарная + облако через backend
+
+Самый надёжный вариант — **backend-сервис + S3-совместимое хранилище** (MinIO / AWS S3 / Yandex Object Storage / Selectel):
+
+- В облако складываются только блобы — не чувствительные операции.
+- `Content.Server` общается с backend по HTTPS/REST, backend отвечает за аутентификацию, валидацию, запись в S3 и кэш.
+- Никаких AWS-ключей в коде клиента или в открытых CVars; credentials — только на сервере.
+- Локальная БД (`Content.Server.Database`) используется как кэш и fallback при недоступности backend/S3.
+
+Если backend не хочется — можно положить блобы прямо в БД (`byte[]`/`jsonb`), но тогда теряется переносимость между серверами и растёт нагрузка на БД.
+
+---
+
+### 2. Схема данных
+
+#### 2.1. Таблица в `Content.Server.Database`
+
+Добавить сущность `RaidStash` (аналогично `Achievement` в `Content.Server.Database/Model.cs`):
+
+```csharp
+[Table("raid_stash"), Index(nameof(PlayerUserId))]
+public class RaidStash
+{
+    [Required, Key, ForeignKey("Player")]
+    public Guid PlayerUserId { get; set; }
+
+    // Кэш последнего снапшота (JSON/YAML) для fallback и офлайн-магазина.
+    [Column(TypeName = "jsonb")] // Postgres
+    public string Payload { get; set; } = "{}";
+
+    public int Version { get; set; } = 1;
+    public DateTime UpdatedAt { get; set; }
+    public string Checksum { get; set; } = string.Empty;
+
+    // Плоское поле для часто читаемой валюты, чтобы не парсить JSON.
+    public string CurrencyBalance { get; set; } = "{}";
+}
+```
+
+Для SQLite в `Content.Server.Database/ModelSqlite.cs` переключить `Payload` на `TEXT` через тот же конвертер, что используется для `AdminLog.Json`.
+
+Затем:
+- добавить `DbSet<RaidStash>` в `ServerDbContext` (`Content.Server.Database/Model.cs:21`);
+- настроить `OnModelCreating` FK `PlayerUserId -> Player.UserId` с `DeleteBehavior.Cascade` (как у `Achievement`);
+- добавить методы в `ServerDbBase.cs` и `IServerDbManager`/`ServerDbManager.cs` (`GetRaidStashAsync`, `SaveRaidStashAsync`);
+- сгенерировать миграции через `Content.Server.Database/add-migration.ps1 AddRaidStash`.
+
+#### 2.2. Снапшот стэша (C# record)
+
+```csharp
+public sealed record RaidStashSnapshot(
+    int Version,
+    Dictionary<ProtoId<CurrencyPrototype>, FixedPoint2> Currency,
+    List<RaidStashItem> Items,
+    RaidStats Stats);
+
+public sealed record RaidStashItem(
+    string YamlBlob,          // сериализованная сущность-контейнер или один предмет
+    DateTime ExtractedAt);
+
+public sealed record RaidStats(
+    int RaidsCompleted,
+    int RaidsFailed,
+    long TotalLootValue);
+```
+
+`Currency` — та же структура, что `StoreComponent.Balance`: `Dictionary<ProtoId<CurrencyPrototype>, FixedPoint2>`.
+
+---
+
+### 3. Сериализация предметов
+
+Robust уже умеет сохранять сущности в YAML: `MapLoaderSystem.SerializeEntitiesRecursive`.
+
+#### 3.1. Сохранение стэша
+
+Создать на хабе невидимый «stash-контейнер» (например, специальный `RaidStashBox` entity), в который складывать всё, что игрок хочет сохранить. Затем:
+
+```csharp
+var (node, _) = _mapLoader.SerializeEntitiesRecursive(
+    new HashSet<EntityUid> { stashBoxUid });
+
+var yaml = node.ToYaml();
+// YamlDocument + YamlStream.Save(...) -> string
+```
+
+`SerializeEntitiesRecursive` рекурсивно сохраняет детей, поэтому внутри контейнера будут работать:
+- `StackComponent.Count`,
+- `BatteryComponent.LastCharge`,
+- `GunComponent` + дети-магазины,
+- `SolutionContainerManagerComponent`,
+- вложенные сумки и их содержимое.
+
+Ограничения:
+- не сохранятся компоненты с `[ComponentRegistration(Unsaved = true)]`;
+- прототипы с `MapSavable = false` отклонятся;
+- runtime-состояние (текущие цели NPC, DoAfter и т.п.) не сохраняется.
+
+#### 3.2. Загрузка стэша
+
+```csharp
+if (_mapLoader.TryLoadEntity(reader, source, out var stashBoxUid))
+{
+    // Переместить загруженный контейнер в null-space или на хаб,
+    // затем отдать игроку через инвентарь/хранилище.
+}
+```
+
+Перед десериализацией валидировать каждый прототип через `_prototype.HasIndex<EntityPrototype>(...)`, чтобы вайп или удаление прототипа не ломали загрузку.
+
+---
+
+### 4. Жизненный цикл: когда грузить и сохранять
+
+#### 4.1. Загрузка при коннекте
+
+Подписаться в `RaidStashSystem` на `UserDbDataManager`:
+
+```csharp
+public override void Initialize()
+{
+    _userDbData.AddOnLoadPlayer(LoadStashAsync);
+    _userDbData.AddOnPlayerDisconnect(SaveStashAsync);
+}
+```
+
+`LoadStashAsync(NetUserId)`:
+1. Попробовать загрузить с backend/S3 по `session.UserId`.
+2. Если backend недоступен — взять `RaidStash` из локальной БД.
+3. Распарсить снапшот, провалидировать прототипы, сохранить в памяти (`Dictionary<NetUserId, RaidStashSnapshot>`).
+
+#### 4.2. Материализация на хабе
+
+Когда игрок спавнится на хабе (или открывает магазин), создать/открыть его stash-контейнер из кэшированного снапшота.
+
+Если снапшот пустой — создать новый пустой контейнер и начальный баланс валюты (если нужно).
+
+#### 4.3. Сохранение при экстракте
+
+В `RaidControllerSystem.ExtractRaider` (`Content.Server/_Wega/Raid/Systems/RaidControllerSystem.cs:343`):
+
+```csharp
+// 1. Посчитать стоимость лута (уже есть).
+// 2. Зачислить валюту в снапшот.
+// 3. Переложить предметы с меткой RaidLoot в stash-контейнер.
+// 4. Сохранить снапшот: сначала в БД, потом отправить на backend/S3.
+// 5. Только после успешного сохранения удалить лут и телепортировать игрока.
+```
+
+Это гарантирует, что при ошибке записи игрок не потеряет лут (атомарность на уровне сервера).
+
+#### 4.4. Сохранение при дисконнекте
+
+В `RaidControllerSystem.OnPlayerDetached` (уже есть обработка дисконнекта):
+- если игрок был в активном рейде — вернуть на хуб без лута (уже реализовано);
+- в любом случае сохранить текущий stash-снапшот.
+
+#### 4.5. Сохранение при конце раунда
+
+Подписаться на `RoundRestartCleanupEvent` (`Content.Shared/GameTicking/RoundRestartCleanupEvent.cs`):
+
+```csharp
+SubscribeLocalEvent<RoundRestartCleanupEvent>(_ => FlushAllStashes());
+```
+
+Сохранить все изменённые снапшоты **до** `EntityManager.FlushEntities()`.
+
+---
+
+### 5. Экономика: от физических ТК к персистентному балансу
+
+Сейчас награда выдаётся физическими телекристаллами (`_stack.SpawnMultipleNextToOrDrop`). Это позволяет дюпать/терять валюту в раунде.
+
+#### 5.1. Персистентный баланс
+
+- Хранить `Currency` в `RaidStashSnapshot`.
+- В `ExtractRaider` вместо спавна ТК увеличивать `Currency["Telecrystal"]`.
+- При спавне игрока на хабе выдать ему физические ТК из баланса **один раз**, чтобы он мог тратить их в магазине.
+- Либо переделать `RaidShopTerminal` так, чтобы он списывал напрямую из `RaidStashSnapshot.Currency`, а не из инвентаря.
+
+#### 5.2. Магазин
+
+`StoreSystem`/`SharedStoreSystem` (`Content.Server/Store/Systems/StoreSystem.cs`) умеет работать с `StoreComponent.Balance`. Два варианта:
+
+1. **Простой**: при открытии терминала синхронизировать `StoreComponent.Balance` со снапшотом, а после покупки — записать обратно.
+2. **Надёжный**: создать отдельный `RaidStoreSystem`, который не использует `StoreComponent.Balance`, а сразу списывает валюту из `RaidStashSnapshot` и спавнит купленный предмет.
+
+Рекомендуется второй вариант — меньше точек рассинхронизации.
+
+---
+
+### 6. Облачное хранилище: конкретная реализация
+
+#### 6.1. Backend-сервис (рекомендуется)
+
+Минимальный REST-сервис (ASP.NET Core / FastAPI / Node):
+
+```
+POST /api/raid-stash/{userId}      -> сохранить блоб (тело: JSON, version, checksum)
+GET  /api/raid-stash/{userId}      -> получить блоб
+DELETE /api/raid-stash/{userId}    -> вайп (админка)
+```
+
+Backend:
+- проверяет подпись запроса (HMAC по серверному секрету);
+- кладёт/читает блоб в S3 по ключу `raid-stash/{userId}.json`;
+- ведёт `ETag`/version для conflict resolution;
+- возвращает 304, если версия не изменилась;
+- пишет последнюю версию в Redis/DB для hot cache.
+
+#### 6.2. Прямой S3 из Content.Server
+
+Если backend лишний:
+
+```csharp
+using Amazon.S3;
+using Amazon.S3.Model;
+
+var client = new AmazonS3Client(accessKey, secretKey, new AmazonS3Config
+{
+    ServiceURL = "https://s3.example.com", // MinIO / Yandex / etc.
+    ForcePathStyle = true
+});
+
+await client.PutObjectAsync(new PutObjectRequest
+{
+    BucketName = "wega-raid",
+    Key = $"stash/{userId}.json",
+    ContentBody = json,
+    ContentType = "application/json"
+});
+```
+
+Нужно добавить `AWSSDK.S3` (или `Minio`) в `Content.Server.csproj`.
+
+Недостаток: секреты придётся держать на игровом сервере; утечка = доступ ко всем стэшам. Backend вариант безопаснее.
+
+#### 6.3. Fallback
+
+В `RaidStashSystem`:
+
+```csharp
+async Task SaveAsync(NetUserId userId)
+{
+    await SaveToLocalDbAsync(userId);          // всегда
+    try { await SaveToBackendAsync(userId); }  // лучший effort
+    catch (Exception e) { _sawmill.Error($"Cloud save failed: {e}"); }
+}
+```
+
+При загрузке:
+1. Попробовать backend (актуальные данные).
+2. Если недоступен — локальная БД.
+3. Если и её нет — пустой стэш.
+
+---
+
+### 7. Безопасность и защита от дюпа
+
+- **Только сервер пишет** — клиент никогда не обращается к backend/S3.
+- **Валидация прототипов** — каждый предмет из снапшота проверяется на `HasIndex<EntityPrototype>`.
+- **Чексумма** — Blake2B/SHA-256 над `Payload`. Хранится в БД и в блобе; при загрузке пересчитывается.
+- **Версионирование** — `Version` инкрементируется при каждом сохранении; конфликты разрешаются на backend (`last-write-wins` или server-side merge).
+- **Атомарный экстракт** — сначала сохраняем стэш, потом удаляем лут и телепортируем игрока.
+- **Rate limiting** — не чаще одного сохранения на игрока в N секунд (кроме дисконнекта/конца раунда).
+- **Бан/вайп** — консольные команды `raidstash_wipe <userId>`, `raidstash_give <userId> <currency> <amount>`.
+
+---
+
+### 8. Порядок внедрения
+
+1. **DB**: `RaidStash` таблица + миграции + `ServerDbManager` методы.
+2. **Снапшот**: record `RaidStashSnapshot` + JSON сериализация.
+3. **StashSystem**: загрузка/сохранение через `UserDbDataManager`, кэш в памяти.
+4. **Сериализация предметов**: `MapLoaderSystem.SerializeEntitiesRecursive`/`TryLoadEntity`, тестовый stash-контейнер.
+5. **Экономика**: персистентный баланс, замена физических ТК на запись в снапшот.
+6. **Магазин**: `RaidStoreSystem` списывает валюту из снапшота.
+7. **Cloud**: backend + S3, fallback на локальную БД.
+8. **Админка**: команды вайпа/выдачи, веб-панель (опционально).
+9. **Тесты**:
+   - интеграционный тест: экстракт -> сохранение -> реконнект -> стэш на месте;
+   - тест на дюп: попытка экстракта при недоступном backend не удаляет лут.
+
+---
+
+### 9. Альтернатива без облака
+
+Если облако отложено — хранить блобы в `RaidStash.Payload` (`jsonb`/`TEXT`). Это работает из коробки, но:
+- не переносится между серверами;
+- требует бэкапов БД;
+- при большом стэше растёт размер БД.
+
+Для первой playable-итерации это приемлемо; cloud layer добавляется позже без изменения схемы снапшота.
+
 ## Дальше по плану (не сделано)
 
 - **Полировка экономики:** выбор «оставить найденное себе vs продать»; таблица курсов/наценок.

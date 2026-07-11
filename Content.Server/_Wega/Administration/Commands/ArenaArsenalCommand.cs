@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using Content.Server._Wega.Duel.Components;
 using Content.Shared.Administration;
 using Robust.Shared.Console;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Localization;
 using Robust.Shared.Prototypes;
+using Robust.Shared.Serialization.Manager.Attributes;
 
 namespace Content.Server.Administration.Commands;
 
@@ -19,6 +21,10 @@ public sealed partial class ArenaArsenalCommand : IConsoleCommand
 {
     [Dependency] private IEntityManager _entityManager = default!;
     [Dependency] private IPrototypeManager _prototype = default!;
+    [Dependency] private IComponentFactory _factory = default!;
+
+    [ValidatePrototypeId<EntityPrototype>]
+    private const string RemoteProto = "ArenaArsenalRemote";
 
     public string Command => "arenaarsenal";
     public string Description => Loc.GetString("cmd-arenaarsenal-desc");
@@ -65,5 +71,25 @@ public sealed partial class ArenaArsenalCommand : IConsoleCommand
             shell.WriteLine(Loc.GetString("cmd-arenaarsenal-off-result", ("count", count)));
         else
             shell.WriteLine(Loc.GetString("cmd-arenaarsenal-set-result", ("crate", arg), ("count", count)));
+    }
+
+    public CompletionResult GetCompletion(IConsoleShell shell, string[] args)
+    {
+        if (args.Length != 1)
+            return CompletionResult.Empty;
+
+        var options = new List<CompletionOption> { new("off", "отключить спавн крейтов") };
+
+        if (_prototype.TryIndex<EntityPrototype>(RemoteProto, out var remoteProto)
+            && remoteProto.TryGetComponent<ArenaArsenalRemoteComponent>(out var remote, _factory))
+        {
+            foreach (var c in remote.Crates)
+            {
+                var name = _prototype.TryIndex<EntityPrototype>(c, out var p) ? p.Name : c.Id;
+                options.Add(new CompletionOption(c.Id, name));
+            }
+        }
+
+        return CompletionResult.FromHintOptions(options, "<прототип-крейта | off>");
     }
 }
