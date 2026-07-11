@@ -1,0 +1,334 @@
+# Arena cyberpunk walls (Wega). Names carry the "(Arena)" suffix via localization.
+# neon_tube, holo_barrier, circuit_panel, data_glass and bio_neon are animated
+# (their RSI states declare per-frame delays; the engine plays them back
+# automatically through IconSmooth, exactly like the existing hierophant wall).
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaNeonTube
+  name: wall-arena-neon-tube
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/neon_tube.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/neon_tube.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: neon_tube
+  - type: PointLight
+    radius: 3.0
+    energy: 1.2
+    color: "#2fe6ff"
+    softness: 1
+    castShadows: false
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaChromePanel
+  name: wall-arena-chrome-panel
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/chrome_panel.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/chrome_panel.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: chrome_panel
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaHoloBarrier
+  name: wall-arena-holo-barrier
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/holo_barrier.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/holo_barrier.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: holo_barrier
+  - type: PointLight
+    radius: 3.0
+    energy: 1.0
+    color: "#2fe6ff"
+    softness: 1
+    castShadows: false
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaCircuitPanel
+  name: wall-arena-circuit-panel
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/circuit_panel.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/circuit_panel.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: circuit_panel
+  - type: PointLight
+    radius: 2.5
+    energy: 0.9
+    color: "#39ff6a"
+    softness: 1
+    castShadows: false
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaSlumGraffiti
+  name: wall-arena-slum-graffiti
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/slum_graffiti.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/slum_graffiti.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: slum_graffiti
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaMegaAd
+  name: wall-arena-mega-ad
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/mega_ad.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/mega_ad.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: mega_ad
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaCableConduit
+  name: wall-arena-cable-conduit
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/cable_conduit.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/cable_conduit.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: cable_conduit
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaDataGlass
+  name: wall-arena-data-glass
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/data_glass.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/data_glass.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: data_glass
+  - type: PointLight
+    radius: 2.5
+    energy: 0.8
+    color: "#2fe6ff"
+    softness: 1
+    castShadows: false
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaRustTank
+  name: wall-arena-rust-tank
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/rust_tank.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/rust_tank.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: rust_tank
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaBioNeon
+  name: wall-arena-bio-neon
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/bio_neon.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/bio_neon.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: bio_neon
+  - type: PointLight
+    radius: 2.5
+    energy: 1.0
+    color: "#8ef03a"
+    softness: 1
+    castShadows: false
