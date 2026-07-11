@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "wega-mega arena cyberpunk pack",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "full"
+    },
+    {
+      "name": "rust_tank0",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank1",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank2",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank3",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank4",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank5",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank6",
+      "directions": 4
+    },
+    {
+      "name": "rust_tank7",
+      "directions": 4
+    }
+  ]
+}

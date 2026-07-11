@@ -1,0 +1,122 @@
+# Arena cyberpunk floor tiles (Wega). Appear in the tile spawn menu.
+# Names carry the "(Arena)" suffix via localization (tiles-arena-*).
+
+- type: tile
+  id: FloorArenaNeonStreet
+  parent: BaseStationTile
+  name: tiles-arena-neon-street
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/neon_street.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaChromeCatwalk
+  parent: BaseStationTile
+  name: tiles-arena-chrome-catwalk
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/chrome_catwalk.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaDataGrate
+  parent: BaseStationTile
+  name: tiles-arena-data-grate
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/data_grate.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaHoloAd
+  parent: BaseStationTile
+  name: tiles-arena-holo-ad
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/holo_ad.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaCorpoMarble
+  parent: BaseStationTile
+  name: tiles-arena-corpo-marble
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/corpo_marble.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaSlumRust
+  parent: BaseStationTile
+  name: tiles-arena-slum-rust
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/slum_rust.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaRetroArcade
+  parent: BaseStationTile
+  name: tiles-arena-retro-arcade
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/retro_arcade.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaDataVent
+  parent: BaseStationTile
+  name: tiles-arena-data-vent
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/data_vent.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaBioNeon
+  parent: BaseStationTile
+  name: tiles-arena-bio-neon
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/bio_neon.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaRiotChevron
+  parent: BaseStationTile
+  name: tiles-arena-riot-chevron
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/riot_chevron.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
