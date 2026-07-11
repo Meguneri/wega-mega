@@ -29,7 +29,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Система босс-арены PvE. Управляет стартом, телепортом участников, спавном босса,
 /// фазами босса, наградой и сбросом арены.
 /// </summary>
-public sealed class BossArenaSystem : EntitySystem
+public sealed partial class BossArenaSystem : EntitySystem
 {
     [Dependency] private DeviceLinkSystem _signalSystem = default!;
     [Dependency] private IChatManager _chatManager = default!;

@@ -25,7 +25,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Если контроллера на карте нет — ничего из этого не происходит, дуэль работает в одиночном
 /// режиме без изменений.
 /// </summary>
-public sealed class DuelRotationSystem : EntitySystem
+public sealed partial class DuelRotationSystem : EntitySystem
 {
     [Dependency] private MapLoaderSystem _mapLoader = default!;
     [Dependency] private SharedTransformSystem _transform = default!;

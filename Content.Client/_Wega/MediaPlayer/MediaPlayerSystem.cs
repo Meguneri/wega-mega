@@ -19,7 +19,7 @@ namespace Content.Client.MediaPlayer;
 /// Client side of the global media player: assembles track chunks sent by the server,
 /// plays them with the player's personal volume, and syncs the playback position.
 /// </summary>
-public sealed class MediaPlayerSystem : EntitySystem
+public sealed partial class MediaPlayerSystem : EntitySystem
 {
     [Dependency] private IConfigurationManager _cfg = default!;
     [Dependency] private IResourceManager _res = default!;

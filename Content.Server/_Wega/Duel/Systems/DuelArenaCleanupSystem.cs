@@ -30,6 +30,7 @@ using Content.Shared.Mobs.Components;
 using Content.Shared.Slippery;
 using Content.Shared.Stacks;
 using Content.Shared.Tag;
+using Content.Shared.Tools.Components;
 using Content.Shared.Damage.Components;
 using Content.Shared.Weapons.Ranged.Components;
 using Robust.Shared.Containers;
@@ -48,7 +49,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Замаппленные вещи карты не трогаются: они загружаются до старта дуэли
 /// и поэтому не получают тег ArenaIssuedItem.
 /// </summary>
-public sealed class DuelArenaCleanupSystem : EntitySystem
+public sealed partial class DuelArenaCleanupSystem : EntitySystem
 {
     [Dependency] private DeviceLinkSystem _link = default!;
     [Dependency] private IChatManager _chat = default!;
@@ -534,9 +535,15 @@ public sealed class DuelArenaCleanupSystem : EntitySystem
         }
 
         // 3. Брёвна, оставшиеся после уничтожения деревьев на арене.
-        var logQuery = EntityQueryEnumerator<LogComponent>();
+        // LogComponent был удалён; брёвна теперь — обычные предметы с ToolRefinable
+        // (id Log / SteelLog), поэтому отбираем их по прототипу.
+        var logQuery = EntityQueryEnumerator<ToolRefinableComponent>();
         while (logQuery.MoveNext(out var logUid, out _))
         {
+            var proto = ProtoId(logUid);
+            if (proto is not ("Log" or "SteelLog"))
+                continue;
+
             if (!InRange(logUid, origin, originGrid, range))
                 continue;
             if (Transform(logUid).Anchored)

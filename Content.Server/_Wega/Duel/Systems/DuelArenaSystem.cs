@@ -33,7 +33,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// (порт <see cref="DuelArenaComponent.ResetPort"/>) отправляется не сразу, а спустя
 /// <see cref="DuelArenaComponent.ReturnGrace"/> секунд — чтобы дуэлянты успели вернуться в базы.
 /// </summary>
-public sealed class DuelArenaSystem : EntitySystem
+public sealed partial class DuelArenaSystem : EntitySystem
 {
     [Dependency] private DeviceLinkSystem _signalSystem = default!;
     [Dependency] private IChatManager _chatManager = default!;

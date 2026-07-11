@@ -13,7 +13,7 @@
 - type: entity
   name: Сатору Годжо
   id: MobGojo
-  parent: [ MobHuman, BaseMobMegafauna ]
+  parent: [ MobHuman ]
   description: Сильнейший. Его глаза скрыты повязкой, а вокруг — нерушимая Бесконечность.
   components:
   - type: RandomHumanoidAppearance

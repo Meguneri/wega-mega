@@ -9,7 +9,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// <summary>
 /// Выбрасывает гильзу при выстреле для оружия с <see cref="CasingEjectOnShotComponent"/>.
 /// </summary>
-public sealed class CasingEjectSystem : EntitySystem
+public sealed partial class CasingEjectSystem : EntitySystem
 {
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private ThrowingSystem _throwing = default!;

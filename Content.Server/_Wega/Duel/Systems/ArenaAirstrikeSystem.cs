@@ -14,7 +14,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// живых дуэлянтов: сначала появляется маркер-прицел, спустя <see cref="ArenaAirstrikeComponent.WarningDuration"/>
 /// секунд — взрыв с эффектами China Lake / PMC.
 /// </summary>
-public sealed class ArenaAirstrikeSystem : EntitySystem
+public sealed partial class ArenaAirstrikeSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IRobustRandom _random = default!;

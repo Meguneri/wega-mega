@@ -11541,7 +11541,6 @@ entities:
     - type: Execution
       canGunExecute: False
       doAfterDuration: 4
-    - type: Sharp
     - type: Utensil
       breakSound: !type:SoundPathSpecifier
         path: /Audio/Items/snap.ogg

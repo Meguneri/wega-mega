@@ -8,11 +8,11 @@ using Content.Shared.Body;
 
 namespace Content.Client._Sunrise.ThermalVision;
 
-public sealed class ThroughWallsVisionOverlay : Overlay
+public sealed partial class ThroughWallsVisionOverlay : Overlay
 {
-    [Dependency] private readonly IEntityManager _entityManager = default!;
-    [Dependency] private readonly IPlayerManager _playerManager = default!;
-    [Dependency] private readonly IPrototypeManager _prototypeManager = default!;
+    [Dependency] private IEntityManager _entityManager = default!;
+    [Dependency] private IPlayerManager _playerManager = default!;
+    [Dependency] private IPrototypeManager _prototypeManager = default!;
     private readonly ContainerSystem _containerSystem;
     private readonly TransformSystem _transform;
     private readonly ShaderInstance _shader;

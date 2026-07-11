@@ -8,7 +8,9 @@
   name: hell blade
   description: A blazing axe of agony, straight from the underworld.
   components:
-  - type: Sharp
+  - type: Tool
+    qualities:
+    - Slicing
   - type: Sprite
     sprite: _Wega/Objects/Weapons/Melee/hell_blade.rsi
     state: icon
@@ -41,7 +43,9 @@
   name: blood blade
   description: The red formation of liquid blood in the shape of a sword is a very mysterious sight.
   components:
-  - type: Sharp
+  - type: Tool
+    qualities:
+    - Slicing
   - type: Sprite
     sprite: _Wega/Objects/Weapons/Melee/blood_blade.rsi
     state: icon

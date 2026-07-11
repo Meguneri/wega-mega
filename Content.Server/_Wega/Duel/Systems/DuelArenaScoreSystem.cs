@@ -12,7 +12,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// <see cref="DuelArenaSystem"/> логикой начисления побед/поражений и серий.
 /// Работает с <see cref="IDuelScoreStore"/> — одиночными аренами и контроллерами ротации.
 /// </summary>
-public sealed class DuelArenaScoreSystem : EntitySystem
+public sealed partial class DuelArenaScoreSystem : EntitySystem
 {
     [Dependency] private SharedMindSystem _mind = default!;
 

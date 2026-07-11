@@ -40,7 +40,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// станится. «Потрошащая» версия по мере сближения нагнетает телеграф (вспышки + тряска + скрежет)
 /// и в упор отрывает случайную конечность с финальной отдачей.
 /// </summary>
-public sealed class ArenaHarpoonSystem : EntitySystem
+public sealed partial class ArenaHarpoonSystem : EntitySystem
 {
     [Dependency] private DamageableSystem _damageable = default!;
     [Dependency] private SharedTransformSystem _transform = default!;

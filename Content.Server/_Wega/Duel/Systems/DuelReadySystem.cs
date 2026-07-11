@@ -18,7 +18,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Когда нажаты все кнопки арены (минимум две), кнопка программно шлёт DuelStart и запускается штатная
 /// цепочка старта (таймер → DuelFight → барьеры/колокол/ArmDuel). Кнопка находит «свою» арену по гриду.
 /// </summary>
-public sealed class DuelReadySystem : EntitySystem
+public sealed partial class DuelReadySystem : EntitySystem
 {
     [Dependency] private DeviceLinkSystem _signalSystem = default!;
     [Dependency] private SharedPopupSystem _popup = default!;

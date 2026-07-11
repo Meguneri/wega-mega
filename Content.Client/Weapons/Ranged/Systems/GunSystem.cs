@@ -431,7 +431,7 @@ public sealed partial class GunSystem : SharedGunSystem
         foreach (var entity in entities)
         {
             // Don't add the target if we can't shoot the target!
-            if (!CheckFixtures(entity.Uid))
+            if (!TryComp<FixturesComponent>(entity.Uid, out var fixtures) || !CheckFixtures((entity.Uid, fixtures)))
                 continue;
 
             var entry = CheckTarget((entity.Uid, entity.Component, entity.Transform), eye, coordinates);

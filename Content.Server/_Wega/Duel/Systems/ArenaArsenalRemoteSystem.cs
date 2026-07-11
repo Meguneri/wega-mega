@@ -12,7 +12,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// Пульт арсенала: задаёт тир крейта, который <see cref="DuelArenaSystem"/> спавнит у спавн-маркеров
 /// каждый раунд. Выбор применяется ко ВСЕМ аренам и полностью заменяет прежний тир (без наложения).
 /// </summary>
-public sealed class ArenaArsenalRemoteSystem : EntitySystem
+public sealed partial class ArenaArsenalRemoteSystem : EntitySystem
 {
     [Dependency] private SharedUserInterfaceSystem _ui = default!;
     [Dependency] private IPrototypeManager _prototype = default!;

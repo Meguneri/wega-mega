@@ -111,7 +111,9 @@
   name: clockwork sword
   description: A sword with a large winding gear on the hilt. Weapon of the righteous Ratvar.
   components:
-  - type: Sharp
+  - type: Tool
+    qualities:
+    - Slicing
   - type: Sprite
     sprite: _Wega/Objects/Weapons/Melee/clockwork_sword.rsi
     state: icon
@@ -199,7 +201,9 @@
         - ItemMask
         restitution: 0.3
         friction: 0.2
-  - type: Sharp
+  - type: Tool
+    qualities:
+    - Slicing
   - type: Sprite
     sprite: _Wega/Objects/Weapons/Melee/clock_spear.rsi
     state: icon

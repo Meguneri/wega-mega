@@ -20,7 +20,7 @@ namespace Content.Server._Wega.Duel.Systems;
 /// — конец боя сбрасывает шторм.
 /// Центр зоны — собственная позиция трекера (как у авто-дропа снабжения).
 /// </summary>
-public sealed class ArenaStormSystem : EntitySystem
+public sealed partial class ArenaStormSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IChatManager _chatManager = default!;
