@@ -111,13 +111,26 @@ public sealed partial class DuelArenaSystem : EntitySystem
         while (query.MoveNext(out var uid, out var comp))
         {
             // Отложенное восстановление арены: запланировано в ConcludeDuel/ResetDuel, выполняем
-            // здесь — на тике ПОСЛЕ завершения боя, вне стека события смерти (MobStateChanged).
-            // Удаление/спавн сущностей прямо из обработчика смертельного удара могло конфликтовать
-            // с обработкой урона и срывать восстановление.
-            if (comp.PendingRestore)
+            // здесь — вне стека события смерти (MobStateChanged), где удаление/спавн сущностей могли
+            // конфликтовать с обработкой урона. Ждём PendingRestoreAt: смертельный удар мог быть от
+            // отложенной взрывчатки (граната/заряд), чей взрыв обрабатывается уже ПОСЛЕ конца дуэли —
+            // без задержки восстановление прошло бы по ещё целой арене, а разрушение осталось бы навсегда.
+            if (comp.PendingRestore && now >= comp.PendingRestoreAt)
             {
                 comp.PendingRestore = false;
+                comp.PendingRestoreAt = null;
                 _restoreSystem.RestoreArena(uid, comp);
+
+                // Повторное исцеление бойцов после оседания взрывов — возвращает конечности,
+                // оторванные отложенной взрывчаткой уже после конца боя (см. PendingHealDuelists).
+                foreach (var duelist in comp.PendingHealDuelists)
+                {
+                    if (!Exists(duelist))
+                        continue;
+                    _rejuvenate.PerformRejuvenate(duelist);
+                    _movementSpeed.RefreshMovementSpeedModifiers(duelist);
+                }
+                comp.PendingHealDuelists.Clear();
             }
 
             // Истёк grace-период после боя — шлём на шлюзы баз сигнал закрытия.
@@ -275,6 +288,8 @@ public sealed partial class DuelArenaSystem : EntitySystem
             return;
 
         comp.PendingRestore = false;
+        comp.PendingRestoreAt = null;
+        comp.PendingHealDuelists.Clear();
 
         var duelists = GetAliveInRange(uid, comp);
         if (duelists.Count < 2)
@@ -325,6 +340,10 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // при подготовке следующего раунда). Возможный побочный эффект — из-за этого ломается общая логика
         // раунда. Снаряжение, которое ящики выдают, при этом удаляется корректно. Переработать тайминг
         // (перенести спавн в нужную фазу) и снова включить вызов.
+        //
+        // TODO(arena-arsenal-crates): целевое поведение — ящики спавнятся ЧЕРЕЗ ПУЛЬТ (арсенал-ремоут,
+        // см. ArenaArsenalRemoteSystem), а НЕ вручную/по нажатию кнопки старта. При этом спавн через пульт
+        // НЕ должен ломать текущую систему дуэлей (тайминг раунда, очистку и восстановление арены).
         // SpawnArsenalCrates(uid, comp);
 
         // Усиление для проигравшего 3 раза подряд: миньон-помощник.
@@ -403,9 +422,10 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // На этом тике бойцы ещё на гриде арены (ротация не переносила их), поэтому надетое попадёт в зону.
         _cleanup.CleanupArea(uid, comp.CleanupRange);
 
-        // Арену восстанавливаем на следующем тике (см. Update) — вне стека текущего события,
-        // чтобы она была целой к следующему раунду.
+        // Арену восстанавливаем с задержкой (см. Update / PendingRestoreAt) — вне стека текущего события
+        // и после оседания отложенных взрывов, чтобы она была целой к следующему раунду.
         comp.PendingRestore = true;
+        comp.PendingRestoreAt = _timing.CurTime + TimeSpan.FromSeconds(comp.RestoreDelay);
     }
 
     /// <summary>
@@ -561,11 +581,18 @@ public sealed partial class DuelArenaSystem : EntitySystem
                 if (Exists(d))
                     _audio.PlayPvs(arena.EndSound, d);
 
-        // Восстанавливаем разрушенную за бой арену на следующем тике (см. Update): сразу по
-        // завершении, но вне стека события смерти — удаление/спавн сущностей из обработчика
-        // смертельного удара могло срывать восстановление. RestoreArena сам отодвигает
-        // бойцов с тайлов под конструкциями, так что никого не зажмёт.
+        // Восстанавливаем разрушенную за бой арену с задержкой (см. Update / PendingRestoreAt): вне
+        // стека события смерти (удаление/спавн из обработчика смертельного удара мог срывать
+        // восстановление) И после оседания отложенных взрывов — смертельный удар мог быть нанесён
+        // гранатой/зарядом, чей взрыв обрабатывается уже после конца дуэли, иначе разрушение от него
+        // осталось бы навсегда. RestoreArena сам отодвигает бойцов с тайлов под конструкциями.
         arena.PendingRestore = true;
+        arena.PendingRestoreAt = _timing.CurTime + TimeSpan.FromSeconds(arena.RestoreDelay);
+
+        // Повторно исцелить бойцов в тот же отложенный момент: если смертельный удар нанесла отложенная
+        // взрывчатка, её взрыв отрывает конечности уже ПОСЛЕ немедленного Rejuvenate выше — без этого
+        // прохода боец улетел бы на следующую арену с полным ХП, но без оторванных частей.
+        arena.PendingHealDuelists = new List<EntityUid>(roundDuelists);
 
         // Сигнал закрытия шлюзов шлём не сразу, а через ReturnGrace секунд: дуэлянты
         // возвращаются в базы по открытым шлюзам, и только потом те закрываются (см. Update).
