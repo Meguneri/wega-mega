@@ -46,6 +46,9 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     private readonly MediaPlayerSystem _mediaPlayer;
     private List<MediaSearchResult> _results = [];
 
+    private const int PageSize = 10;
+    private int _currentPage;
+
     public MediaPlayerWindow()
     {
         RobustXamlLoader.Load(this);
@@ -58,6 +61,8 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         PlayPauseButton.OnPressed += _ => PlayOrPause();
         PlayUrlButton.OnPressed += _ => PlayUrl();
         StopButton.OnPressed += _ => _mediaPlayer.RequestStop();
+        PrevPageButton.OnPressed += _ => ChangePage(-1);
+        NextPageButton.OnPressed += _ => ChangePage(1);
 
         ResultsList.OnItemSelected += _ => SetEnabled(PlayPauseButton, true);
         ResultsList.OnItemDeselected += _ => SetEnabled(PlayPauseButton, false);
@@ -84,6 +89,10 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         {
             StatusLabel.Text = Loc.GetString("ui-media-player-results", ("count", _results.Count));
             PopulateResultsList();
+        }
+        else
+        {
+            UpdatePagination();
         }
     }
 
@@ -252,7 +261,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     {
         foreach (var item in ResultsList.GetSelected())
         {
-            var index = ResultsList.IndexOf(item);
+            var index = ResultsList.IndexOf(item) + _currentPage * PageSize;
             if (index >= 0 && index < _results.Count)
                 _mediaPlayer.RequestPlay(_results[index].Id);
             return;
@@ -273,12 +282,14 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         ResultsList.Clear();
         SetEnabled(PlayPauseButton, false);
         _results = _mediaPlayer.LastSearchResults;
+        _currentPage = 0;
         SetSearching(false);
 
         if (ev.Error != null)
         {
             StatusLabel.Text = ev.Error;
             StatusLabel.FontColorOverride = ErrorColor;
+            UpdatePagination();
             return;
         }
 
@@ -289,7 +300,13 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     private void PopulateResultsList()
     {
         ResultsList.Clear();
-        for (var i = 0; i < _results.Count; i++)
+
+        var pageCount = Math.Max(1, (int)MathF.Ceiling(_results.Count / (float)PageSize));
+        _currentPage = Math.Clamp(_currentPage, 0, pageCount - 1);
+
+        var start = _currentPage * PageSize;
+        var end = Math.Min(start + PageSize, _results.Count);
+        for (var i = start; i < end; i++)
         {
             var result = _results[i];
             var title = MediaPlayerSystem.SanitizeTitle(result.Title);
@@ -300,6 +317,29 @@ public sealed partial class MediaPlayerWindow : FancyWindow
             var icon = _mediaPlayer.GetThumbnail(result.Id);
             ResultsList.AddItem(text, icon);
         }
+
+        UpdatePagination();
+    }
+
+    private void ChangePage(int delta)
+    {
+        var pageCount = Math.Max(1, (int)MathF.Ceiling(_results.Count / (float)PageSize));
+        var newPage = Math.Clamp(_currentPage + delta, 0, pageCount - 1);
+        if (newPage == _currentPage)
+            return;
+
+        _currentPage = newPage;
+        PopulateResultsList();
+    }
+
+    private void UpdatePagination()
+    {
+        var pageCount = Math.Max(1, (int)MathF.Ceiling(_results.Count / (float)PageSize));
+        PageLabel.Text = _results.Count > 0
+            ? $"{_currentPage + 1} / {pageCount}"
+            : "-";
+        PrevPageButton.Disabled = _currentPage <= 0;
+        NextPageButton.Disabled = _currentPage >= pageCount - 1;
     }
 
     private void OnThumbnailLoaded(string id)
@@ -313,9 +353,15 @@ public sealed partial class MediaPlayerWindow : FancyWindow
             if (_results[i].Id != id)
                 continue;
 
-            var item = ResultsList[i];
+            var start = _currentPage * PageSize;
+            var end = Math.Min(start + PageSize, _results.Count);
+            if (i < start || i >= end)
+                return;
+
+            var item = ResultsList[i - start];
             if (item != null)
                 item.Icon = icon;
+            return;
         }
     }
 

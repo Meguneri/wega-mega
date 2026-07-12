@@ -314,4 +314,228 @@ public sealed class RaidControllerTest : GameTest
             Assert.That(ids.Distinct().Count(), Is.GreaterThan(1), "Спавнеры должны выдавать разные типы диких");
         });
     }
+
+    #region Hideout Tests
+
+    /// <summary>
+    /// Для подключённого игрока загружается персональная карта-база (hideout) со своим гридом.
+    /// </summary>
+    [Test]
+    public async Task HideoutLoadsForConnectedPlayerTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var stashSystem = server.System<RaidStashSystem>();
+        var session = pair.Player;
+
+        Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(stashSystem.TryGetHideout(session.UserId, out var mapId, out var gridUid), Is.True,
+                "Для подключённого игрока должна загрузиться персональная база");
+            Assert.That(mapId, Is.Not.EqualTo(MapId.Nullspace), "Hideout map не должен быть nullspace");
+            Assert.That(gridUid, Is.Not.EqualTo(EntityUid.Invalid), "Hideout grid должен существовать");
+            Assert.That(SEntMan.Deleted(gridUid), Is.False, "Hideout grid не должен быть удалён");
+        });
+    }
+
+    /// <summary>
+    /// При привязке игрока к телу персонаж телепортируется на свою персональную базу.
+    /// </summary>
+    [Test]
+    public async Task PlayerTeleportsToHideoutOnAttachTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var mindSystem = SEntMan.System<SharedMindSystem>();
+        var stashSystem = server.System<RaidStashSystem>();
+        var playerManager = server.ResolveDependency<IPlayerManager>();
+        var session = pair.Player;
+
+        Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
+
+        var testMap = await pair.CreateTestMap();
+        EntityUid dummy = default;
+        EntityUid? mindId = null;
+
+        await server.WaitAssertion(() =>
+        {
+            var coords = testMap.GridCoords;
+            dummy = SSpawnAtPosition("RaidTestDummy", coords);
+
+            // Привязываем существующую тестовую сессию к новому телу.
+            // Это имитирует спавн/возрождение игрока и должен вызвать телепорт на базу.
+            mindId = mindSystem.CreateMind(session.UserId);
+            mindSystem.TransferTo(mindId.Value, dummy);
+        });
+
+        await pair.RunTicksSync(10);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(stashSystem.TryGetHideout(session.UserId, out _, out var gridUid), Is.True,
+                "База игрока должна быть загружена");
+            Assert.That(SEntMan.GetComponent<TransformComponent>(dummy).GridUid, Is.EqualTo(gridUid),
+                "Персонаж должен оказаться на гриде своей базы");
+        });
+    }
+
+    /// <summary>
+    /// Кнопка входа, поставленная на персональной базе, переносит рейдера на карту рейда.
+    /// </summary>
+    [Test]
+    public async Task HideoutEntryButtonTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var mapSystem = server.System<SharedMapSystem>();
+        var stashSystem = server.System<RaidStashSystem>();
+        var mindSystem = SEntMan.System<SharedMindSystem>();
+        var session = pair.Player;
+
+        Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
+
+        var raidMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid spawnMarker = default;
+        EntityUid dummy = default;
+        EntityUid? mindId = null;
+        EntityUid entryButton = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, raidMap.Grid, raidMap.Tile.Tile);
+            var raidCoords = raidMap.GridCoords;
+
+            // Контроллер без предзагрузки файла — используем уже созданную тестовую карту.
+            controller = SSpawnAtPosition(null, raidCoords);
+            var ctrl = SEntMan.AddComponent<RaidControllerComponent>(controller);
+            ctrl.RaidMap = new ResPath("/Maps/_Wega/Arena/arena_duel_31.yml");
+            ctrl.Loaded = true;
+            ctrl.LoadedMap = raidMap.MapId;
+            ctrl.RaidDuration = 600f;
+            ctrl.WarningTimes.Clear();
+
+            spawnMarker = SSpawnAtPosition("RaidSpawnMarker", raidCoords);
+
+            // Привязываем сессию к телу — телепорт на базу.
+            dummy = SSpawnAtPosition("RaidTestDummy", raidCoords);
+            mindId = mindSystem.CreateMind(session.UserId);
+            mindSystem.TransferTo(mindId.Value, dummy);
+        });
+
+        await pair.RunTicksSync(10);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(stashSystem.TryGetHideout(session.UserId, out _, out var gridUid), Is.True);
+            var gridXform = SEntMan.GetComponent<TransformComponent>(gridUid);
+            var buttonCoords = new EntityCoordinates(gridUid, new Vector2(7.5f, 9.5f));
+            entryButton = SSpawnAtPosition("RaidEntryButton", buttonCoords);
+
+            Assert.That(SEntMan.GetComponent<TransformComponent>(dummy).GridUid, Is.EqualTo(gridUid),
+                "Персонаж должен быть на базе перед входом в рейд");
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            var ev = new ActivateInWorldEvent(dummy, entryButton, true);
+            SEntMan.EventBus.RaiseLocalEvent(entryButton, ev);
+
+            var ctrl = SEntMan.GetComponent<RaidControllerComponent>(controller);
+            Assert.That(ctrl.Raiders.Contains(dummy), Is.True, "Рейдер должен попасть в список рейдеров");
+            Assert.That(ctrl.Active, Is.True, "Рейд должен стать активным");
+            Assert.That(SEntMan.GetComponent<TransformComponent>(dummy).MapID, Is.EqualTo(raidMap.MapId),
+                "Рейдер должен оказаться на карте рейда");
+        });
+    }
+
+    /// <summary>
+    /// После успешного экстракта рейдер возвращается на свою персональную базу, а не на общий хаб.
+    /// </summary>
+    [Test]
+    public async Task ExtractReturnsToHideoutTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var mapSystem = server.System<SharedMapSystem>();
+        var transformSystem = SEntMan.System<SharedTransformSystem>();
+        var stashSystem = server.System<RaidStashSystem>();
+        var mindSystem = SEntMan.System<SharedMindSystem>();
+        var session = pair.Player;
+
+        Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
+
+        var hubMap = await pair.CreateTestMap();
+        var raidMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid entryButton = default;
+        EntityUid spawnMarker = default;
+        EntityUid extractPoint = default;
+        EntityUid dummy = default;
+        EntityUid? mindId = null;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, hubMap.Grid, hubMap.Tile.Tile);
+            ExpandGrid(mapSystem, raidMap.Grid, raidMap.Tile.Tile);
+
+            var hubCoords = hubMap.GridCoords;
+            var raidCoords = raidMap.GridCoords;
+
+            controller = SSpawnAtPosition(null, hubCoords);
+            var ctrl = SEntMan.AddComponent<RaidControllerComponent>(controller);
+            ctrl.RaidMap = new ResPath("/Maps/_Wega/Arena/arena_duel_31.yml");
+            ctrl.Loaded = true;
+            ctrl.LoadedMap = raidMap.MapId;
+            ctrl.RaidDuration = 600f;
+            ctrl.WarningTimes.Clear();
+
+            entryButton = SSpawnAtPosition("RaidEntryButton", hubCoords);
+            spawnMarker = SSpawnAtPosition("RaidSpawnMarker", raidCoords);
+            extractPoint = SSpawnAtPosition("RaidExtractionPoint", raidCoords.Offset(new Vector2(2, 0)));
+
+            dummy = SSpawnAtPosition("RaidTestDummy", hubCoords.Offset(new Vector2(1, 0)));
+            mindId = mindSystem.CreateMind(session.UserId);
+            mindSystem.TransferTo(mindId.Value, dummy);
+        });
+
+        await pair.RunTicksSync(10);
+
+        await server.WaitAssertion(() =>
+        {
+            var ev = new ActivateInWorldEvent(dummy, entryButton, true);
+            SEntMan.EventBus.RaiseLocalEvent(entryButton, ev);
+
+            Assert.That(SEntMan.GetComponent<TransformComponent>(dummy).MapID, Is.EqualTo(raidMap.MapId),
+                "Рейдер должен быть на карте рейда");
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            var extractXform = SEntMan.GetComponent<TransformComponent>(extractPoint);
+            transformSystem.SetCoordinates(dummy, extractXform.Coordinates);
+        });
+
+        await pair.RunTicksSync(10);
+
+        await server.WaitAssertion(() =>
+        {
+            var ctrl = SEntMan.GetComponent<RaidControllerComponent>(controller);
+            Assert.That(ctrl.Raiders.Contains(dummy), Is.False, "Рейдер должен быть удалён из списка после экстракта");
+            Assert.That(stashSystem.TryGetHideout(session.UserId, out _, out var gridUid), Is.True,
+                "База игрока должна существовать");
+            Assert.That(SEntMan.GetComponent<TransformComponent>(dummy).GridUid, Is.EqualTo(gridUid),
+                "После экстракта рейдер должен вернуться на свою базу");
+        });
+    }
+
+    #endregion
 }

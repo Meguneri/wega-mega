@@ -18,7 +18,15 @@
         <Label Name="StatusLabel" Text="" Margin="2 6 0 6" />
 
         <!-- Results -->
-        <ItemList Name="ResultsList" VerticalExpand="True" MinHeight="120" MaxHeight="240" Margin="0 0 0 8" SelectMode="Single" />
+        <ItemList Name="ResultsList" VerticalExpand="True" MinHeight="120" MaxHeight="240" Margin="0 0 0 4" SelectMode="Single" />
+
+        <!-- Pagination -->
+        <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 0 0 8">
+            <Button Name="PrevPageButton" Text="&lt;" Disabled="True" />
+            <Label Name="PageLabel" Text="-" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8 0 8 0" />
+            <Button Name="NextPageButton" Text="&gt;" Disabled="True" />
+            <Control HorizontalExpand="True" />
+        </BoxContainer>
 
         <!-- Now playing card -->
         <PanelContainer Name="NowPlayingPanel" StyleClasses="BackgroundPanel">

@@ -37,10 +37,10 @@
           !type:PhysShapeCircle
           radius: 0.25
         density: 10
-        mask:
-        - FlyingMobMask
+        hard: false
+        mask: []
         layer:
-        - Opaque
+        - FlyingMobLayer
   # Металлический корпус: режет холодное/пулевое, чуть держит удары. Раньше дрон падал с одного
   # выстрела, потому что не имел брони.
   - type: Damageable

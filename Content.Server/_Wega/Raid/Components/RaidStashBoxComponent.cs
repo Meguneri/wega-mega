@@ -12,8 +12,8 @@ namespace Content.Server._Wega.Raid.Components;
 public sealed partial class RaidStashBoxComponent : Component
 {
     /// <summary>
-    /// Owner of this stash box.
+    /// Owner of this stash box. Not a DataField because NetUserId does not support prototype serialization.
     /// </summary>
-    [DataField, ViewVariables]
+    [ViewVariables(VVAccess.ReadWrite)]
     public NetUserId OwnerId;
 }

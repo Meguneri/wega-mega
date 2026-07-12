@@ -33,7 +33,6 @@
     - id: VisorMesonSuitModule
     - id: WeldingSuitModule
     - id: AdvancedFlashlightSuitModule
-    - id: StorageLargeSuitModule
     - id: StorageHoldingSuitModule
       weight: 0.5
     - id: QuickCarrySuitModule

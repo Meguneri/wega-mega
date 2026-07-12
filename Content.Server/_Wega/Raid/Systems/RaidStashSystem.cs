@@ -11,6 +11,7 @@ using Content.Server._Wega.Raid.Components;
 using Content.Server.Database;
 using Content.Shared.FixedPoint;
 using Content.Shared.GameTicking;
+using Content.Shared.Ghost;
 using Content.Shared.Mind;
 using Content.Shared.Store;
 using Robust.Server.GameObjects;
@@ -44,7 +45,6 @@ public sealed partial class RaidStashSystem : EntitySystem
     [Dependency] private IEntityManager _entityManager = default!;
     [Dependency] private IPrototypeManager _prototypeManager = default!;
     [Dependency] private SharedMapSystem _map = default!;
-    [Dependency] private SharedMindSystem _mind = default!;
 
     private ISawmill _sawmill = default!;
     private readonly Dictionary<NetUserId, RaidStashSnapshot> _stashes = new();
@@ -54,7 +54,7 @@ public sealed partial class RaidStashSystem : EntitySystem
     // Per-player hideout state.
     private readonly Dictionary<NetUserId, MapId> _playerHideouts = new();
     private readonly Dictionary<NetUserId, EntityUid> _playerHideoutGrids = new();
-    private readonly HashSet<NetUserId> _teleportedToHideout = new();
+    private readonly Dictionary<NetUserId, EntityCoordinates> _playerHideoutSpawnCoords = new();
 
     private const int SaveCooldownSeconds = 5;
     private const string HideoutMapPath = "/Maps/_Wega/Raid/hideout.yml";
@@ -110,7 +110,6 @@ public sealed partial class RaidStashSystem : EntitySystem
         _stashes.Remove(session.UserId);
         _stashBoxes.Remove(session.UserId);
         _lastSave.Remove(session.UserId);
-        _teleportedToHideout.Remove(session.UserId);
     }
 
     private void OnRoundRestart(RoundRestartCleanupEvent ev)
@@ -131,7 +130,6 @@ public sealed partial class RaidStashSystem : EntitySystem
         _playerHideouts.Clear();
         _playerHideoutGrids.Clear();
         _stashBoxes.Clear();
-        _teleportedToHideout.Clear();
         _lastSave.Clear();
     }
 
@@ -257,10 +255,22 @@ public sealed partial class RaidStashSystem : EntitySystem
     /// </summary>
     public EntityCoordinates? GetHideoutSpawnCoordinates(NetUserId userId)
     {
-        if (!TryGetHideout(userId, out _, out var gridUid))
+        if (_playerHideoutSpawnCoords.TryGetValue(userId, out var cached) &&
+            cached.IsValid(EntityManager) &&
+            TryGetHideout(userId, out _, out var gridUid) &&
+            Transform(cached.EntityId).GridUid == gridUid)
+        {
+            return cached;
+        }
+
+        if (!TryGetHideout(userId, out _, out gridUid))
             return null;
 
-        return FindSpawnOnGrid(gridUid, RaidHideoutSpawnType.Player);
+        var coords = FindSpawnOnGrid(gridUid, RaidHideoutSpawnType.Player);
+        if (coords != null)
+            _playerHideoutSpawnCoords[userId] = coords.Value;
+
+        return coords;
     }
 
     /// <summary>
@@ -272,7 +282,7 @@ public sealed partial class RaidStashSystem : EntitySystem
         if (_playerHideouts.ContainsKey(userId))
             return true;
 
-        var mapUid = _map.CreateMap(out var mapId, runMapInit: false);
+        var mapUid = _map.CreateMap(out var mapId);
         var opts = new DeserializationOptions { InitializeMaps = true };
 
         try
@@ -288,6 +298,11 @@ public sealed partial class RaidStashSystem : EntitySystem
             _playerHideouts[userId] = mapId;
             _playerHideoutGrids[userId] = gridUid;
             _sawmill.Info($"Loaded hideout map {mapId} grid {gridUid} for {userId}");
+
+            // Cache the player spawn coordinates for quick lookups during teleports.
+            var playerCoords = FindSpawnOnGrid(gridUid, RaidHideoutSpawnType.Player);
+            if (playerCoords != null)
+                _playerHideoutSpawnCoords[userId] = playerCoords.Value;
 
             // Spawn the stash box at the stash marker and remove the stash marker.
             var stashCoords = FindSpawnOnGrid(gridUid, RaidHideoutSpawnType.Stash);
@@ -332,18 +347,28 @@ public sealed partial class RaidStashSystem : EntitySystem
 
         _playerHideouts.Remove(userId);
         _playerHideoutGrids.Remove(userId);
+        _playerHideoutSpawnCoords.Remove(userId);
         _stashBoxes.Remove(userId);
     }
 
     /// <summary>
-    /// Teleports a newly attached player to their personal hideout once.
+    /// Teleports a newly attached player to their personal hideout if they are not already there.
     /// </summary>
     private void OnPlayerAttached(PlayerAttachedEvent args)
     {
-        if (!_mind.TryGetMind(args.Entity, out _, out var mind) || mind.UserId is not { } userId)
+        // PlayerAttachedEvent поднимается до того, как MindContainerComponent получит ссылку на разум,
+        // поэтому используем UserId напрямую из сессии события.
+        var userId = args.Player.UserId;
+
+        // Не телепортируем призраков/наблюдателей.
+        if (HasComp<GhostComponent>(args.Entity))
             return;
 
-        if (_teleportedToHideout.Contains(userId))
+        if (!TryGetHideout(userId, out _, out var gridUid))
+            return;
+
+        var xform = Transform(args.Entity);
+        if (xform.GridUid == gridUid)
             return;
 
         var coords = GetHideoutSpawnCoordinates(userId);
@@ -351,19 +376,36 @@ public sealed partial class RaidStashSystem : EntitySystem
             return;
 
         _transform.SetCoordinates(args.Entity, coords.Value);
-        _teleportedToHideout.Add(userId);
         _sawmill.Debug($"Teleported {userId} to hideout");
     }
 
     private EntityCoordinates? FindSpawnOnGrid(EntityUid gridUid, RaidHideoutSpawnType type)
     {
+        // Основной поиск через EntityQuery.
         var query = EntityQueryEnumerator<RaidHideoutSpawnComponent, TransformComponent>();
         while (query.MoveNext(out var uid, out var spawn, out var xform))
         {
-            if (xform.GridUid != gridUid || spawn.SpawnType != type)
+            if (spawn.SpawnType != type)
+                continue;
+
+            // GridUid может быть ещё не проставлен сразу после загрузки карты — проверяем также parent.
+            if (xform.GridUid != gridUid && xform.ParentUid != gridUid)
                 continue;
 
             return xform.Coordinates;
+        }
+
+        // Fallback: если EntityQuery не видит только что загруженные маркеры, ищем среди детей грида.
+        var childEnum = Transform(gridUid).ChildEnumerator;
+        while (childEnum.MoveNext(out var child))
+        {
+            if (!TryComp<RaidHideoutSpawnComponent>(child, out var spawn))
+                continue;
+
+            if (spawn.SpawnType != type)
+                continue;
+
+            return Transform(child).Coordinates;
         }
 
         return null;
@@ -375,7 +417,10 @@ public sealed partial class RaidStashSystem : EntitySystem
         var query = EntityQueryEnumerator<RaidHideoutSpawnComponent, TransformComponent>();
         while (query.MoveNext(out var uid, out var spawn, out var xform))
         {
-            if (xform.GridUid == gridUid && spawn.SpawnType == type)
+            if (spawn.SpawnType != type)
+                continue;
+
+            if (xform.GridUid == gridUid || xform.ParentUid == gridUid)
                 toDelete.Add(uid);
         }
 

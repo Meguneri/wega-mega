@@ -6,6 +6,7 @@ using Content.Shared.Damage.Systems;
 using Content.Shared.DeviceLinking.Events;
 using Content.Shared.Mobs.Systems;
 using Robust.Server.Audio;
+using Robust.Shared.GameStates;
 using Robust.Shared.Maths;
 using Robust.Shared.Timing;
 
@@ -29,6 +30,7 @@ public sealed partial class ArenaStormSystem : EntitySystem
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private DeviceLinkSystem _signalSystem = default!;
     [Dependency] private AudioSystem _audio = default!;
+    [Dependency] private SharedPvsOverrideSystem _pvsOverride = default!;
 
     /// <summary>Сигнальный порт: отменяет сужение зоны на текущий бой.</summary>
     public const string CancelPort = "StormCancel";
@@ -74,6 +76,7 @@ public sealed partial class ArenaStormSystem : EntitySystem
         comp.Active = false;
         comp.StartAt = null;
         Dirty(uid, comp);
+        _pvsOverride.RemoveGlobalOverride(uid);
 
         if (comp.Announce)
             _chatManager.DispatchServerAnnouncement(
@@ -155,6 +158,7 @@ public sealed partial class ArenaStormSystem : EntitySystem
         storm.ShrinkStartRadius = storm.InitialRadius;
         storm.NextDamageAt = _timing.CurTime + TimeSpan.FromSeconds(storm.DamageInterval);
         Dirty(uid, storm);
+        _pvsOverride.AddGlobalOverride(uid);
     }
 
     public override void Update(float frameTime)
@@ -224,6 +228,7 @@ public sealed partial class ArenaStormSystem : EntitySystem
         storm.ShrinkStartTime = _timing.CurTime;
         storm.StartAt = _timing.CurTime + TimeSpan.FromSeconds(storm.StartDelay);
         Dirty(uid, storm);
+        _pvsOverride.AddGlobalOverride(uid);
     }
 
     private void OnDuelEnded(EntityUid uid, ArenaStormComponent storm)
@@ -231,6 +236,7 @@ public sealed partial class ArenaStormSystem : EntitySystem
         storm.Active = false;
         storm.StartAt = null;
         Dirty(uid, storm);
+        _pvsOverride.RemoveGlobalOverride(uid);
     }
 
     private void ApplyStormDamage(EntityUid uid, ArenaStormComponent storm, DuelArenaComponent arena)
