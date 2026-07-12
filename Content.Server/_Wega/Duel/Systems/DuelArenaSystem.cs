@@ -95,10 +95,29 @@ public sealed partial class DuelArenaSystem : EntitySystem
         }
     }
 
+    // Смещения тайлов вокруг спавна, отсортированные по РЕАЛЬНОЙ близости: сперва прямые соседи
+    // (вверх/вниз/влево/вправо), затем диагонали радиуса 1, затем радиус 2 в том же порядке. Ящик
+    // встаёт ВПЛОТНУЮ к спавну, а не по диагонали или дальше, когда рядом есть свободный тайл.
+    private static readonly Vector2i[] CrateTileOffsets =
+    {
+        // радиус 1 — прямые соседи (расстояние 1)
+        new(0, 1), new(0, -1), new(1, 0), new(-1, 0),
+        // радиус 1 — диагонали (≈1.41)
+        new(1, 1), new(1, -1), new(-1, 1), new(-1, -1),
+        // радиус 2 — прямые (2)
+        new(0, 2), new(0, -2), new(2, 0), new(-2, 0),
+        // радиус 2 — ближние «косые» (≈2.24)
+        new(1, 2), new(-1, 2), new(1, -2), new(-1, -2),
+        new(2, 1), new(2, -1), new(-2, 1), new(-2, -1),
+        // радиус 2 — дальние диагонали (≈2.83)
+        new(2, 2), new(2, -2), new(-2, 2), new(-2, -2),
+    };
+
     /// <summary>
-    /// Подбирает тайл под арсенал-ящик в 1-2 клетках от спавна дуэлянта: сперва БЛИЖАЙШИЙ пустой (пол
-    /// есть, ничего заякоренного — ни стола, ни стены), иначе НАИМЕНЕЕ нагруженный (меньше всего
-    /// заякоренных) в том же радиусе. Так ящик не оказывается внутри стола/стены.
+    /// Подбирает тайл под арсенал-ящик рядом со спавном дуэлянта, идя от БЛИЖАЙШИХ клеток к дальним
+    /// (<see cref="CrateTileOffsets"/>). Берёт первый пустой тайл (пол есть, ничего заякоренного — ни
+    /// стола, ни стены, ни барьера); если пустого нет — наименее нагруженный (при равной нагрузке
+    /// побеждает ближайший, т.к. список упорядочен). Так ящик не оказывается в столе/стене и стоит вплотную.
     /// </summary>
     private EntityCoordinates FindCrateCoords(EntityUid grid, MapGridComponent gridComp, Vector2i spawnTile)
     {
@@ -106,34 +125,26 @@ public sealed partial class DuelArenaSystem : EntitySystem
         Vector2i? bestLoaded = null;
         var bestLoad = int.MaxValue;
 
-        for (var r = 1; r <= 2; r++)
+        foreach (var offset in CrateTileOffsets)
         {
-            for (var dx = -r; dx <= r; dx++)
+            var tile = spawnTile + offset;
+
+            // Нет пола (космос/пустота) — ящик туда не ставим.
+            if (_map.GetTileRef(grid, gridComp, tile).Tile.IsEmpty)
+                continue;
+
+            anchored.Clear();
+            _map.GetAnchoredEntities((grid, gridComp), tile, anchored);
+
+            // Первый пустой в порядке близости — он же ближайший. Готово.
+            if (anchored.Count == 0)
+                return _map.GridTileToLocal(grid, gridComp, tile);
+
+            // Иначе запоминаем наименее нагруженный (строгое <, поэтому при равенстве остаётся ближайший).
+            if (anchored.Count < bestLoad)
             {
-                for (var dy = -r; dy <= r; dy++)
-                {
-                    // Только «кольцо» радиуса r (сам спавн-тайл и внутренние кольца пропускаем).
-                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r)
-                        continue;
-
-                    var tile = spawnTile + new Vector2i(dx, dy);
-
-                    // Нет пола (космос/пустота) — ящик туда не ставим.
-                    if (_map.GetTileRef(grid, gridComp, tile).Tile.IsEmpty)
-                        continue;
-
-                    anchored.Clear();
-                    _map.GetAnchoredEntities((grid, gridComp), tile, anchored);
-
-                    if (anchored.Count == 0)
-                        return _map.GridTileToLocal(grid, gridComp, tile); // ближайший пустой — готово
-
-                    if (anchored.Count < bestLoad)
-                    {
-                        bestLoad = anchored.Count;
-                        bestLoaded = tile;
-                    }
-                }
+                bestLoad = anchored.Count;
+                bestLoaded = tile;
             }
         }
 
