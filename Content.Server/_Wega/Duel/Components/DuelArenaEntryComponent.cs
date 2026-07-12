@@ -1,4 +1,5 @@
 using Robust.Shared.GameObjects;
+using Robust.Shared.Prototypes;
 
 namespace Content.Server._Wega.Duel.Components;
 
@@ -30,4 +31,11 @@ public sealed partial class DuelArenaEntryComponent : Component
     /// </summary>
     [DataField]
     public int? SpawnIndex;
+
+    /// <summary>
+    /// Тиры арсенал-ящиков, предлагаемые в окне выбора при нажатии кнопки. Тот же список, что у пульта
+    /// (<c>ArenaArsenalRemoteComponent.Crates</c>). Выбранный тир применяется ко ВСЕМ аренам ротации.
+    /// </summary>
+    [DataField]
+    public List<EntProtoId> Crates = new();
 }

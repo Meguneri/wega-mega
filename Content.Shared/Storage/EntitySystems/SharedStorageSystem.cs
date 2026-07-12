@@ -471,32 +471,45 @@ public abstract partial class SharedStorageSystem : EntitySystem
         if (entities.Count == 0 || !CanInteract(args.User, (uid, component)))
             return;
 
-        // if the target is storage, add a verb to transfer storage.
-        if (TryComp(args.Target, out StorageComponent? targetStorage)
-            && (!TryComp(args.Target, out LockComponent? targetLock) || !targetLock.Locked))
-        {
-            UtilityVerb verb = new()
-            {
-                Text = Loc.GetString("storage-component-transfer-verb"),
-                IconEntity = GetNetEntity(args.Using),
-                Act = () => TransferEntities(uid, args.Target, args.User, component, null, targetStorage, targetLock)
-            };
+        // Источник (в руке) — MOD-костюм? Тогда его конфиг-замок (панель проводов) не относится к
+        // встроенному хранилищу и не должен мешать переносу ИЗ него.
+        var sourceIsMod = HasComp<ModularSuitComponent>(uid);
 
-            args.Verbs.Add(verb);
-            return;
+        // if the target is storage, add a verb to transfer storage.
+        if (TryComp(args.Target, out StorageComponent? targetStorage))
+        {
+            // MOD-костюм как цель тоже подходит: его конфиг-замок для storage игнорируем (иначе в надетый
+            // залоченный MOD ничего не переложить). Обычные контейнеры — как раньше: только незалоченные.
+            var targetIsMod = HasComp<ModularSuitComponent>(args.Target);
+            var targetUnlocked = !TryComp(args.Target, out LockComponent? targetLock) || !targetLock.Locked;
+
+            if (targetUnlocked || targetIsMod)
+            {
+                var ignoreLock = sourceIsMod || targetIsMod;
+                UtilityVerb verb = new()
+                {
+                    Text = Loc.GetString("storage-component-transfer-verb"),
+                    IconEntity = GetNetEntity(args.Using),
+                    Act = () => TransferEntities(uid, args.Target, args.User, component, null, targetStorage, targetLock, ignoreLock)
+                };
+
+                args.Verbs.Add(verb);
+                return;
+            }
         }
 
-        // Если цель ПКМ — надетая часть МОД-скафандра, перенаправляем перенос в хранилище самого костюма.
+        // Если цель ПКМ — надетая часть МОД-скафандра, перенаправляем перенос в хранилище самого костюма
+        // (конфиг-замок костюма для storage игнорируем).
         if (TryComp(args.Target, out AttachedModularSuitPartComponent? attached)
             && attached.Suit != null
-            && TryComp(attached.Suit.Value, out StorageComponent? suitStorage)
-            && (!TryComp(attached.Suit.Value, out LockComponent? suitLock) || !suitLock.Locked))
+            && TryComp(attached.Suit.Value, out StorageComponent? suitStorage))
         {
+            TryComp(attached.Suit.Value, out LockComponent? suitLock);
             UtilityVerb verb = new()
             {
                 Text = Loc.GetString("storage-component-transfer-verb"),
                 IconEntity = GetNetEntity(args.Using),
-                Act = () => TransferEntities(uid, attached.Suit.Value, args.User, component, null, suitStorage, suitLock)
+                Act = () => TransferEntities(uid, attached.Suit.Value, args.User, component, null, suitStorage, suitLock, ignoreLock: true)
             };
 
             args.Verbs.Add(verb);
@@ -1018,7 +1031,7 @@ public abstract partial class SharedStorageSystem : EntitySystem
     /// </summary>
     public void TransferEntities(EntityUid source, EntityUid target, EntityUid? user = null,
         StorageComponent? sourceComp = null, LockComponent? sourceLock = null,
-        StorageComponent? targetComp = null, LockComponent? targetLock = null)
+        StorageComponent? targetComp = null, LockComponent? targetLock = null, bool ignoreLock = false)
     {
         if (!Resolve(source, ref sourceComp) || !Resolve(target, ref targetComp))
             return;
@@ -1027,8 +1040,11 @@ public abstract partial class SharedStorageSystem : EntitySystem
         if (entities.Count == 0)
             return;
 
-        if (Resolve(source, ref sourceLock, false) && sourceLock.Locked
-            || Resolve(target, ref targetLock, false) && targetLock.Locked)
+        // ignoreLock — для MOD-костюмов: их конфиг-замок (панель проводов) не относится к встроенному
+        // хранилищу и не должен блокировать перенос содержимого.
+        if (!ignoreLock
+            && (Resolve(source, ref sourceLock, false) && sourceLock.Locked
+                || Resolve(target, ref targetLock, false) && targetLock.Locked))
             return;
 
         foreach (var entity in entities.ToArray())

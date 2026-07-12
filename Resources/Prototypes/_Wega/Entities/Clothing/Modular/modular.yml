@@ -1453,7 +1453,6 @@
         - ClothingModularBootsEnchanted
   - type: ModularSuitPreassembled
     modules:
-    - StorageSuitModule
     - FlashlightSuitModuleCyan
   - type: ItemSlots
     slots:

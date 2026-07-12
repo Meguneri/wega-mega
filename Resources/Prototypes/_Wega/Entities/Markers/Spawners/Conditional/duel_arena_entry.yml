@@ -6,23 +6,42 @@
 #
 # Это настоящая нажимаемая кнопка (на базе SignalButton) — линковать ничего не нужно, просто кликни.
 # ArenaIndex — индекс арены в списке arenas контроллера (0 = первая, 1 = вторая, ...).
+#
+# При нажатии открывается окно выбора тира арсенал-ящиков; по кнопке «Войти» дуэлянтов телепортирует
+# на арену, и выбранные ящики спавнятся у спавнов сразу. Список тиров (crates) — как у пульта.
 
 - type: entity
+  abstract: true
   parent: SignalButton
+  id: DuelArenaEntryBase
+  components:
+  - type: DuelArenaEntry
+    crates:
+    - CrateSyndicateFullArsenal
+    - CrateSyndicateFullArsenalPlus
+    - CrateSyndicateFullArsenalMega
+    - CrateSyndicateMeleeArsenal
+  - type: UserInterface
+    interfaces:
+      enum.ArenaEntryUiKey.Key:
+        type: ArenaEntryBoundUserInterface
+
+- type: entity
+  parent: DuelArenaEntryBase
   id: DuelArenaEntryMarker0
   name: arena entry button
   suffix: Duel Rotation, Arena 0
-  description: Кнопка входа на первую арену. Телепортирует игроков с хаба и стартует раунд.
+  description: Кнопка входа на первую арену. Открывает выбор арсенала, затем телепортирует игроков.
   components:
   - type: DuelArenaEntry
     arenaIndex: 0
 
 - type: entity
-  parent: SignalButton
+  parent: DuelArenaEntryBase
   id: DuelArenaEntryMarker1
   name: arena entry button
   suffix: Duel Rotation, Arena 1
-  description: Кнопка входа на вторую арену. Телепортирует игроков с хаба и стартует раунд.
+  description: Кнопка входа на вторую арену. Открывает выбор арсенала, затем телепортирует игроков.
   components:
   - type: DuelArenaEntry
     arenaIndex: 1
@@ -34,7 +53,7 @@
 # совпадать с DuelArenaSpawn.spawnIndex нужного маркера на карте арены.
 
 - type: entity
-  parent: SignalButton
+  parent: DuelArenaEntryBase
   id: DuelArenaEntrySpawn0
   name: arena spawn button (1)
   suffix: Duel Rotation, Arena 0, Spawn 0
@@ -45,7 +64,7 @@
     spawnIndex: 0
 
 - type: entity
-  parent: SignalButton
+  parent: DuelArenaEntryBase
   id: DuelArenaEntrySpawn1
   name: arena spawn button (2)
   suffix: Duel Rotation, Arena 0, Spawn 1

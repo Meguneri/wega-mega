@@ -21,11 +21,12 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
 
     /// <summary>
     /// Крейт арсенала (FullArsenal SurplusBundle), который спавнится у каждого спавн-маркера при
-    /// старте раунда. Задаётся командой/пультом и ПЕРЕЗАПИСЫВАЕТСЯ целиком — никакого наложения тиров:
-    /// сменил 120→40 ТК, и следующий раунд спавнит только 40. null — крейты не спавнить.
+    /// старте раунда. Задаётся командой/пультом/кнопкой входа и ПЕРЕЗАПИСЫВАЕТСЯ целиком — никакого
+    /// наложения тиров: сменил 120→40 ТК, и следующий раунд спавнит только 40. null — крейты не
+    /// спавнить (значение по умолчанию: тир выбирают явно, авто-выбора нет).
     /// </summary>
     [DataField]
-    public EntProtoId? ArsenalCrate = "CrateSyndicateFullArsenal";
+    public EntProtoId? ArsenalCrate;
 
     Dictionary<NetUserId, int> IDuelScoreStore.Scores => Scores;
     Dictionary<NetUserId, string> IDuelScoreStore.ScoreNames => ScoreNames;

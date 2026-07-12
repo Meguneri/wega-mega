@@ -76,11 +76,23 @@
     interfaces:
       enum.ModularSuitUiKey.Key:
         type: ModularSuitBoundUserInterface
+      enum.StorageUiKey.Key:
+        type: StorageBoundUserInterface
+  # Встроенное хранилище — у КАЖДОГО MOD, как у рюкзака (не через модуль, слот модуля не занимает).
+  # Даёт стандартный storage-грид и штатный верб «Переместить содержимое» в обе стороны с любыми
+  # контейнерами. Сетка/флаги — как у StorageSuitModule (тот теперь избыточен). Контейнер storagebase
+  # общий для storage; модуль StorageSuitModule на этот же контейнер — поэтому AddStorageToSuit его
+  # пропускает (у MOD уже есть Storage), а RemoveStorageFromSuit защищён флагом AddedStorage.
+  - type: Storage
+    maxItemSize: Huge
+    grid:
+    - 0,0,6,3
   - type: WiresPanel
     open: true
   - type: LockedWiresPanel
   - type: ContainerContainer
     containers:
+      storagebase: !type:Container
       cell_slot: !type:ContainerSlot { }
       suit_core: !type:ContainerSlot { }
       suit_module: !type:Container { }

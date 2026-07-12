@@ -78,3 +78,8 @@ arena-arsenal-remote-info = Выберите тир арсенал-крейто�
 arena-arsenal-remote-current = { $name } (текущий)
 arena-arsenal-remote-off = Отключить спавн крейтов
 arena-arsenal-remote-applied = Тир арсенала: { $tier }. Обновлено арен: { $count }.
+
+# Окно кнопки входа на арену (хаб ротации): выбор тира ящиков + кнопка «Войти».
+arena-entry-title = Вход на арену
+arena-entry-info = Выберите тир арсенал-ящиков и нажмите «Войти». Тир применится ко всем аренам, дуэлянтов перенесёт на арену, ящики появятся у спавнов.
+arena-entry-enter = Войти

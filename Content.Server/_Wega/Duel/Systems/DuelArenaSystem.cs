@@ -19,6 +19,9 @@ using Content.Shared.Movement.Systems;
 using Robust.Server.Audio;
 using Robust.Shared.Audio;
 using Robust.Shared.GameObjects;
+using Robust.Shared.Map;
+using Robust.Shared.Map.Components;
+using Robust.Shared.Maths;
 using Robust.Shared.Localization;
 using Robust.Shared.Network;
 using Robust.Shared.Random;
@@ -55,20 +58,14 @@ public sealed partial class DuelArenaSystem : EntitySystem
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private DuelArenaScoreSystem _score = default!;
     [Dependency] private IRobustRandom _random = default!;
-
-    // Восемь соседних тайлов вокруг спавн-маркера (радиус 1). Крейт кладём на случайный из них,
-    // но не на сам маркер, чтобы боец не заспавнился внутри ящика.
-    private static readonly Vector2[] ArsenalCrateOffsets =
-    {
-        new(1, 0), new(-1, 0), new(0, 1), new(0, -1),
-        new(1, 1), new(1, -1), new(-1, 1), new(-1, -1),
-    };
+    [Dependency] private SharedMapSystem _map = default!;
 
     /// <summary>
     /// Спавнит текущий арсенал-крейт (<see cref="DuelArenaComponent.ArsenalCrate"/>, задаётся пультом
-    /// <see cref="ArenaArsenalRemoteSystem"/>) у каждого спавн-маркера арены — на случайном соседнем
-    /// тайле. Крейт помечен markIssuedItems, поэтому его содержимое метится ArenaIssued и очистка
-    /// снесёт всё после боя.
+    /// <see cref="ArenaArsenalRemoteSystem"/> / кнопкой входа) рядом с каждым спавн-маркером арены.
+    /// Крейт помечен markIssuedItems, поэтому его содержимое метится ArenaIssued и очистка снесёт всё
+    /// после боя. Тайл под ящик подбираем аккуратно (<see cref="FindCrateCoords"/>): ближайший пустой
+    /// в 1-2 клетках от спавна, иначе наименее нагруженный — чтобы ящик не влез в стол/стену.
     ///
     /// Идемпотентно в пределах раунда: гард <see cref="DuelArenaComponent.ArsenalSpawned"/> не даёт
     /// задвоить ящики. Основной вызов — при подготовке раунда (ArenaRoundPreparingEvent, перенос бойцов
@@ -80,18 +77,68 @@ public sealed partial class DuelArenaSystem : EntitySystem
         if (comp.ArsenalSpawned || comp.ArsenalCrate is not { } crateProto)
             return;
 
+        var arenaGrid = Transform(arenaUid).GridUid;
+        if (arenaGrid is not { } grid || !TryComp<MapGridComponent>(grid, out var gridComp))
+            return;
+
         comp.ArsenalSpawned = true;
 
-        var arenaGrid = Transform(arenaUid).GridUid;
         var query = EntityQueryEnumerator<DuelArenaSpawnComponent, TransformComponent>();
         while (query.MoveNext(out _, out _, out var xform))
         {
-            if (xform.GridUid != arenaGrid)
+            if (xform.GridUid != grid)
                 continue;
 
-            var coords = xform.Coordinates.Offset(_random.Pick(ArsenalCrateOffsets));
+            var spawnTile = _map.TileIndicesFor(grid, gridComp, xform.Coordinates);
+            var coords = FindCrateCoords(grid, gridComp, spawnTile);
             Spawn(crateProto, coords);
         }
+    }
+
+    /// <summary>
+    /// Подбирает тайл под арсенал-ящик в 1-2 клетках от спавна дуэлянта: сперва БЛИЖАЙШИЙ пустой (пол
+    /// есть, ничего заякоренного — ни стола, ни стены), иначе НАИМЕНЕЕ нагруженный (меньше всего
+    /// заякоренных) в том же радиусе. Так ящик не оказывается внутри стола/стены.
+    /// </summary>
+    private EntityCoordinates FindCrateCoords(EntityUid grid, MapGridComponent gridComp, Vector2i spawnTile)
+    {
+        var anchored = new List<EntityUid>();
+        Vector2i? bestLoaded = null;
+        var bestLoad = int.MaxValue;
+
+        for (var r = 1; r <= 2; r++)
+        {
+            for (var dx = -r; dx <= r; dx++)
+            {
+                for (var dy = -r; dy <= r; dy++)
+                {
+                    // Только «кольцо» радиуса r (сам спавн-тайл и внутренние кольца пропускаем).
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r)
+                        continue;
+
+                    var tile = spawnTile + new Vector2i(dx, dy);
+
+                    // Нет пола (космос/пустота) — ящик туда не ставим.
+                    if (_map.GetTileRef(grid, gridComp, tile).Tile.IsEmpty)
+                        continue;
+
+                    anchored.Clear();
+                    _map.GetAnchoredEntities((grid, gridComp), tile, anchored);
+
+                    if (anchored.Count == 0)
+                        return _map.GridTileToLocal(grid, gridComp, tile); // ближайший пустой — готово
+
+                    if (anchored.Count < bestLoad)
+                    {
+                        bestLoad = anchored.Count;
+                        bestLoaded = tile;
+                    }
+                }
+            }
+        }
+
+        // Пустого тайла не нашлось — наименее нагруженный; в самом крайнем случае сам спавн-тайл.
+        return _map.GridTileToLocal(grid, gridComp, bestLoaded ?? spawnTile);
     }
 
     private void OnRoundPreparing(EntityUid uid, DuelArenaComponent comp, ref ArenaRoundPreparingEvent args)

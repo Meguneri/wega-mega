@@ -5,7 +5,6 @@
   components:
   - type: ModularSuitPreassembled
     modules:
-    - StorageSuitModule
     - FlashlightSuitModuleCyan
   - type: ItemSlots
     slots:
@@ -20,7 +19,6 @@
   components:
   - type: ModularSuitPreassembled
     modules:
-    - StorageSuitModule
     - FlashlightSuitModuleAqua
   - type: ItemSlots
     slots:
@@ -38,7 +36,6 @@
     - WeldingSuitModule
     - RadiationShieldSuitModule
     - MagnetSuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleCyan
   - type: ItemSlots
     slots:
@@ -66,7 +63,6 @@
     - RadiationShieldSuitModule
     - MagnetSuitModule
     - TRaySuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleCyan
   - type: ItemSlots
     slots:
@@ -103,7 +99,6 @@
     - GPSSuitModule
     - OreBagSuitModule
     - MagnetSuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleAqua
   - type: ItemSlots
     slots:
@@ -124,7 +119,6 @@
     - WeldingSuitModule
     - JetpackAdvancedSuitModule
     - DrillSuitModule
-    - StorageSuitModule
     - AdvancedFlashlightSuitModuleAqua
   - type: ItemSlots
     slots:
@@ -148,7 +142,6 @@
     - OreBagSuitModule
     - GrabberSuitModule
     - DrillSuitModule
-    - StorageSuitModule
     - AdvancedFlashlightSuitModuleAqua
   - type: ItemSlots
     slots:
@@ -164,7 +157,6 @@
   - type: ModularSuitPreassembled
     modules:
     - GrabberSuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleMint
   - type: ItemSlots
     slots:
@@ -182,7 +174,6 @@
     - HealthAnalyzerSuitModule
     - VisorMedicalSuitModule
     - QuickCarrySuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleLavender
   - type: ItemSlots
     slots:
@@ -201,7 +192,6 @@
     - DefibrillatorSuitModule
     - VisorMedicalSuitModule
     - QuickCarrySuitModule
-    - StorageSuitModule
     - AdvancedFlashlightSuitModulePink
   - type: ItemSlots
     slots:
@@ -238,7 +228,6 @@
     - MagnetSuitModule
     - ArmorBossterSuitModule
     - VisorSecuritySuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleDarkOrange
   - type: ItemSlots
     slots:
@@ -291,7 +280,6 @@
   - type: ModularSuitPreassembled
     modules:
     - BikeHornSuitModule
-    - StorageSuitModule
     - FlashlightSuitModuleRed
   - type: ItemSlots
     slots:

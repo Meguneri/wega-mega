@@ -6,11 +6,13 @@ using Content.Shared.Mind;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Movement.Pulling.Components;
 using Content.Shared.Movement.Pulling.Systems;
+using Content.Shared.UserInterface;
 using Robust.Shared.EntitySerialization;
 using Robust.Shared.EntitySerialization.Systems;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
 using Robust.Shared.Network;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
 
 namespace Content.Server._Wega.Duel.Systems;
@@ -32,6 +34,8 @@ public sealed partial class DuelRotationSystem : EntitySystem
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private SharedMindSystem _mind = default!;
     [Dependency] private PullingSystem _pulling = default!;
+    [Dependency] private SharedUserInterfaceSystem _ui = default!;
+    [Dependency] private IPrototypeManager _proto = default!;
 
     /// <summary>
     /// Останавливает перетаскивание в обе стороны перед телепортом бойца на другую арену:
@@ -70,6 +74,7 @@ public sealed partial class DuelRotationSystem : EntitySystem
         SubscribeLocalEvent<DuelRotationComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<DuelArenaComponent, MapInitEvent>(OnArenaTrackerMapInit);
         SubscribeLocalEvent<DuelArenaEntryComponent, ActivateInWorldEvent>(OnEntryActivate);
+        SubscribeLocalEvent<DuelArenaEntryComponent, ArenaEntryConfirmMessage>(OnEntryConfirm);
     }
 
     /// <summary>
@@ -314,8 +319,19 @@ public sealed partial class DuelRotationSystem : EntitySystem
 
         comp.CurrentArena = arenaIndex;
 
-        // Бойцы расставлены — раунд готовится. Сообщаем трекеру этой арены: он выдаст арсенал-ящики
-        // (если выбран пультом) заранее, у спавнов, чтобы можно было экипироваться до падения барьеров.
+        // Бойцы расставлены — раунд готовится: трекер выдаст арсенал-ящики заранее, у спавнов.
+        RaiseArenaPreparing(map);
+    }
+
+    /// <summary>
+    /// Сообщает трекеру арены на карте <paramref name="map"/>, что раунд готовится (бойцы расставлены,
+    /// бой ещё не начался). По этому событию выдаются арсенал-ящики ДО падения барьеров — чтобы можно
+    /// было экипироваться. Вызываем из ОБОИХ путей входа: коллективного (<see cref="MoveAndStart"/>) и
+    /// персонального (<see cref="OnEntryActivate"/>), иначе на первой дуэли ящики появлялись бы только
+    /// в ArmDuel — уже после старта.
+    /// </summary>
+    private void RaiseArenaPreparing(MapId map)
+    {
         var arenaQuery = EntityQueryEnumerator<DuelArenaComponent, TransformComponent>();
         while (arenaQuery.MoveNext(out var arenaUid, out _, out var arenaXform))
         {
@@ -324,7 +340,7 @@ public sealed partial class DuelRotationSystem : EntitySystem
 
             var ev = new ArenaRoundPreparingEvent();
             RaiseLocalEvent(arenaUid, ref ev);
-            break;
+            return;
         }
     }
 
@@ -334,7 +350,80 @@ public sealed partial class DuelRotationSystem : EntitySystem
     /// стартует — раунд запускается отдельно (кнопкой старта на самой арене). Контроллер ротации
     /// ищем первый на сервере (он один).
     /// </summary>
+    /// <summary>
+    /// Нажатие кнопки входа: НЕ телепортирует сразу, а открывает окно выбора тира арсенал-ящиков.
+    /// Сам вход (телепорт + спавн ящиков) выполняется по кнопке «Войти» в окне — см. OnEntryConfirm.
+    /// Если у кнопки нет UI (старые карты) — телепортируем сразу, как раньше.
+    /// </summary>
     private void OnEntryActivate(EntityUid uid, DuelArenaEntryComponent comp, ActivateInWorldEvent args)
+    {
+        if (args.Handled || !args.Complex)
+            return;
+
+        args.Handled = true;
+
+        if (!_ui.HasUi(uid, ArenaEntryUiKey.Key))
+        {
+            DoEntry(uid, comp, args.User);
+            return;
+        }
+
+        _ui.SetUiState(uid, ArenaEntryUiKey.Key, BuildEntryState(comp));
+        _ui.OpenUi(uid, ArenaEntryUiKey.Key, args.User);
+    }
+
+    /// <summary>Игрок выбрал тир и нажал «Войти»: применяем тир ко всем аренам, закрываем окно, входим.</summary>
+    private void OnEntryConfirm(EntityUid uid, DuelArenaEntryComponent comp, ArenaEntryConfirmMessage args)
+    {
+        // Валидация: выбор обязан быть из списка кнопки и существовать; иначе — вход без ящиков.
+        EntProtoId? crate = null;
+        if (args.CrateProto is { } sel && comp.Crates.Any(c => c.Id == sel) && _proto.HasIndex<EntityPrototype>(sel))
+            crate = sel;
+
+        // Тир применяется ко ВСЕМ аренам ротации (как пульт) и перезаписывает прежний.
+        var arenas = EntityQueryEnumerator<DuelArenaComponent>();
+        while (arenas.MoveNext(out _, out var arena))
+            arena.ArsenalCrate = crate;
+
+        _ui.CloseUi(uid, ArenaEntryUiKey.Key, args.Actor);
+
+        DoEntry(uid, comp, args.Actor);
+    }
+
+    /// <summary>Собирает состояние окна выбора: список тиров кнопки + текущий (с первой арены) + «без ящиков».</summary>
+    private ArenaArsenalRemoteBuiState BuildEntryState(DuelArenaEntryComponent comp)
+    {
+        EntProtoId? current = null;
+        var arenas = EntityQueryEnumerator<DuelArenaComponent>();
+        if (arenas.MoveNext(out _, out var firstArena))
+            current = firstArena.ArsenalCrate;
+
+        var options = new List<ArenaArsenalOption>();
+        foreach (var crate in comp.Crates)
+        {
+            options.Add(new ArenaArsenalOption
+            {
+                CrateProto = crate.Id,
+                Name = _proto.TryIndex<EntityPrototype>(crate, out var p) ? p.Name : crate.Id,
+                Current = current?.Id == crate.Id,
+            });
+        }
+
+        options.Add(new ArenaArsenalOption
+        {
+            CrateProto = null,
+            Name = Loc.GetString("arena-arsenal-remote-off"),
+            Current = current == null,
+        });
+
+        return new ArenaArsenalRemoteBuiState(options);
+    }
+
+    /// <summary>
+    /// Собственно вход на арену: телепорт бойцов с хаба на спавн-маркеры и подготовка раунда (там же
+    /// спавнятся арсенал-ящики выбранного тира). Вызывается из OnEntryConfirm (после выбора тира).
+    /// </summary>
+    private void DoEntry(EntityUid uid, DuelArenaEntryComponent comp, EntityUid user)
     {
         var ctrlQuery = EntityQueryEnumerator<DuelRotationComponent>();
         if (!ctrlQuery.MoveNext(out _, out var ctrl) || !ctrl.Loaded)
@@ -353,16 +442,20 @@ public sealed partial class DuelRotationSystem : EntitySystem
         if (comp.SpawnIndex is { } spawnIndex)
         {
             // Сначала нажавший — он занимает выбранный (или ближайший свободный) спавн.
-            MoveOneToSpawn(ctrl, comp.ArenaIndex, args.User, spawnIndex);
+            MoveOneToSpawn(ctrl, comp.ArenaIndex, user, spawnIndex);
 
             // Затем остальные мобы с хаба — на оставшиеся свободные спавны той же арены.
             var others = EntityQueryEnumerator<MobStateComponent, TransformComponent>();
             while (others.MoveNext(out var mob, out _, out var xform))
             {
-                if (mob == args.User || xform.GridUid != grid)
+                if (mob == user || xform.GridUid != grid)
                     continue;
                 MoveOneToSpawn(ctrl, comp.ArenaIndex, mob, spawnIndex);
             }
+
+            // Персональный вход тоже готовит раунд — иначе на первой дуэли ящики ждали бы ArmDuel.
+            if (ctrl.LoadedArenas.TryGetValue(comp.ArenaIndex, out var perMap))
+                RaiseArenaPreparing(perMap);
             return;
         }
 
