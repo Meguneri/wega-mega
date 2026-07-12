@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -56,6 +56,10 @@ namespace Content.Server.Database
                 .HasIndex(l => l.Message)
                 .HasMethod("GIN")
                 .IsTsVectorExpressionIndex("english");
+
+            modelBuilder.Entity<RaidStash>()
+                .Property(r => r.StashData)
+                .HasColumnType("jsonb");
 
             foreach(var entity in modelBuilder.Model.GetEntityTypes())
             {

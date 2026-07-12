@@ -13,6 +13,7 @@ using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
 using Content.Shared.Movement.Pulling.Components;
+using Content.Shared.Mind;
 using Content.Shared.Movement.Pulling.Systems;
 using Robust.Server.Audio;
 using Robust.Shared.EntitySerialization;
@@ -51,6 +52,8 @@ public sealed partial class RaidControllerSystem : EntitySystem
     [Dependency] private RaidLootFieldSystem _lootField = default!;
     [Dependency] private SharedMapSystem _map = default!;
     [Dependency] private IRobustRandom _random = default!;
+    [Dependency] private RaidStashSystem _stash = default!;
+    [Dependency] private SharedMindSystem _mind = default!;
 
     /// <summary>Защита от повторного входа в предзагрузку, если карта рейда сама несёт контроллер.</summary>
     private bool _preloading;
@@ -75,6 +78,13 @@ public sealed partial class RaidControllerSystem : EntitySystem
         {
             if (!comp.Raiders.Remove(args.Target))
                 continue;
+
+            // Записываем KIA в персистентную статистику.
+            if (_mind.TryGetMind(args.Target, out _, out var mind) && mind.UserId is { } userId)
+            {
+                _stash.UpdateStats(userId, stats => stats.RaidsKia++);
+                _ = _stash.SaveStashAsync(userId, force: true);
+            }
 
             var name = Comp<MetaDataComponent>(args.Target).EntityName;
             _chat.DispatchServerAnnouncement(Loc.GetString("raid-died", ("name", name)), Color.Crimson);
@@ -114,6 +124,10 @@ public sealed partial class RaidControllerSystem : EntitySystem
 
         ReturnToHub(ctrlUid, raider);
         ctrl.Raiders.Remove(raider);
+
+        // Сохраняем персистентный прогресс (валюта/статы) при дисконнекте.
+        if (_mind.TryGetMind(raider, out _, out var mind) && mind.UserId is { } userId)
+            _ = _stash.SaveStashAsync(userId, force: true);
 
         var name = Comp<MetaDataComponent>(raider).EntityName;
         _chat.DispatchServerAnnouncement(Loc.GetString("raid-disconnected", ("name", name)), Color.Orange);
@@ -228,12 +242,16 @@ public sealed partial class RaidControllerSystem : EntitySystem
             return;
         }
 
-        // Все мобы (игроки и NPC) на гриде хаба.
+        // Кнопка может стоять на общем хабе или на личной базе игрока.
+        // Собираем всех мобов на гриде кнопки, а также на всех гридах-убежищах.
+        var hideoutGrids = new HashSet<EntityUid>(_stash.GetHideoutGrids().Where(g => Exists(g)));
+        hideoutGrids.Add(grid.Value);
+
         var entrants = new List<EntityUid>();
         var mobs = EntityQueryEnumerator<MobStateComponent, TransformComponent>();
         while (mobs.MoveNext(out var mob, out _, out var xform))
         {
-            if (xform.GridUid == grid)
+            if (xform.GridUid != null && hideoutGrids.Contains(xform.GridUid.Value))
                 entrants.Add(mob);
         }
 
@@ -247,6 +265,10 @@ public sealed partial class RaidControllerSystem : EntitySystem
             // Сдвиг, если на один маркер попадает больше одного входящего, чтобы не оказаться на тайле.
             if (i >= spawns.Count)
                 coords = coords.Offset(new Vector2(i / spawns.Count, 0f));
+
+            // Сохраняем содержимое личного схрона перед заходом в рейд.
+            if (_mind.TryGetMind(entrants[i], out _, out var mind) && mind.UserId is { } userId)
+                _stash.SaveStashBoxContents(userId);
 
             StopPulls(entrants[i]);
             _transform.SetCoordinates(entrants[i], coords);
@@ -288,7 +310,16 @@ public sealed partial class RaidControllerSystem : EntitySystem
         // не задан — мягкий режим без последствий.
         foreach (var raider in raiders)
         {
-            if (Exists(raider) && comp.MiaDamage is { } mia && _mobState.IsAlive(raider))
+            if (!Exists(raider))
+                continue;
+
+            if (_mind.TryGetMind(raider, out _, out var mind) && mind.UserId is { } userId)
+            {
+                _stash.UpdateStats(userId, stats => stats.RaidsMia++);
+                _ = _stash.SaveStashAsync(userId, force: true);
+            }
+
+            if (comp.MiaDamage is { } mia && _mobState.IsAlive(raider))
                 _damageable.TryChangeDamage(raider, mia, ignoreResistances: true, origin: uid);
         }
 
@@ -345,7 +376,7 @@ public sealed partial class RaidControllerSystem : EntitySystem
         if (!comp.Raiders.Remove(raider))
             return;
 
-        // Считаем и «продаём» вынесенную добычу: все предметы с меткой RaidLoot в инвентаре/руках/сумках.
+        // Считаем стоимость вынесенной добычи: все предметы с меткой RaidLoot в инвентаре/руках/сумках.
         // Стартовое снаряжение игрока метки не имеет — остаётся при нём.
         var loot = new List<EntityUid>();
         CollectLoot(raider, loot);
@@ -358,14 +389,26 @@ public sealed partial class RaidControllerSystem : EntitySystem
         if (comp.MaxReward > 0)
             reward = Math.Min(reward, comp.MaxReward);
 
+        // Снимаем метку рейд-лута — вынесенное становится личным имуществом игрока.
         foreach (var item in loot)
-            QueueDel(item);
+        {
+            if (TryComp<RaidLootComponent>(item, out _))
+                RemComp<RaidLootComponent>(item);
+        }
 
         ReturnToHub(controller, raider);
 
-        // Награда — физическими телекристаллами рядом с игроком на хабе (можно потерять с трупа).
-        if (reward > 0)
-            _stack.SpawnMultipleNextToOrDrop(comp.RewardCurrency, reward, raider);
+        // Награда заходит на персистентный счёт рейдера вместо физических кристаллов.
+        if (_mind.TryGetMind(raider, out _, out var mind) && mind.UserId is { } userId && reward > 0)
+        {
+            _stash.AddCurrency(userId, comp.RewardCurrency, reward);
+            _stash.UpdateStats(userId, stats =>
+            {
+                stats.RaidsCompleted++;
+                stats.TotalLootValue += (long)value;
+            });
+            _ = _stash.SaveStashAsync(userId, force: true);
+        }
 
         var name = Comp<MetaDataComponent>(raider).EntityName;
         _chat.DispatchServerAnnouncement(
@@ -394,15 +437,25 @@ public sealed partial class RaidControllerSystem : EntitySystem
         }
     }
 
-    /// <summary>Телепортирует моба на точку возврата хаба (или на сам контроллер, если маркера нет).</summary>
+    /// <summary>
+    /// Телепортирует моба на его персональную базу. Если базы нет — fallback на точку возврата хаба
+    /// (или на сам контроллер).
+    /// </summary>
     private void ReturnToHub(EntityUid controller, EntityUid raider)
     {
         StopPulls(raider);
-        _transform.SetCoordinates(raider, GetHubReturn(controller));
+        _transform.SetCoordinates(raider, GetReturnCoordinates(controller, raider));
     }
 
-    private EntityCoordinates GetHubReturn(EntityUid controller)
+    private EntityCoordinates GetReturnCoordinates(EntityUid controller, EntityUid raider)
     {
+        if (_mind.TryGetMind(raider, out _, out var mind) &&
+            mind.UserId is { } userId &&
+            _stash.GetHideoutSpawnCoordinates(userId) is { } coords)
+        {
+            return coords;
+        }
+
         var returnQuery = EntityQueryEnumerator<RaidReturnComponent, TransformComponent>();
         while (returnQuery.MoveNext(out _, out _, out var xform))
             return xform.Coordinates;

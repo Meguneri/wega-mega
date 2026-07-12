@@ -1,4 +1,5 @@
 using Content.Shared.Damage;
+using Content.Shared.Store;
 using Robust.Shared.Audio;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
@@ -88,9 +89,9 @@ public sealed partial class RaidControllerComponent : Component
     [DataField]
     public int MaxReward;
 
-    /// <summary>Прототип физической валюты-награды (стак). Телекристаллы теряются с трупа при смерти.</summary>
+    /// <summary>Прототип валюты-награды (из прототипов валют магазина). Зачисляется на персистентный счёт рейдера.</summary>
     [DataField]
-    public EntProtoId RewardCurrency = "Telecrystal1";
+    public ProtoId<CurrencyPrototype> RewardCurrency = "Telecrystal";
 
     // ── Напряжение таймера (Фаза 1.1) ─────────────────────────────────────────────────────────
 

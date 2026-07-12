@@ -52,6 +52,7 @@ namespace Content.Server.Database
         public DbSet<IPIntelCache> IPIntelCache { get; set; } = null!;
         public DbSet<CustomVoteLog> CustomVoteLog { get; set; } = null!;
         public DbSet<CustomVoteLogOption> CustomVoteLogOption { get; set; } = null!;
+        public DbSet<RaidStash> RaidStash { get; set; } = null!; // Corvax-Wega-RaidStash
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -316,6 +317,7 @@ namespace Content.Server.Database
 
             ModelBan.OnModelCreating(modelBuilder);
             ModelCustomVoteLog.OnModelCreating(modelBuilder);
+            ModelRaidStash.OnModelCreating(modelBuilder); // Corvax-Wega-RaidStash
         }
 
         public virtual IQueryable<AdminLog> SearchLogs(IQueryable<AdminLog> query, string searchText)

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 
 param([String]$name)
 
@@ -8,5 +8,5 @@ if ($name -eq "")
     exit
 }
 
-dotnet ef migrations add --context SqliteServerDbContext -o Migrations/Sqlite $name
-dotnet ef migrations add --context PostgresServerDbContext -o Migrations/Postgres $name
+dotnet dotnet-ef migrations add --context SqliteServerDbContext -o Migrations/Sqlite $name
+dotnet dotnet-ef migrations add --context PostgresServerDbContext -o Migrations/Postgres $name

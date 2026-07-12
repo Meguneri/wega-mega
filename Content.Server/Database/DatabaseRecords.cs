@@ -129,3 +129,12 @@ public sealed record AchievementRecord(
     byte AchievementKey,
     DateTime UnlockedAt);
 // Corvax-Wega-Achievements-end
+
+// Corvax-Wega-RaidStash-start
+public sealed record RaidStashRecord(
+    NetUserId UserId,
+    string StashData,
+    string Checksum,
+    int Version,
+    DateTime UpdatedAt);
+// Corvax-Wega-RaidStash-end

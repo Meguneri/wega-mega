@@ -180,6 +180,15 @@ namespace Content.Server.Database
         #endregion
         // Corvax-Wega-Achievements-end
 
+        // Corvax-Wega-RaidStash-start
+        #region RaidStash
+
+        Task<RaidStashRecord?> GetRaidStashAsync(NetUserId userId, CancellationToken cancel = default);
+        Task SaveRaidStashAsync(NetUserId userId, RaidStashRecord stash, CancellationToken cancel = default);
+
+        #endregion
+        // Corvax-Wega-RaidStash-end
+
         #region Playtime
 
         /// <summary>
@@ -719,6 +728,24 @@ namespace Content.Server.Database
 
         #endregion
         // Corvax-Wega-Achievements-end
+
+        // Corvax-Wega-RaidStash-start
+        #region RaidStash
+
+        public Task<RaidStashRecord?> GetRaidStashAsync(NetUserId userId, CancellationToken cancel = default)
+        {
+            DbReadOpsMetric.Inc();
+            return RunDbCommand(() => _db.GetRaidStashAsync(userId, cancel));
+        }
+
+        public Task SaveRaidStashAsync(NetUserId userId, RaidStashRecord stash, CancellationToken cancel = default)
+        {
+            DbWriteOpsMetric.Inc();
+            return RunDbCommand(() => _db.SaveRaidStashAsync(userId, stash, cancel));
+        }
+
+        #endregion
+        // Corvax-Wega-RaidStash-end
 
         public Task UpdatePlayerRecordAsync(
             NetUserId userId,

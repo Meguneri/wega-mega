@@ -429,6 +429,54 @@ namespace Content.Server.Database
         #endregion
         // Corvax-Wega-Achievements-end
 
+        // Corvax-Wega-RaidStash-start
+        #region RaidStash
+
+        public async Task<RaidStashRecord?> GetRaidStashAsync(NetUserId userId, CancellationToken cancel = default)
+        {
+            await using var db = await GetDb(cancel);
+
+            var stash = await db.DbContext.RaidStash
+                .SingleOrDefaultAsync(r => r.PlayerUserId == userId.UserId, cancel);
+
+            if (stash == null)
+                return null;
+
+            return new RaidStashRecord(
+                new NetUserId(stash.PlayerUserId),
+                stash.StashData,
+                stash.Checksum,
+                stash.Version,
+                NormalizeDatabaseTime(stash.UpdatedAt));
+        }
+
+        public async Task SaveRaidStashAsync(NetUserId userId, RaidStashRecord stash, CancellationToken cancel = default)
+        {
+            await using var db = await GetDb(cancel);
+
+            var existing = await db.DbContext.RaidStash
+                .SingleOrDefaultAsync(r => r.PlayerUserId == userId.UserId, cancel);
+
+            if (existing == null)
+            {
+                existing = new RaidStash
+                {
+                    PlayerUserId = userId.UserId,
+                };
+                db.DbContext.RaidStash.Add(existing);
+            }
+
+            existing.StashData = stash.StashData;
+            existing.Checksum = stash.Checksum;
+            existing.Version = stash.Version;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            await db.DbContext.SaveChangesAsync(cancel);
+        }
+
+        #endregion
+        // Corvax-Wega-RaidStash-end
+
         #region User Ids
         public async Task<NetUserId?> GetAssignedUserIdAsync(string name)
         {

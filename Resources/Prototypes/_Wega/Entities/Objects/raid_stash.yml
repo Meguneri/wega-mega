@@ -1,0 +1,13 @@
+- type: entity
+  id: RaidStashBox
+  name: личный схрон рейдера
+  description: Усиленный контейнер для хранения добычи между рейдами. Привязан к владельцу.
+  parent: CrateGeneric
+  components:
+  - type: Sprite
+    sprite: Structures/Storage/Crates/secure.rsi
+  - type: Icon
+    sprite: Structures/Storage/Crates/secure.rsi
+  - type: EntityStorage
+    capacity: 100
+  - type: RaidStashBox

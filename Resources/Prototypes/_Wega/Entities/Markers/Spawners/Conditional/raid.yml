@@ -77,9 +77,36 @@
       - state: green
   - type: RaidReturn
 
+# ── Маркеры персональной базы рейдера (hideout) ───────────────────────────────
+- type: entity
+  id: RaidHideoutSpawnMarker
+  parent: MarkerBase
+  name: Raid Hideout Spawn
+  suffix: Raid, Hideout
+  description: Точка появления игрока на его персональной базе.
+  components:
+  - type: Sprite
+    layers:
+      - state: blue
+  - type: RaidHideoutSpawn
+    spawnType: Player
+
+- type: entity
+  id: RaidStashBoxMarker
+  parent: MarkerBase
+  name: Raid Hideout Stash
+  suffix: Raid, Hideout
+  description: Точка спавна личного схрона на персональной базе игрока.
+  components:
+  - type: Sprite
+    layers:
+      - state: blue
+  - type: RaidHideoutSpawn
+    spawnType: Stash
+
 # ── Хаб-магазин: закупка снаряжения за добытые ТК ─────────────────────────────
-# Терминал на базе StorePresetFullArsenal (весь арсенальный пул за телекристаллы). Игрок вставляет
-# в него заработанные на выносе ТК и закупается перед следующим заходом. Ставится на хаб.
+# Терминал на базе StorePresetFullArsenal (весь арсенальный пул за телекристаллы). Баланс берётся
+# напрямую из персистентного стэша рейдера — физические ТК вставлять не нужно. Ставится на хаб.
 - type: entity
   parent: [ VendingMachine, StorePresetFullArsenal ]
   id: RaidShopTerminal
@@ -109,8 +136,9 @@
   - type: Store
     # Сбрасываем фракционную привязку пресета — покупать может любой рейдер.
     expectedFaction: []
-    balance:
-      Telecrystal: 0
+    # Баланс управляется напрямую из персистентного стэша (RaidStoreSystem).
+    balance: {}
+  - type: RaidStore
 
 # ── Точка появления рейдера (на карту рейда) ──────────────────────────────────
 - type: entity
