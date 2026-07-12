@@ -313,6 +313,19 @@ public sealed partial class DuelRotationSystem : EntitySystem
         }
 
         comp.CurrentArena = arenaIndex;
+
+        // Бойцы расставлены — раунд готовится. Сообщаем трекеру этой арены: он выдаст арсенал-ящики
+        // (если выбран пультом) заранее, у спавнов, чтобы можно было экипироваться до падения барьеров.
+        var arenaQuery = EntityQueryEnumerator<DuelArenaComponent, TransformComponent>();
+        while (arenaQuery.MoveNext(out var arenaUid, out _, out var arenaXform))
+        {
+            if (arenaXform.MapID != map)
+                continue;
+
+            var ev = new ArenaRoundPreparingEvent();
+            RaiseLocalEvent(arenaUid, ref ev);
+            break;
+        }
     }
 
     /// <summary>

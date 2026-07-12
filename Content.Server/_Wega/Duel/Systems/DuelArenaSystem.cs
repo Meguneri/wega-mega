@@ -1,3 +1,4 @@
+using Content.Server._Wega.Duel;
 using Content.Server._Wega.Duel.Components;
 using Content.Server.Chat.Managers;
 using Content.Server.DeviceLinking.Systems;
@@ -64,19 +65,22 @@ public sealed partial class DuelArenaSystem : EntitySystem
     };
 
     /// <summary>
-    /// Спавнит текущий арсенал-крейт (<see cref="DuelArenaComponent.ArsenalCrate"/>) у каждого
-    /// спавн-маркера арены — на случайном соседнем тайле. Крейт помечен markIssuedItems, поэтому
-    /// очистка арены снесёт его после боя.
+    /// Спавнит текущий арсенал-крейт (<see cref="DuelArenaComponent.ArsenalCrate"/>, задаётся пультом
+    /// <see cref="ArenaArsenalRemoteSystem"/>) у каждого спавн-маркера арены — на случайном соседнем
+    /// тайле. Крейт помечен markIssuedItems, поэтому его содержимое метится ArenaIssued и очистка
+    /// снесёт всё после боя.
     ///
-    /// TODO(arena-arsenal-crates): ВРЕМЕННО НЕ ВЫЗЫВАЕТСЯ (единственный вызов в ArmDuel закомментирован) —
-    /// система работает некорректно: ящики спавнятся по нажатию кнопок (из ArmDuel), а не по концу дуэли /
-    /// при подготовке раунда. Метод оставлен как есть для доработки тайминга; выдаваемая им снаряга
-    /// удаляется корректно, чинить надо именно МОМЕНТ спавна. После переработки — вернуть вызов в ArmDuel.
+    /// Идемпотентно в пределах раунда: гард <see cref="DuelArenaComponent.ArsenalSpawned"/> не даёт
+    /// задвоить ящики. Основной вызов — при подготовке раунда (ArenaRoundPreparingEvent, перенос бойцов
+    /// на арену), чтобы ящики стояли у спавнов ДО начала боя; в ArmDuel — подстраховка для одиночных арен
+    /// (без ротации), где переноса-на-арену нет. Флаг сбрасывается по концу/сбросу боя.
     /// </summary>
-    private void SpawnArsenalCrates(EntityUid arenaUid, DuelArenaComponent comp)
+    private void EnsureArsenalCrates(EntityUid arenaUid, DuelArenaComponent comp)
     {
-        if (comp.ArsenalCrate is not { } crateProto)
+        if (comp.ArsenalSpawned || comp.ArsenalCrate is not { } crateProto)
             return;
+
+        comp.ArsenalSpawned = true;
 
         var arenaGrid = Transform(arenaUid).GridUid;
         var query = EntityQueryEnumerator<DuelArenaSpawnComponent, TransformComponent>();
@@ -90,11 +94,15 @@ public sealed partial class DuelArenaSystem : EntitySystem
         }
     }
 
+    private void OnRoundPreparing(EntityUid uid, DuelArenaComponent comp, ref ArenaRoundPreparingEvent args)
+        => EnsureArsenalCrates(uid, comp);
+
     public override void Initialize()
     {
         base.Initialize();
         SubscribeLocalEvent<DuelArenaComponent, ComponentInit>(OnInit);
         SubscribeLocalEvent<DuelArenaComponent, SignalReceivedEvent>(OnSignalReceived);
+        SubscribeLocalEvent<DuelArenaComponent, ArenaRoundPreparingEvent>(OnRoundPreparing);
         SubscribeLocalEvent<MobStateChangedEvent>(OnMobStateChanged);
     }
 
@@ -334,17 +342,10 @@ public sealed partial class DuelArenaSystem : EntitySystem
         _chatManager.DispatchServerAnnouncement(
             Loc.GetString("duel-arena-started", ("fighters", names)), Color.Gold);
 
-        // TODO(arena-arsenal-crates): система спавна арсенал-крейтов ОТКЛЮЧЕНА — работает некорректно.
-        // Сейчас SpawnArsenalCrates дёргается отсюда, из ArmDuel (т.е. по нажатию кнопки старта/готовности),
-        // из-за чего ящики появляются «после нажатия кнопок», а не в нужный момент раунда (по концу дуэли /
-        // при подготовке следующего раунда). Возможный побочный эффект — из-за этого ломается общая логика
-        // раунда. Снаряжение, которое ящики выдают, при этом удаляется корректно. Переработать тайминг
-        // (перенести спавн в нужную фазу) и снова включить вызов.
-        //
-        // TODO(arena-arsenal-crates): целевое поведение — ящики спавнятся ЧЕРЕЗ ПУЛЬТ (арсенал-ремоут,
-        // см. ArenaArsenalRemoteSystem), а НЕ вручную/по нажатию кнопки старта. При этом спавн через пульт
-        // НЕ должен ломать текущую систему дуэлей (тайминг раунда, очистку и восстановление арены).
-        // SpawnArsenalCrates(uid, comp);
+        // Подстраховка выдачи арсенал-ящиков для одиночных арен (без ротации): там нет переноса бойцов
+        // на арену, а значит и ArenaRoundPreparingEvent, поэтому спавним здесь. Гард ArsenalSpawned
+        // делает вызов no-op, если ящики уже выданы при подготовке раунда (ротация).
+        EnsureArsenalCrates(uid, comp);
 
         // Усиление для проигравшего 3 раза подряд: миньон-помощник.
         DuelRotationComponent? ctrl = null;
@@ -426,6 +427,9 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // и после оседания отложенных взрывов, чтобы она была целой к следующему раунду.
         comp.PendingRestore = true;
         comp.PendingRestoreAt = _timing.CurTime + TimeSpan.FromSeconds(comp.RestoreDelay);
+
+        // Ящики этого раунда очистка уже убрала — разрешаем выдать их заново на следующем.
+        comp.ArsenalSpawned = false;
     }
 
     /// <summary>
@@ -588,6 +592,9 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // осталось бы навсегда. RestoreArena сам отодвигает бойцов с тайлов под конструкциями.
         arena.PendingRestore = true;
         arena.PendingRestoreAt = _timing.CurTime + TimeSpan.FromSeconds(arena.RestoreDelay);
+
+        // Ящики этого раунда очистка уже убрала — разрешаем выдать их заново на следующем.
+        arena.ArsenalSpawned = false;
 
         // Повторно исцелить бойцов в тот же отложенный момент: если смертельный удар нанесла отложенная
         // взрывчатка, её взрыв отрывает конечности уже ПОСЛЕ немедленного Rejuvenate выше — без этого

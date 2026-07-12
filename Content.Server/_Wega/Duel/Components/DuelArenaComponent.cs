@@ -229,6 +229,14 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     public float RestoreDelay = 2.5f;
 
     /// <summary>
+    /// Арсенал-ящики (<see cref="ArsenalCrate"/>) уже заспавнены в текущем раунде. Гард от повторного
+    /// спавна: раунд готовится через <c>ArenaRoundPreparingEvent</c> (перенос бойцов на арену), а
+    /// <see cref="DuelArenaSystem"/> подстраховывается ещё и в ArmDuel — флаг не даёт задвоить ящики.
+    /// Сбрасывается по концу/сбросу боя (после очистки, которая эти ящики убирает).
+    /// </summary>
+    public bool ArsenalSpawned;
+
+    /// <summary>
     /// Бойцы для ОТЛОЖЕННОГО повторного исцеления в момент <see cref="PendingRestoreAt"/>. Немедленный
     /// Rejuvenate в ConcludeDuel поднимает их из крита сразу, но конечности, оторванные отложенным
     /// взрывом (граната/заряд, сработавший смертельным ударом) уже ПОСЛЕ конца боя, к тому моменту ещё
