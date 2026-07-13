@@ -353,6 +353,8 @@ public sealed partial class RaidStashSystem : EntitySystem
 
     /// <summary>
     /// Teleports a newly attached player to their personal hideout if they are not already there.
+    /// Works only when a raid controller exists in the world — otherwise spawned mobs stay
+    /// wherever they were placed (admin arenas, ghost roles, etc.).
     /// </summary>
     private void OnPlayerAttached(PlayerAttachedEvent args)
     {
@@ -362,6 +364,11 @@ public sealed partial class RaidStashSystem : EntitySystem
 
         // Не телепортируем призраков/наблюдателей.
         if (HasComp<GhostComponent>(args.Entity))
+            return;
+
+        // Рейд-режим активен только при наличии контроллера рейда. Без него не трогаем спавн.
+        var controllerQuery = EntityQueryEnumerator<RaidControllerComponent>();
+        if (!controllerQuery.MoveNext(out _, out _))
             return;
 
         if (!TryGetHideout(userId, out _, out var gridUid))
