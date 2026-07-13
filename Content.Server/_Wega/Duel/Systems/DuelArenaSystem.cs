@@ -16,6 +16,7 @@ using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
 using Content.Shared.Movement.Systems;
+using Content.Shared.Physics;
 using Robust.Server.Audio;
 using Robust.Shared.Audio;
 using Robust.Shared.GameObjects;
@@ -24,6 +25,8 @@ using Robust.Shared.Map.Components;
 using Robust.Shared.Maths;
 using Robust.Shared.Localization;
 using Robust.Shared.Network;
+using Robust.Shared.Physics;
+using Robust.Shared.Physics.Components;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
 using System.Linq;
@@ -115,9 +118,11 @@ public sealed partial class DuelArenaSystem : EntitySystem
 
     /// <summary>
     /// Подбирает тайл под арсенал-ящик рядом со спавном дуэлянта, идя от БЛИЖАЙШИХ клеток к дальним
-    /// (<see cref="CrateTileOffsets"/>). Берёт первый пустой тайл (пол есть, ничего заякоренного — ни
-    /// стола, ни стены, ни барьера); если пустого нет — наименее нагруженный (при равной нагрузке
-    /// побеждает ближайший, т.к. список упорядочен). Так ящик не оказывается в столе/стене и стоит вплотную.
+    /// (<see cref="CrateTileOffsets"/>). Берёт первый свободный тайл (пол есть, нет БЛОКИРУЮЩЕЙ
+    /// заякоренной сущности — стола, стены, барьера); если свободного нет — наименее нагруженный (при
+    /// равной нагрузке побеждает ближайший, т.к. список упорядочен). Так ящик не оказывается в столе/стене
+    /// и стоит вплотную. Считаем только реальные препятствия: кабели/трубы/провода под полом заякорены,
+    /// но ящику не мешают — иначе на «жилых» аренах (закабелённый пол) ящик уезжал бы за 2 тайла от спавна.
     /// </summary>
     private EntityCoordinates FindCrateCoords(EntityUid grid, MapGridComponent gridComp, Vector2i spawnTile)
     {
@@ -135,21 +140,46 @@ public sealed partial class DuelArenaSystem : EntitySystem
 
             anchored.Clear();
             _map.GetAnchoredEntities((grid, gridComp), tile, anchored);
+            var load = CountBlockers(anchored);
 
-            // Первый пустой в порядке близости — он же ближайший. Готово.
-            if (anchored.Count == 0)
+            // Первый свободный в порядке близости — он же ближайший. Готово.
+            if (load == 0)
                 return _map.GridTileToLocal(grid, gridComp, tile);
 
             // Иначе запоминаем наименее нагруженный (строгое <, поэтому при равенстве остаётся ближайший).
-            if (anchored.Count < bestLoad)
+            if (load < bestLoad)
             {
-                bestLoad = anchored.Count;
+                bestLoad = load;
                 bestLoaded = tile;
             }
         }
 
-        // Пустого тайла не нашлось — наименее нагруженный; в самом крайнем случае сам спавн-тайл.
+        // Свободного тайла не нашлось — наименее нагруженный; в самом крайнем случае сам спавн-тайл.
         return _map.GridTileToLocal(grid, gridComp, bestLoaded ?? spawnTile);
+    }
+
+    /// <summary>
+    /// Сколько из заякоренных на тайле сущностей реально блокируют размещение ящика: статичное твёрдое
+    /// тело на слое <see cref="CollisionGroup.Impassable"/>. Кабели, трубы, провода и прочая
+    /// незакрывающая тайл электрика в счёт не идут.
+    /// </summary>
+    private int CountBlockers(List<EntityUid> anchored)
+    {
+        var count = 0;
+        foreach (var ent in anchored)
+        {
+            if (!TryComp<PhysicsComponent>(ent, out var body))
+                continue;
+
+            if (body.BodyType != BodyType.Static ||
+                !body.Hard ||
+                (body.CollisionLayer & (int) CollisionGroup.Impassable) == 0)
+                continue;
+
+            count++;
+        }
+
+        return count;
     }
 
     private void OnRoundPreparing(EntityUid uid, DuelArenaComponent comp, ref ArenaRoundPreparingEvent args)
