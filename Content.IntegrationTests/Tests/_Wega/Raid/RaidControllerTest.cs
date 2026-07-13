@@ -133,7 +133,7 @@ public sealed class RaidControllerTest : GameTest
     }
 
     /// <summary>
-    /// Если рейдер отключается во время рейда, его персонаж экстренно эвакуируется на хаб.
+    /// Если рейдер отключается во время рейда, его персонаж экстренно эвакуируется на персональную базу.
     /// </summary>
     [Test]
     public async Task PlayerDisconnectExtractsRaiderTest()
@@ -142,8 +142,7 @@ public sealed class RaidControllerTest : GameTest
         var server = pair.Server;
         var mapSystem = server.System<SharedMapSystem>();
         var mindSystem = SEntMan.System<SharedMindSystem>();
-        var playerManager = server.ResolveDependency<IPlayerManager>();
-        var transformSystem = SEntMan.System<SharedTransformSystem>();
+        var stashSystem = server.System<RaidStashSystem>();
 
         var hubMap = await pair.CreateTestMap();
         var raidMap = await pair.CreateTestMap();
@@ -154,6 +153,7 @@ public sealed class RaidControllerTest : GameTest
         EntityUid spawnMarker = default;
         EntityUid raider = default;
         EntityUid? mindId = null;
+        var session = pair.Player;
 
         await server.WaitAssertion(() =>
         {
@@ -178,12 +178,9 @@ public sealed class RaidControllerTest : GameTest
             raider = SSpawnAtPosition("RaidTestDummy", hubCoords.Offset(new Vector2(1, 0)));
 
             // Присоединяем к рейдеру существующую тестовую сессию.
-            var session = playerManager.Sessions.Single();
             mindId = mindSystem.CreateMind(session.UserId);
             mindSystem.TransferTo(mindId.Value, raider);
         });
-
-        await pair.RunTicksSync(5);
 
         await server.WaitAssertion(() =>
         {
@@ -208,7 +205,10 @@ public sealed class RaidControllerTest : GameTest
         {
             var ctrl = SEntMan.GetComponent<RaidControllerComponent>(controller);
             Assert.That(ctrl.Raiders.Contains(raider), Is.False, "Отключившийся рейдер должен быть удалён из списка");
-            Assert.That(SEntMan.GetComponent<TransformComponent>(raider).MapID, Is.EqualTo(hubMap.MapId), "Отключившийся рейдер должен вернуться на хаб");
+            Assert.That(stashSystem.TryGetHideout(session.UserId, out _, out var gridUid), Is.True,
+                "Для игрока должна быть загружена персональная база");
+            Assert.That(SEntMan.GetComponent<TransformComponent>(raider).GridUid, Is.EqualTo(gridUid),
+                "Отключившийся рейдер должен вернуться на свою персональную базу");
         });
     }
 
@@ -350,7 +350,6 @@ public sealed class RaidControllerTest : GameTest
         var server = pair.Server;
         var mindSystem = SEntMan.System<SharedMindSystem>();
         var stashSystem = server.System<RaidStashSystem>();
-        var playerManager = server.ResolveDependency<IPlayerManager>();
         var session = pair.Player;
 
         Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
@@ -362,6 +361,13 @@ public sealed class RaidControllerTest : GameTest
         await server.WaitAssertion(() =>
         {
             var coords = testMap.GridCoords;
+
+            // Телепорт на базу срабатывает только в режиме рейда — нужен контроллер.
+            var controller = SSpawnAtPosition(null, coords);
+            var ctrl = SEntMan.AddComponent<RaidControllerComponent>(controller);
+            ctrl.RaidMap = new ResPath("/Maps/_Wega/Arena/arena_duel_31.yml");
+            ctrl.Loaded = true;
+
             dummy = SSpawnAtPosition("RaidTestDummy", coords);
 
             // Привязываем существующую тестовую сессию к новому телу.

@@ -353,6 +353,7 @@ public sealed partial class RaidStashSystem : EntitySystem
 
     /// <summary>
     /// Teleports a newly attached player to their personal hideout if they are not already there.
+    /// Only applies while raid mode is active (i.e. a <see cref="RaidControllerComponent"/> exists).
     /// </summary>
     private void OnPlayerAttached(PlayerAttachedEvent args)
     {
@@ -362,6 +363,11 @@ public sealed partial class RaidStashSystem : EntitySystem
 
         // Не телепортируем призраков/наблюдателей.
         if (HasComp<GhostComponent>(args.Entity))
+            return;
+
+        // Телепорт на базу имеет смысл только в режиме рейда. В арене-моде и других режимах
+        // игрок спавнится на общей карте, а личная база используется только как персистентный схрон.
+        if (!IsRaidModeActive())
             return;
 
         if (!TryGetHideout(userId, out _, out var gridUid))
@@ -377,6 +383,15 @@ public sealed partial class RaidStashSystem : EntitySystem
 
         _transform.SetCoordinates(args.Entity, coords.Value);
         _sawmill.Debug($"Teleported {userId} to hideout");
+    }
+
+    /// <summary>
+    /// Returns true if the server is running raid mode (at least one raid controller exists).
+    /// </summary>
+    private bool IsRaidModeActive()
+    {
+        var query = EntityQueryEnumerator<RaidControllerComponent>();
+        return query.MoveNext(out _, out _);
     }
 
     private EntityCoordinates? FindSpawnOnGrid(EntityUid gridUid, RaidHideoutSpawnType type)
