@@ -331,3 +331,4 @@ Resources/MapImages
 # Это self-contained сборка (рантайм .NET + все ресурсы) — десятки тысяч файлов,
 # артефакт сборки, в git не нужен.
 /dist/
+DEPLOY.md
