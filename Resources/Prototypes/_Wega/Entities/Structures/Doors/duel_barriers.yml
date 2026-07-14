@@ -90,7 +90,7 @@
   parent: BaseWallmountMetallic
   name: кнопка готовности к дуэли
   suffix: Duel Arena
-  description: Нажми, чтобы подтвердить готовность. Над кнопкой соперника загорится голограмма «ГОТОВ». Бой начнётся, когда готовы оба бойца.
+  description: Нажми, чтобы подтвердить готовность — над твоей кнопкой загорится оранжевое «ОЖИДАНИЕ», а над кнопкой соперника — «ГОТОВ». Бой начнётся, когда готовы оба бойца.
   components:
   # НЕ наследуемся от SignalButton: его SignalSwitch транслировал бы DuelStart по КАЖДОМУ нажатию
   # (мгновенный старт, без ready-check). Нажатие ловит DuelReadyButton; сигнал DuelStart на таймер
@@ -152,6 +152,34 @@
     radius: 1.0
     energy: 1.0
     color: "#4DFF73"
+    castShadows: false
+
+# ── Голограмма ожидания ──────────────────────────────────────────────────────
+# Спавнится над кнопкой бойца, который УЖЕ нажал готовность и ждёт соперника (индикатор «я готов,
+# жду тебя»). Оранжевая, в отличие от зелёной «ГОТОВ». Снимается, когда боец отменил готовность,
+# и при старте/конце/сбросе боя (DuelReadySystem). Только индикатор — без физики и коллизий.
+- type: entity
+  id: DuelWaitingHologram
+  name: голограмма ожидания
+  suffix: Duel Arena
+  categories: [ HideSpawnMenu ]
+  description: Голографическая отметка ожидания соперника.
+  components:
+  - type: Transform
+    anchored: false
+  - type: Sprite
+    drawdepth: Overlays
+    noRot: true
+    # Текстура 128×32 px; ужимаем так же, как «ГОТОВ», чтобы аккуратно висела НАД кнопкой.
+    scale: 0.4, 0.4
+    sprite: _Wega/Effects/duel_waiting.rsi
+    layers:
+      - state: icon
+        shader: unshaded
+  - type: PointLight
+    radius: 1.0
+    energy: 1.0
+    color: "#FF9A33"
     castShadows: false
 
 # ── Звуковой эмиттер ─────────────────────────────────────────────────────────

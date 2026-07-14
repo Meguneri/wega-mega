@@ -1,0 +1,8 @@
+[mcp_servers.repowise-wega]
+command = "repowise"
+args = [
+    "mcp",
+    "/Users/meguneri/Programming/wega-mega",
+    "--transport",
+    "stdio",
+]

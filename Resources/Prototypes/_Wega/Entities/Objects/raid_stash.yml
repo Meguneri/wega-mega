@@ -1,13 +1,21 @@
 - type: entity
   id: RaidStashBox
   name: личный схрон рейдера
-  description: Усиленный контейнер для хранения добычи между рейдами. Привязан к владельцу.
-  parent: CrateGeneric
+  description: Усиленный контейнер для хранения добычи между рейдами. Привязан к владельцу. Открывает окно инвентаря, как в Таркове.
+  parent: filingCabinet
   components:
   - type: Sprite
     sprite: Structures/Storage/Crates/secure.rsi
+    layers:
+    - state: icon
   - type: Icon
     sprite: Structures/Storage/Crates/secure.rsi
-  - type: EntityStorage
-    capacity: 100
+    state: icon
+  - type: Storage
+    # Сетка инвентаря ~10x10 ячеек (как стартовый схрон в Таркове).
+    grid:
+    - 0,0,9,9
+    maxItemSize: Ginormous
+    quickInsert: true
+    areaInsert: true
   - type: RaidStashBox

@@ -282,6 +282,17 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     [DataField]
     public EntProtoId ReadyHologram = "DuelReadyHologram";
 
+    /// <summary>
+    /// Голограммы «ОЖИДАНИЕ» (кнопка → сущность-голограмма). Висят над кнопкой бойца, который УЖЕ нажал
+    /// свою готовность и ждёт соперника — так сам нажавший видит подтверждение своего нажатия. Снимаются,
+    /// когда боец отменил готовность, и при старте/конце/сбросе боя.
+    /// </summary>
+    public readonly Dictionary<EntityUid, EntityUid> WaitingHolograms = new();
+
+    /// <summary>Прототип голограммы ожидания, висящей над готовым бойцом.</summary>
+    [DataField]
+    public EntProtoId WaitingHologram = "DuelWaitingHologram";
+
     /// <summary>Звук подтверждения готовности (играется рядом с кнопкой).</summary>
     [DataField]
     public SoundSpecifier? ReadySound = new SoundPathSpecifier("/Audio/_Wega/Duel/duel_ready.ogg");

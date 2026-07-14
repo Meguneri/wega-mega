@@ -43,3 +43,14 @@
     sprite: _Wega/Clothing/OuterClothing/WinterCoats/altBScoat.rsi
   - type: ToggleableClothing
     clothingPrototype: ClothingHeadHatHoodWinterBlueShieldAlt
+
+- type: entity
+  parent: ClothingOuterWinterCoat
+  id: ClothingOuterWinterSynd
+  name: большая зимняя куртка синдиката
+  description: Куртка того человека, который украл все подарки, зарплаты и диск от ядерки у станции. Смерть НТ.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/WinterCoats/sindycate.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/WinterCoats/sindycate.rsi
