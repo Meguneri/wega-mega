@@ -303,6 +303,38 @@ public sealed partial class TextScreenSystem : VisualizerSystem<TextScreenVisual
 
             BuildTimerLayers(uid, timer, screen);
             DrawLayers(uid, timer.LayerStatesToDraw);
+
+            // _Wega: у анимированного голо-шрифта (кастомный Font, напр. дуэльный таймер) держим ВСЕ
+            // разряды в одной фазе. Иначе статичные цифры переливаются вразнобой с «тикающей» справа:
+            // LayerSetRsiState на неизменном state фазу не трогает, а у меняющейся цифры смена значения
+            // сбрасывает AnimationTime в ноль — и её цвет отстаёт. Пишем всем слоям общее время из единых
+            // часов (CurTime % длина цикла) — цвет/скан-линии переливаются синхронно.
+            if (screen.Font != null)
+                SyncFontAnimation(uid, timer.LayerStatesToDraw);
+        }
+    }
+
+    /// <summary>
+    ///     _Wega: фазирует анимацию всех отрисованных слоёв к единому времени (<see cref="IGameTiming.CurTime"/>
+    ///     по модулю длины цикла state). Нужно для анимированных RSI-шрифтов, чтобы соседние глифы переливались
+    ///     синхронно, несмотря на то, что «тикающая» цифра периодически пересоздаёт свой state (и сбрасывает фазу).
+    /// </summary>
+    private void SyncFontAnimation(EntityUid uid, Dictionary<string, string?> layerStates)
+    {
+        if (!TryComp<SpriteComponent>(uid, out var sprite))
+            return;
+
+        var now = (float)_gameTiming.CurTime.TotalSeconds;
+        foreach (var (key, state) in layerStates)
+        {
+            if (state == null)
+                continue;
+            if (!SpriteSystem.TryGetLayer((uid, sprite), key, out var layer, false) || layer.ActualRsi is not { } rsi)
+                continue;
+            if (!rsi.TryGetState(state, out var rsiState) || rsiState.TotalDelay <= 0f)
+                continue;
+
+            SpriteSystem.LayerSetAnimationTime(layer, now % rsiState.TotalDelay);
         }
     }
 

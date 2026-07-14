@@ -425,3 +425,14 @@
           base_leg_cshirt: Sixteen
           base_leg_skirt: Sixteen
           base_leg_skirt_long: Sixteen
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformBikini
+  name: бикини
+  description: Лёгкий пляжный наряд.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpskirt/bikini.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpskirt/bikini.rsi

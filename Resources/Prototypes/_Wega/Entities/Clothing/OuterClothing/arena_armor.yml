@@ -81,3 +81,82 @@
         outerClothing-vox:
         - state: equipped-OUTERCLOTHING-glow-vox
           shader: unshaded
+
+# Delta-V armors adapted for Wega arena content.
+# Textures licensed under CC0-1.0.
+
+- type: entity
+  parent: [ClothingOuterBaseMedium, AllowSuitStorageClothing]
+  id: ClothingOuterArmorPlateCarrierWega
+  name: plate carrier
+  description: A large and bulky carrier featuring steel plates that offer decent protection against gunfire.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Armor/platecarrier.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Armor/platecarrier.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.80
+        Slash: 0.80
+        Piercing: 0.50
+        Heat: 0.80
+  - type: StaminaResistance
+    damageCoefficient: 0.6
+  - type: ClothingSpeedModifier
+    walkModifier: 0.90
+    sprintModifier: 0.90
+  - type: ExplosionResistance
+    damageCoefficient: 0.70
+
+- type: entity
+  parent: [ClothingOuterBaseMedium, AllowSuitStorageClothing]
+  id: ClothingOuterArmorDuraVestWega
+  name: durathread vest
+  description: A tight-fitting and sturdy armor vest, reinforced with durathread weave to protect against sharp objects and blunt force trauma.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Armor/duravest.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Armor/duravest.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.60
+        Slash: 0.60
+        Piercing: 0.90
+        Heat: 0.90
+  - type: StaminaResistance
+    damageCoefficient: 0.9
+  - type: ExplosionResistance
+    damageCoefficient: 0.90
+
+- type: entity
+  parent: [ClothingOuterBaseLarge, AllowSuitStorageClothing]
+  id: ClothingOuterArmorARCWega
+  name: ARCS
+  description: The Advanced Riot Control Suit, or ARCS for short, is generally regarded as far too bulky and overly hot for any practical use - but when the riots are raging, most officers invariably take great comfort from the thick and claustrophobic padding.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Armor/riot.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Armor/riot.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.40
+        Slash: 0.40
+        Piercing: 0.70
+        Heat: 0.70
+  - type: StaminaResistance
+    damageCoefficient: 0.5
+  - type: ClothingSpeedModifier
+    walkModifier: 0.75
+    sprintModifier: 0.75
+  - type: ExplosionResistance
+    damageCoefficient: 0.80
+  - type: GroupExamine
+  - type: Tag
+    tags:
+      - WhitelistChameleon

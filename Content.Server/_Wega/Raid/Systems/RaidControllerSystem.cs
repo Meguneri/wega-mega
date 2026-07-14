@@ -23,6 +23,7 @@ using Robust.Shared.Localization;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Maths;
+using Robust.Shared.Network;
 using Robust.Shared.Player;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
@@ -116,18 +117,25 @@ public sealed partial class RaidControllerSystem : EntitySystem
             return;
         }
 
+        var userId = args.Player.UserId;
+
         // Экстренная эвакуация: лут рейда остаётся на локации, снаряжение при персонаже.
+        // MindContainerComponent в момент отсоединения уже может быть недоступен,
+        // поэтому UserId берём напрямую из события.
         var loot = new List<EntityUid>();
         CollectLoot(raider, loot);
+        var dropCoords = Transform(raider).Coordinates;
         foreach (var item in loot)
-            QueueDel(item);
+        {
+            StopPulls(item);
+            _transform.SetCoordinates(item, dropCoords);
+        }
 
-        ReturnToHub(ctrlUid, raider);
+        ReturnToHub(ctrlUid, raider, userId);
         ctrl.Raiders.Remove(raider);
 
         // Сохраняем персистентный прогресс (валюта/статы) при дисконнекте.
-        if (_mind.TryGetMind(raider, out _, out var mind) && mind.UserId is { } userId)
-            _ = _stash.SaveStashAsync(userId, force: true);
+        _ = _stash.SaveStashAsync(userId, force: true);
 
         var name = Comp<MetaDataComponent>(raider).EntityName;
         _chat.DispatchServerAnnouncement(Loc.GetString("raid-disconnected", ("name", name)), Color.Orange);
@@ -441,17 +449,22 @@ public sealed partial class RaidControllerSystem : EntitySystem
     /// Телепортирует моба на его персональную базу. Если базы нет — fallback на точку возврата хаба
     /// (или на сам контроллер).
     /// </summary>
-    private void ReturnToHub(EntityUid controller, EntityUid raider)
+    private void ReturnToHub(EntityUid controller, EntityUid raider, NetUserId? userId = null)
     {
         StopPulls(raider);
-        _transform.SetCoordinates(raider, GetReturnCoordinates(controller, raider));
+        _transform.SetCoordinates(raider, GetReturnCoordinates(controller, raider, userId));
     }
 
-    private EntityCoordinates GetReturnCoordinates(EntityUid controller, EntityUid raider)
+    private EntityCoordinates GetReturnCoordinates(EntityUid controller, EntityUid raider, NetUserId? userId = null)
     {
-        if (_mind.TryGetMind(raider, out _, out var mind) &&
-            mind.UserId is { } userId &&
-            _stash.GetHideoutSpawnCoordinates(userId) is { } coords)
+        if (!userId.HasValue &&
+            _mind.TryGetMind(raider, out _, out var mind))
+        {
+            userId = mind.UserId;
+        }
+
+        if (userId.HasValue &&
+            _stash.GetHideoutSpawnCoordinates(userId.Value) is { } coords)
         {
             return coords;
         }

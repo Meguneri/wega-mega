@@ -91,3 +91,15 @@
     - MeteorSwarmScheduler
     - SpaceTrafficControlEventScheduler
     - BasicRoundstartVariation
+
+- type: gamePreset
+  id: Raid
+  alias:
+    - raid
+    - tarkov
+    - рейд
+  name: raid-title
+  description: raid-description
+  showInVote: false
+  rules:
+    - Raid

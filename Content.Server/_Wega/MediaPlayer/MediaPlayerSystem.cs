@@ -524,59 +524,127 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
     private async Task DownloadThumbnailAsync(string trackId, string url, ICommonSession session)
     {
-        try
+        // Перебираем кандидатов по очереди: сначала лучший превью от yt-dlp (часто maxresdefault.jpg),
+        // затем ГАРАНТИРОВАННО существующие у любого ролика hq/mq/default. Раньше брали только «самый
+        // крупный» URL, а maxresdefault есть далеко не у всех видео (YouTube отдаёт 404) — из-за этого
+        // превью показывалось лишь у части треков. Первый успешно скачавшийся кандидат и уходит клиенту.
+        foreach (var candidate in ThumbnailCandidates(trackId, url))
         {
             byte[]? pngData;
-            lock (_thumbnailCacheLock)
+            try
             {
-                _thumbnailCache.TryGetValue(url, out pngData);
+                pngData = await TryGetThumbnailPngAsync(candidate);
+            }
+            catch (Exception e)
+            {
+                _sawmill.Debug($"Thumbnail candidate failed for {trackId} ({candidate}): {e.Message}");
+                continue;
             }
 
             if (pngData == null)
-            {
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("wega-mega-mediaplayer");
+                continue;
 
-                var data = await http.GetByteArrayAsync(url);
-                if (data.Length == 0)
-                    return;
-
-                using var image = Image.Load<Rgba32>(data);
-                if (image.Width <= 0 || image.Height <= 0)
-                    return;
-
-                if (image.Width > ThumbnailWidth)
-                {
-                    var height = Math.Max(1, (int)(image.Height * (ThumbnailWidth / (float)image.Width)));
-                    image.Mutate(x => x.Resize(ThumbnailWidth, height));
-                }
-
-                using var ms = new MemoryStream();
-                image.SaveAsPng(ms);
-                pngData = ms.ToArray();
-
-                lock (_thumbnailCacheLock)
-                {
-                    _thumbnailCache[url] = pngData;
-                }
-            }
-
+            var data = pngData;
             _taskManager.RunOnMainThread(() =>
             {
                 try
                 {
-                    RaiseNetworkEvent(new MediaPlayerThumbnailEvent(trackId, pngData), session);
+                    RaiseNetworkEvent(new MediaPlayerThumbnailEvent(trackId, data), session);
                 }
                 catch (Exception e)
                 {
                     _sawmill.Debug($"Failed to send thumbnail to {session.Name}: {e.Message}");
                 }
             });
+            return;
         }
-        catch (Exception e)
+
+        _sawmill.Debug($"No working thumbnail candidate for {trackId}");
+    }
+
+    /// <summary>
+    /// Скачивает и нормализует (ресайз до <see cref="ThumbnailWidth"/>, PNG) превью по одному URL.
+    /// Возвращает null, если ответ не 2xx (напр. 404 у отсутствующего maxresdefault) или картинка пустая —
+    /// вызывающий переходит к следующему кандидату. Успех кэшируется по URL.
+    /// </summary>
+    private async Task<byte[]?> TryGetThumbnailPngAsync(string url)
+    {
+        lock (_thumbnailCacheLock)
         {
-            _sawmill.Debug($"Failed to download thumbnail for {trackId}: {e.Message}");
+            if (_thumbnailCache.TryGetValue(url, out var cached))
+                return cached;
         }
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("wega-mega-mediaplayer");
+
+        // GetAsync (а не GetByteArrayAsync): 404 не бросает исключение, а даёт мягко перейти к фолбэку.
+        using var response = await http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var data = await response.Content.ReadAsByteArrayAsync();
+        if (data.Length == 0)
+            return null;
+
+        using var image = Image.Load<Rgba32>(data);
+        if (image.Width <= 0 || image.Height <= 0)
+            return null;
+
+        if (image.Width > ThumbnailWidth)
+        {
+            var height = Math.Max(1, (int)(image.Height * (ThumbnailWidth / (float)image.Width)));
+            image.Mutate(x => x.Resize(ThumbnailWidth, height));
+        }
+
+        using var ms = new MemoryStream();
+        image.SaveAsPng(ms);
+        var pngData = ms.ToArray();
+
+        lock (_thumbnailCacheLock)
+        {
+            _thumbnailCache[url] = pngData;
+        }
+
+        return pngData;
+    }
+
+    /// <summary>
+    /// URL-кандидаты превью в порядке предпочтения: сначала выбранный yt-dlp (лучшее качество), затем
+    /// собранные по id ролика hq/mq/default.jpg — они есть у КАЖДОГО видео YouTube, поэтому служат
+    /// надёжным запасным вариантом, когда основной (напр. maxresdefault) отсутствует.
+    /// </summary>
+    private static IEnumerable<string> ThumbnailCandidates(string trackId, string primaryUrl)
+    {
+        var seen = new HashSet<string>();
+
+        if (!string.IsNullOrEmpty(primaryUrl) && seen.Add(primaryUrl))
+            yield return primaryUrl;
+
+        if (!IsYoutubeId(trackId))
+            yield break;
+
+        foreach (var name in new[] { "hqdefault", "mqdefault", "default" })
+        {
+            var url = $"https://i.ytimg.com/vi/{trackId}/{name}.jpg";
+            if (seen.Add(url))
+                yield return url;
+        }
+    }
+
+    /// <summary>Похож ли id на 11-символьный идентификатор видео YouTube (для сборки i.ytimg.com URL).</summary>
+    private static bool IsYoutubeId(string id)
+    {
+        if (id.Length != 11)
+            return false;
+
+        foreach (var c in id)
+        {
+            if (!char.IsLetterOrDigit(c) && c != '-' && c != '_')
+                return false;
+        }
+
+        return true;
     }
 
     private static string ResolveYtdlpPath(string configuredPath)

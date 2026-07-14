@@ -263,3 +263,25 @@
   - type: CultEquipment
     cult: Veil
 
+- type: entity
+  parent: ClothingOuterStorageBase
+  id: ClothingOuterDandyCoat
+  name: плащ пижона
+  description: Тёмный плащ с чёрным мехом на воротнике и золотой обшивкой. Бывший владелец явно был понторезом.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/dandy_coat.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/dandy_coat.rsi
+
+- type: entity
+  parent: ClothingOuterStorageBase
+  id: ClothingOuterStormCoat
+  name: плащ надвигающейся бури
+  description: Тёмный плащ с тёмно-бирюзовым узором и оранжевой подложкой. Нося его вы ощущаете невероятную мощь.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/storm_coat.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/storm_coat.rsi
+

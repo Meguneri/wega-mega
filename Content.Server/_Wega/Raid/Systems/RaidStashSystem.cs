@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Content.Server._Wega.Raid.Components;
 using Content.Server.Database;
+using Content.Server.GameTicking;
 using Content.Shared.FixedPoint;
 using Content.Shared.GameTicking;
 using Content.Shared.Ghost;
@@ -45,6 +46,7 @@ public sealed partial class RaidStashSystem : EntitySystem
     [Dependency] private IEntityManager _entityManager = default!;
     [Dependency] private IPrototypeManager _prototypeManager = default!;
     [Dependency] private SharedMapSystem _map = default!;
+    [Dependency] private GameTicker _gameTicker = default!;
 
     private ISawmill _sawmill = default!;
     private readonly Dictionary<NetUserId, RaidStashSnapshot> _stashes = new();
@@ -94,6 +96,10 @@ public sealed partial class RaidStashSystem : EntitySystem
 
     private void OnFinishLoad(ICommonSession session)
     {
+        // Personal hideout is only used while the raid game rule is active.
+        if (!IsRaidModeActive())
+            return;
+
         // Load the personal hideout map and materialize the stash box there.
         if (!LoadHideout(session.UserId))
         {
@@ -246,6 +252,14 @@ public sealed partial class RaidStashSystem : EntitySystem
             return true;
         }
 
+        // Lazy-load the hideout when the raid game rule is active (e.g. rule started after player connected).
+        if (IsRaidModeActive() && LoadHideout(userId))
+        {
+            mapId = _playerHideouts[userId];
+            gridUid = _playerHideoutGrids[userId];
+            return true;
+        }
+
         gridUid = default;
         return false;
     }
@@ -353,8 +367,7 @@ public sealed partial class RaidStashSystem : EntitySystem
 
     /// <summary>
     /// Teleports a newly attached player to their personal hideout if they are not already there.
-    /// Works only when a raid controller exists in the world — otherwise spawned mobs stay
-    /// wherever they were placed (admin arenas, ghost roles, etc.).
+    /// Only applies while the raid game rule is active.
     /// </summary>
     private void OnPlayerAttached(PlayerAttachedEvent args)
     {
@@ -366,9 +379,9 @@ public sealed partial class RaidStashSystem : EntitySystem
         if (HasComp<GhostComponent>(args.Entity))
             return;
 
-        // Рейд-режим активен только при наличии контроллера рейда. Без него не трогаем спавн.
-        var controllerQuery = EntityQueryEnumerator<RaidControllerComponent>();
-        if (!controllerQuery.MoveNext(out _, out _))
+        // Телепорт на базу имеет смысл только в режиме рейда. В арене-моде и других режимах
+        // игрок спавнится на общей карте, а личная база используется только как персистентный схрон.
+        if (!IsRaidModeActive())
             return;
 
         if (!TryGetHideout(userId, out _, out var gridUid))
@@ -384,6 +397,14 @@ public sealed partial class RaidStashSystem : EntitySystem
 
         _transform.SetCoordinates(args.Entity, coords.Value);
         _sawmill.Debug($"Teleported {userId} to hideout");
+    }
+
+    /// <summary>
+    /// Returns true if the raid game rule is currently active.
+    /// </summary>
+    private bool IsRaidModeActive()
+    {
+        return _gameTicker.IsGameRuleActive<RaidRuleComponent>();
     }
 
     private EntityCoordinates? FindSpawnOnGrid(EntityUid gridUid, RaidHideoutSpawnType type)

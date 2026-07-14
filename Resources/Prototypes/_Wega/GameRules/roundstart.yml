@@ -139,3 +139,12 @@
   - type: BasicStationEventScheduler
     scheduledGameRules: !type:NestedSelector
       tableId: LightGameRulesTable
+
+# Raid extraction mode (Tarkov-like). Requires the Raid game preset to be selected.
+- type: entity
+  parent: BaseGameRule
+  id: Raid
+  components:
+  - type: GameRule
+    minPlayers: 0
+  - type: RaidRule

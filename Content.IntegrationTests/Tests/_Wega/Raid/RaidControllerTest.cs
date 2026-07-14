@@ -4,6 +4,7 @@ using System.Numerics;
 using Content.IntegrationTests.Fixtures;
 using Content.Server._Wega.Raid.Components;
 using Content.Server._Wega.Raid.Systems;
+using Content.Server.GameTicking;
 using Content.Shared._Wega.Raid.Components;
 using Content.Shared.Damage;
 using Content.Shared.FixedPoint;
@@ -43,6 +44,8 @@ public sealed class RaidControllerTest : GameTest
   - type: HumanoidProfile
 ";
 
+    private const string RaidGameRule = "Raid";
+
     private static void ExpandGrid(SharedMapSystem mapSystem, Entity<MapGridComponent> grid, Tile tile)
     {
         for (var x = -2; x <= 4; x++)
@@ -52,6 +55,17 @@ public sealed class RaidControllerTest : GameTest
                 mapSystem.SetTile(grid.Owner, grid.Comp, new Vector2i(x, y), tile);
             }
         }
+    }
+
+    private async Task StartRaidRuleAsync()
+    {
+        var ticker = Pair.Server.System<GameTicker>();
+        await Pair.Server.WaitAssertion(() =>
+        {
+            var ruleEnt = ticker.AddGameRule(RaidGameRule);
+            ticker.StartGameRule(ruleEnt);
+        });
+        await Pair.RunTicksSync(5);
     }
 
     /// <summary>
@@ -133,7 +147,7 @@ public sealed class RaidControllerTest : GameTest
     }
 
     /// <summary>
-    /// Если рейдер отключается во время рейда, его персонаж экстренно эвакуируется на хаб.
+    /// Если рейдер отключается во время рейда, его персонаж экстренно эвакуируется на персональную базу.
     /// </summary>
     [Test]
     public async Task PlayerDisconnectExtractsRaiderTest()
@@ -142,8 +156,7 @@ public sealed class RaidControllerTest : GameTest
         var server = pair.Server;
         var mapSystem = server.System<SharedMapSystem>();
         var mindSystem = SEntMan.System<SharedMindSystem>();
-        var playerManager = server.ResolveDependency<IPlayerManager>();
-        var transformSystem = SEntMan.System<SharedTransformSystem>();
+        var stashSystem = server.System<RaidStashSystem>();
 
         var hubMap = await pair.CreateTestMap();
         var raidMap = await pair.CreateTestMap();
@@ -154,6 +167,7 @@ public sealed class RaidControllerTest : GameTest
         EntityUid spawnMarker = default;
         EntityUid raider = default;
         EntityUid? mindId = null;
+        var session = pair.Player;
 
         await server.WaitAssertion(() =>
         {
@@ -176,14 +190,21 @@ public sealed class RaidControllerTest : GameTest
             spawnMarker = SSpawnAtPosition("RaidSpawnMarker", raidCoords);
 
             raider = SSpawnAtPosition("RaidTestDummy", hubCoords.Offset(new Vector2(1, 0)));
+        });
 
+        await pair.RunTicksSync(5);
+
+        // Activate the raid game rule after the manual controller is in place so it doesn't spawn a second one.
+        await StartRaidRuleAsync();
+
+        await server.WaitAssertion(() =>
+        {
             // Присоединяем к рейдеру существующую тестовую сессию.
-            var session = playerManager.Sessions.Single();
             mindId = mindSystem.CreateMind(session.UserId);
             mindSystem.TransferTo(mindId.Value, raider);
         });
 
-        await pair.RunTicksSync(5);
+        await pair.RunTicksSync(10);
 
         await server.WaitAssertion(() =>
         {
@@ -208,7 +229,10 @@ public sealed class RaidControllerTest : GameTest
         {
             var ctrl = SEntMan.GetComponent<RaidControllerComponent>(controller);
             Assert.That(ctrl.Raiders.Contains(raider), Is.False, "Отключившийся рейдер должен быть удалён из списка");
-            Assert.That(SEntMan.GetComponent<TransformComponent>(raider).MapID, Is.EqualTo(hubMap.MapId), "Отключившийся рейдер должен вернуться на хаб");
+            Assert.That(stashSystem.TryGetHideout(session.UserId, out _, out var gridUid), Is.True,
+                "Для игрока должна быть загружена персональная база");
+            Assert.That(SEntMan.GetComponent<TransformComponent>(raider).GridUid, Is.EqualTo(gridUid),
+                "Отключившийся рейдер должен вернуться на свою персональную базу");
         });
     }
 
@@ -233,6 +257,13 @@ public sealed class RaidControllerTest : GameTest
 
         await server.WaitAssertion(() =>
         {
+            // Clean up any leftover controllers from previous tests in the shared pair pool.
+            var cleanup = SEntMan.EntityQueryEnumerator<RaidControllerComponent>();
+            while (cleanup.MoveNext(out var uid, out _))
+            {
+                SEntMan.QueueDeleteEntity(uid);
+            }
+
             ExpandGrid(mapSystem, hubMap.Grid, hubMap.Tile.Tile);
             ExpandGrid(mapSystem, raidMap.Grid, raidMap.Tile.Tile);
 
@@ -330,6 +361,8 @@ public sealed class RaidControllerTest : GameTest
 
         Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
 
+        await StartRaidRuleAsync();
+
         await server.WaitAssertion(() =>
         {
             Assert.That(stashSystem.TryGetHideout(session.UserId, out var mapId, out var gridUid), Is.True,
@@ -350,10 +383,11 @@ public sealed class RaidControllerTest : GameTest
         var server = pair.Server;
         var mindSystem = SEntMan.System<SharedMindSystem>();
         var stashSystem = server.System<RaidStashSystem>();
-        var playerManager = server.ResolveDependency<IPlayerManager>();
         var session = pair.Player;
 
         Assert.That(session, Is.Not.Null, "Тестовая сессия должна существовать");
+
+        await StartRaidRuleAsync();
 
         var testMap = await pair.CreateTestMap();
         EntityUid dummy = default;
@@ -362,6 +396,13 @@ public sealed class RaidControllerTest : GameTest
         await server.WaitAssertion(() =>
         {
             var coords = testMap.GridCoords;
+
+            // Телепорт на базу срабатывает только в режиме рейда — нужен контроллер.
+            var controller = SSpawnAtPosition(null, coords);
+            var ctrl = SEntMan.AddComponent<RaidControllerComponent>(controller);
+            ctrl.RaidMap = new ResPath("/Maps/_Wega/Arena/arena_duel_31.yml");
+            ctrl.Loaded = true;
+
             dummy = SSpawnAtPosition("RaidTestDummy", coords);
 
             // Привязываем существующую тестовую сессию к новому телу.
@@ -419,9 +460,17 @@ public sealed class RaidControllerTest : GameTest
             ctrl.WarningTimes.Clear();
 
             spawnMarker = SSpawnAtPosition("RaidSpawnMarker", raidCoords);
+        });
 
+        await pair.RunTicksSync(5);
+
+        // Activate the raid game rule after the manual controller is in place so it doesn't spawn a second one.
+        await StartRaidRuleAsync();
+
+        await server.WaitAssertion(() =>
+        {
             // Привязываем сессию к телу — телепорт на базу.
-            dummy = SSpawnAtPosition("RaidTestDummy", raidCoords);
+            dummy = SSpawnAtPosition("RaidTestDummy", raidMap.GridCoords);
             mindId = mindSystem.CreateMind(session.UserId);
             mindSystem.TransferTo(mindId.Value, dummy);
         });
@@ -499,8 +548,16 @@ public sealed class RaidControllerTest : GameTest
             entryButton = SSpawnAtPosition("RaidEntryButton", hubCoords);
             spawnMarker = SSpawnAtPosition("RaidSpawnMarker", raidCoords);
             extractPoint = SSpawnAtPosition("RaidExtractionPoint", raidCoords.Offset(new Vector2(2, 0)));
+        });
 
-            dummy = SSpawnAtPosition("RaidTestDummy", hubCoords.Offset(new Vector2(1, 0)));
+        await pair.RunTicksSync(5);
+
+        // Activate the raid game rule after the manual controller is in place so it doesn't spawn a second one.
+        await StartRaidRuleAsync();
+
+        await server.WaitAssertion(() =>
+        {
+            dummy = SSpawnAtPosition("RaidTestDummy", hubMap.GridCoords.Offset(new Vector2(1, 0)));
             mindId = mindSystem.CreateMind(session.UserId);
             mindSystem.TransferTo(mindId.Value, dummy);
         });
