@@ -6,7 +6,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaNeonTube
-  name: wall-arena-neon-tube
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/neon_tube.rsi
@@ -43,7 +42,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaChromePanel
-  name: wall-arena-chrome-panel
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/chrome_panel.rsi
@@ -73,7 +71,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaHoloBarrier
-  name: wall-arena-holo-barrier
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/holo_barrier.rsi
@@ -110,7 +107,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaCircuitPanel
-  name: wall-arena-circuit-panel
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/circuit_panel.rsi
@@ -147,7 +143,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaSlumGraffiti
-  name: wall-arena-slum-graffiti
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/slum_graffiti.rsi
@@ -177,7 +172,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaMegaAd
-  name: wall-arena-mega-ad
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/mega_ad.rsi
@@ -207,7 +201,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaCableConduit
-  name: wall-arena-cable-conduit
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/cable_conduit.rsi
@@ -237,7 +230,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaDataGlass
-  name: wall-arena-data-glass
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/data_glass.rsi
@@ -274,7 +266,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaRustTank
-  name: wall-arena-rust-tank
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/rust_tank.rsi
@@ -304,7 +295,6 @@
 - type: entity
   parent: BaseWall
   id: WallArenaBioNeon
-  name: wall-arena-bio-neon
   components:
   - type: Sprite
     sprite: _Wega/Structures/Walls/arena_cyberpunk/bio_neon.rsi
@@ -337,3 +327,211 @@
     color: "#8ef03a"
     softness: 1
     castShadows: false
+
+# --- Волна 2: приглушённые стены под ванильную гамму (перекраска геометрии первой волны,
+# см. Tools/gen_arena_cyberpunk_pack2.py). Статичные, без свечения. ---
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaSteelPlate
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/steel_plate.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/steel_plate.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: steel_plate
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaGunmetalPanel
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/gunmetal_panel.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/gunmetal_panel.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: gunmetal_panel
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaConcreteHazard
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/concrete_hazard.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/concrete_hazard.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: concrete_hazard
+
+# --- Волна 2б: спокойные базовые стены без акцентов и анимации ---
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaConcretePlain
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/concrete_plain.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/concrete_plain.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: concrete_plain
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaPipeConduit
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/pipe_conduit.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/pipe_conduit.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: pipe_conduit
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaDarkPanel
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/dark_panel.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/dark_panel.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: dark_panel
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaBronzePlate
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/bronze_plate.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/arena_cyberpunk/bronze_plate.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: bronze_plate

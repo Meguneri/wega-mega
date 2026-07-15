@@ -145,22 +145,6 @@ public sealed partial class ArenaStormSystem : EntitySystem
         }
     }
 
-    /// <summary>
-    /// Принудительно запускает сужение зоны немедленно, минуя <see cref="ArenaStormComponent.StartDelay"/>.
-    /// Используется фазой «внезапной смерти» дуэльной арены.
-    /// </summary>
-    public void ForceStartStorm(EntityUid uid, ArenaStormComponent storm)
-    {
-        storm.Cancelled = false;
-        storm.Active = true;
-        storm.StartAt = null;
-        storm.ShrinkStartTime = _timing.CurTime;
-        storm.ShrinkStartRadius = storm.InitialRadius;
-        storm.NextDamageAt = _timing.CurTime + TimeSpan.FromSeconds(storm.DamageInterval);
-        Dirty(uid, storm);
-        _pvsOverride.AddGlobalOverride(uid);
-    }
-
     public override void Update(float frameTime)
     {
         var now = _timing.CurTime;

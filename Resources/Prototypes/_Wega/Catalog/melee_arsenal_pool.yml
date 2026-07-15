@@ -753,17 +753,6 @@
   - MeleeArsenalArmor
 
 - type: listing
-  id: MeleeArsenalArmorWarden
-  name: full-arsenal-armor-warden-name
-  description: full-arsenal-armor-warden-desc
-  productEntity: ClothingOuterArmorWarden
-  cost:
-    Telecrystal: 6
-  categories:
-  - MeleeArsenal
-  - MeleeArsenalArmor
-
-- type: listing
   id: MeleeArsenalArmorRaid
   name: full-arsenal-armor-raid-name
   description: full-arsenal-armor-raid-desc

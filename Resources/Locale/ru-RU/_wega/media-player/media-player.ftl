@@ -29,6 +29,14 @@ ui-media-player-volume-label = Громкость
 ui-media-player-nothing = Ничего не играет
 ui-media-player-now-playing = Сейчас играет: { $title } ({ $duration })
 ui-media-player-indicator-paused = ⏸ { $title }
+ui-media-player-empty-hint = Введите название или вставьте ссылку
+ui-media-player-enqueue-button = + В очередь
+ui-media-player-queue-empty = Очередь пуста
+ui-media-player-queue-count = В очереди: { $count } (клик — убрать)
+ui-media-player-queue-clear = Очистить
+ui-media-player-repeat-button = Повтор
+ui-media-player-shuffle-button = Вперемешку
+ui-media-player-mute-button = Без звука
 
 # Настройки и команда
 ui-options-media-player-volume = Громкость медиа-плеера

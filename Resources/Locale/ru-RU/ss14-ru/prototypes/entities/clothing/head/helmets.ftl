@@ -58,3 +58,7 @@ ent-ActionToggleJusticeHelm = Переключить шлем правосуди
     .desc = Включает или выключает шлем правосудия.
 ent-CardHelmet = картонный шлем
     .desc = Средневековый шлем, сделанный из картона.
+ent-ClothingHeadHelmetKendoMenWega = мен (Nyanotrasen)
+    .desc = Главный головной доспех практикующего кендо.
+ent-ClothingHeadHelmetKabutoWega = кабуто и менпо (Nyanotrasen)
+    .desc = Современная реплика кабуто и менпо.

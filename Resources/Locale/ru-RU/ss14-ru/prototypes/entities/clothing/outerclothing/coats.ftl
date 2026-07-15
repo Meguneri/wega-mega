@@ -96,3 +96,17 @@ ent-ClothingOuterCoatExpensive = дорогая шуба
 ent-ClothingOuterCoatExpensiveOpened = дорогая шуба
     .desc = { ent-ClothingOuterCoatExpensive.desc }
     .suffix = { ent-ClothingOuterStorageFoldableBaseOpened.suffix }
+ent-ClothingOuterCoatCybersunWindbreakerWega = ветровка Cybersun (Delta-V)
+    .desc = Ветровка парамедика с официальной геральдикой медтехнического отдела Cybersun. Сшита из прочного баллистического волокна.
+
+ent-ClothingOuterCoatBHTrenchWega = бронированный тренч охотника за головами (Frontier Station)
+    .desc = Шинель, усиленная пуленепробиваемым сплавом, чтобы придать защиты и стиля обаятельной личности.
+
+ent-ClothingOuterCoatBishopWega = одеяние епископа (Frontier Station)
+    .desc = Золотые нити на самом деле не из золота. Какая досада.
+ent-ClothingOuterCoatWitchHunterWega = плащ охотника на ведьм (Frontier Station)
+    .desc = Выглядит ещё лучше под проливным дождём с штормовым ветром.
+ent-ClothingOuterWizardBrickWega = кирпичный мантия волшебника (Frontier Station)
+    .desc = Мантия волшебника кирпичного цвета.
+ent-ClothingOuterFakeWizardWega = фальшивая мантия волшебника (Frontier Station)
+    .desc = Довольно тусклая синяя мантия, претендующая на настоящую волшебную robe.

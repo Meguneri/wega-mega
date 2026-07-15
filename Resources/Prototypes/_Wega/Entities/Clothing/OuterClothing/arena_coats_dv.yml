@@ -1,0 +1,23 @@
+# Delta-V coats adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0.
+
+- type: entity
+  parent: ClothingOuterStorageBase
+  id: ClothingOuterCoatCybersunWindbreakerWega
+  name: cybersun windbreaker (Delta-V)
+  description: A paramedics windbreaker, sporting the official heraldry of Cybersuns meditech division. Its made of sturdy ballistic fiber.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/cybersunwindbreaker.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/cybersunwindbreaker.rsi
+  - type: TemperatureProtection
+    coolingCoefficient: 0.1
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.95
+        Slash: 0.95
+        Piercing: 0.95
+        Heat: 0.75
+  - type: AllowSuitStorage

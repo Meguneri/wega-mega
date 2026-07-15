@@ -1,26 +1,7 @@
 - type: entity
-  id: BulletArenaMinion
-  name: снаряд миньона
-  description: Лучший друг неудачника.
-  parent: BaseBullet
-  categories: [ HideSpawnMenu ]
-  components:
-  - type: Sprite
-    sprite: Objects/Weapons/Guns/Projectiles/projectiles2.rsi
-    layers:
-    - state: bullet
-      color: "#ff00ff"
-      shader: unshaded
-  - type: Projectile
-    damage:
-      types:
-        Piercing: 8
-    deleteOnCollide: true
-
-- type: entity
   id: ArenaLoserMinion
   name: миньон затаённой обиды
-  description: Крошечный дрон, который помогает бойцу, проигравшему слишком много дуэлей подряд. Следует за хозяином, лечит его или стреляет в ближайшего врага.
+  description: Крошечный дрон, который помогает бойцу, проигравшему слишком много дуэлей подряд. Следует за хозяином и подлечивает его. Не атакует.
   parent: BaseSimpleMob
   save: false
   components:
@@ -37,10 +18,16 @@
           !type:PhysShapeCircle
           radius: 0.25
         density: 10
-        hard: false
+        # hard: true — иначе ProjectileSystem.OnStartCollide отбрасывает попадание по мягкой
+        # фикстуре (!OtherFixture.Hard), снаряды летят сквозь дрон, и его броня/порог разрушения
+        # ниже — мёртвый код. Слой — ТОЛЬКО BulletImpassable, не FlyingMobLayer: тот включает
+        # Opaque, и твёрдый дрон, вися у раненого владельца, ломал Opaque-рейкасты (LOS,
+        # досягаемость ближних атак по владельцу) — лечащий дрон превращался в щит.
+        # Маска пустая: сам дрон ни за что не цепляется при полёте.
+        hard: true
         mask: []
         layer:
-        - FlyingMobLayer
+        - BulletImpassable
   # Металлический корпус: режет холодное/пулевое, чуть держит удары. Раньше дрон падал с одного
   # выстрела, потому что не имел брони.
   - type: Damageable
@@ -58,11 +45,8 @@
   - type: ArenaLoserMinion
     actionCooldown: 2.5
     followRadius: 2
-    attackRadius: 12
     healThreshold: 0.5
     healAmount: 10
-    projectileProto: BulletArenaMinion
-    projectileSpeed: 15
     moveSpeed: 6.5
   - type: TimedDespawn
     lifetime: 300

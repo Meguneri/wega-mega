@@ -120,3 +120,77 @@
   - 1.0
   - 1.0
   - 1.0
+
+# --- Волна 2: приглушённые «мостиковые» тайлы под ванильную гамму (gen_arena_cyberpunk_pack2.py) ---
+
+- type: tile
+  id: FloorArenaAsphalt
+  parent: BaseStationTile
+  name: tiles-arena-asphalt
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/asphalt.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaAsphaltMarking
+  parent: BaseStationTile
+  name: tiles-arena-asphalt-marking
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/asphalt_marking.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaConcreteSlab
+  parent: BaseStationTile
+  name: tiles-arena-concrete-slab
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/concrete_slab.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaSteelNeonSeam
+  parent: BaseStationTile
+  name: tiles-arena-steel-neon-seam
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/steel_neon_seam.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaHexDeck
+  parent: BaseStationTile
+  name: tiles-arena-hex-deck
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/hex_deck.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorArenaCorpoCarpet
+  parent: BaseStationTile
+  name: tiles-arena-corpo-carpet
+  sprite: /Textures/_Wega/Tiles/arena_cyberpunk/corpo_carpet.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0

@@ -21,6 +21,7 @@ using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Maths;
+using Robust.Shared.Network;
 using Robust.Shared.Prototypes;
 
 namespace Content.IntegrationTests.Tests._Wega.Duel;
@@ -139,6 +140,7 @@ public sealed class DuelArenaSystemTest : GameTest
 
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.False);
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Idle));
 
             var startEv = new SignalReceivedEvent("Open");
             entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
@@ -150,6 +152,7 @@ public sealed class DuelArenaSystemTest : GameTest
         {
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной после сигнала старта");
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Fighting));
             Assert.That(arena.Duelists.Count, Is.EqualTo(2), "Должно быть зарегистрировано 2 дуэлянта");
             Assert.That(arena.Duelists, Does.Contain(fighter1));
             Assert.That(arena.Duelists, Does.Contain(fighter2));
@@ -161,6 +164,7 @@ public sealed class DuelArenaSystemTest : GameTest
             // Rejuvenate, поэтому сразу после урона fighter2 уже жив. Проверяем сам факт завершения.
             arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.False, "Дуэль должна завершиться после смерти одного из бойцов");
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Restoring));
             Assert.That(arena.Duelists.Count, Is.EqualTo(0), "Список дуэлянтов должен очиститься");
             Assert.That(arena.GateCloseAt, Is.Not.Null, "Должен быть запланирован сигнал закрытия шлюзов");
             Assert.That(mobStateSystem.IsAlive(fighter2), Is.True, "Проигравший должен быть воскрешён");
@@ -178,47 +182,154 @@ public sealed class DuelArenaSystemTest : GameTest
     }
 
     [Test]
-    public async Task DuelTimeoutDrawTest()
+    public async Task DuelHasNoAutomaticTimeoutTest()
     {
         var pair = Pair;
         var server = pair.Server;
         var entManager = server.ResolveDependency<IEntityManager>();
+        var mobStateSystem = server.System<MobStateSystem>();
         var mapSystem = server.System<SharedMapSystem>();
 
         var testMap = await pair.CreateTestMap();
 
         EntityUid tracker = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
 
         await server.WaitAssertion(() =>
         {
             ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
 
             var tile = testMap.Tile;
-            var gridUid = tile.GridUid;
-            var coordinates = new EntityCoordinates(gridUid, tile.GridIndices.X, tile.GridIndices.Y);
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
 
             tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
-            entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
-            entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
-
-            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
-            // Короткий таймер: бой длится 0.5 секунды, затем сразу ничья (внезапная смерть отключена).
-            arena.MaxFightDuration = 0.5f;
-            arena.SuddenDeathDuration = 0f;
+            fighter1 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            fighter2 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
 
             var startEv = new SignalReceivedEvent("Open");
             entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
         });
 
-        // 0.5 секунды ≈ 15 тиков при 30 тик/с; даём запас.
-        await pair.RunTicksSync(30);
+        await pair.RunTicksSync(1);
 
         await server.WaitAssertion(() =>
         {
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
-            Assert.That(arena.IsActive, Is.False, "Дуэль должна завершиться по таймауту");
-            Assert.That(arena.Duelists.Count, Is.EqualTo(0), "Список дуэлянтов должен очиститься");
-            Assert.That(arena.GateCloseAt, Is.Not.Null, "Должен быть запланирован сигнал закрытия шлюзов");
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Fighting));
+            Assert.That(arena.Duelists, Is.EquivalentTo(new[] { fighter1, fighter2 }));
+        });
+
+        // Четыре игровых минуты превышают прежние 3 минуты боя и 30 секунд внезапной смерти.
+        await pair.RunSeconds(240f);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.IsActive, Is.True, "Обычная дуэль не должна завершаться по времени");
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Fighting));
+            Assert.That(arena.Duelists, Is.EquivalentTo(new[] { fighter1, fighter2 }));
+            Assert.That(arena.GateCloseAt, Is.Null, "Закрытие шлюзов не должно планироваться без результата боя");
+            Assert.That(arena.Scores, Is.Empty, "Без победителя счёт не должен изменяться");
+            Assert.That(mobStateSystem.IsAlive(fighter1), Is.True);
+            Assert.That(mobStateSystem.IsAlive(fighter2), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task DuelArenaCanStartAgainAfterRestoreTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+        var mindSystem = entManager.System<SharedMindSystem>();
+        var playerManager = server.ResolveDependency<Robust.Server.Player.IPlayerManager>();
+        var duelArenaSystem = server.System<DuelArenaSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid tracker = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            tracker = entManager.SpawnEntity("DuelArenaTracker", coordinates);
+            fighter1 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(1, 0)));
+            fighter2 = entManager.SpawnEntity("DuelTestDummy", coordinates.Offset(new Vector2(2, 0)));
+
+            var player = playerManager.Sessions.Single();
+            var mind = mindSystem.CreateMind(player.UserId);
+            mindSystem.TransferTo(mind, fighter1);
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Fighting));
+
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+
+            arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Restoring));
+            Assert.That(arena.IsActive, Is.False);
+            Assert.That(arena.Scores.Count, Is.EqualTo(1), "Победа первого раунда должна попасть в счёт арены");
+            Assert.That(arena.Scores.Values.Single(), Is.EqualTo(1));
+            Assert.That(arena.Streak, Is.EqualTo(1));
+        });
+
+        // RestoreDelay по умолчанию равен 2.5 секунды.
+        await pair.RunSeconds(3f);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Idle), "После восстановления арена должна стать Idle");
+            Assert.That(arena.PendingRestore, Is.False);
+            Assert.That(arena.Duelists, Is.Empty);
+        });
+
+        await server.WaitAssertion(() =>
+        {
+            var secondStart = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker, ref secondStart);
+        });
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Fighting), "После восстановления должен запускаться новый раунд");
+            Assert.That(arena.Duelists, Is.EquivalentTo(new[] { fighter1, fighter2 }));
+
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+
+            arena = entManager.GetComponent<DuelArenaComponent>(tracker);
+            Assert.That(arena.Scores.Values.Single(), Is.EqualTo(2), "Победы двух раундов должны суммироваться");
+            Assert.That(arena.Streak, Is.EqualTo(2), "Серия одного победителя должна продолжиться во втором раунде");
+
+            Assert.That(duelArenaSystem.ResetAllScores(), Is.EqualTo(1), "Должна быть очищена одна арена");
+            Assert.That(arena.Scores, Is.Empty);
+            Assert.That(arena.ScoreNames, Is.Empty);
+            Assert.That(arena.LosingStreaks, Is.Empty);
+            Assert.That(arena.StreakUser, Is.Null);
+            Assert.That(arena.Streak, Is.Zero);
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Restoring), "Обнуление счёта не должно менять фазу арены");
         });
     }
 
@@ -269,8 +380,82 @@ public sealed class DuelArenaSystemTest : GameTest
         {
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.False, "Дуэль должна сброситься по сигналу Toggle");
+            Assert.That(arena.Phase, Is.EqualTo(DuelArenaPhase.Restoring));
             Assert.That(arena.Duelists.Count, Is.EqualTo(0), "Список дуэлянтов должен очиститься");
             Assert.That(arena.GateCloseAt, Is.Not.Null, "Должен быть запланирован сигнал закрытия шлюзов");
+        });
+    }
+
+    [Test]
+    public async Task DuelScoreResetClearsAllStoresTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+        var duelArenaSystem = server.System<DuelArenaSystem>();
+
+        var testMap = await pair.CreateTestMap();
+        EntityUid duelArena = default;
+        EntityUid bossArena = default;
+        EntityUid rotationController = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+            var user = new NetUserId(new Guid("640bd619-fc8d-4fe2-bf3c-4a5fb17d6ddd"));
+
+            duelArena = entManager.SpawnEntity(null, coordinates);
+            var duelScore = entManager.AddComponent<DuelArenaComponent>(duelArena);
+            duelScore.Scores[user] = 2;
+            duelScore.ScoreNames[user] = "Duelist";
+            duelScore.LosingStreaks[user] = 1;
+            duelScore.StreakUser = user;
+            duelScore.Streak = 2;
+
+            bossArena = entManager.SpawnEntity(null, coordinates.Offset(new Vector2(1, 0)));
+            var bossScore = entManager.AddComponent<BossArenaComponent>(bossArena);
+            bossScore.Scores[user] = 3;
+            bossScore.ScoreNames[user] = "Duelist";
+            bossScore.LosingStreaks[user] = 2;
+            bossScore.StreakUser = user;
+            bossScore.Streak = 3;
+
+            rotationController = entManager.SpawnEntity(null, coordinates.Offset(new Vector2(2, 0)));
+            var rotationScore = entManager.AddComponent<DuelRotationComponent>(rotationController);
+            rotationScore.Scores[user] = 4;
+            rotationScore.ScoreNames[user] = "Duelist";
+            rotationScore.LosingStreaks[user] = 3;
+            rotationScore.StreakUser = user;
+            rotationScore.Streak = 4;
+        });
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(duelArenaSystem.ResetAllScores(), Is.EqualTo(3));
+
+            var duelScore = entManager.GetComponent<DuelArenaComponent>(duelArena);
+            Assert.That(duelScore.Scores, Is.Empty);
+            Assert.That(duelScore.ScoreNames, Is.Empty);
+            Assert.That(duelScore.LosingStreaks, Is.Empty);
+            Assert.That(duelScore.StreakUser, Is.Null);
+            Assert.That(duelScore.Streak, Is.Zero);
+
+            var bossScore = entManager.GetComponent<BossArenaComponent>(bossArena);
+            Assert.That(bossScore.Scores, Is.Empty);
+            Assert.That(bossScore.ScoreNames, Is.Empty);
+            Assert.That(bossScore.LosingStreaks, Is.Empty);
+            Assert.That(bossScore.StreakUser, Is.Null);
+            Assert.That(bossScore.Streak, Is.Zero);
+
+            var rotationScore = entManager.GetComponent<DuelRotationComponent>(rotationController);
+            Assert.That(rotationScore.Scores, Is.Empty);
+            Assert.That(rotationScore.ScoreNames, Is.Empty);
+            Assert.That(rotationScore.LosingStreaks, Is.Empty);
+            Assert.That(rotationScore.StreakUser, Is.Null);
+            Assert.That(rotationScore.Streak, Is.Zero);
         });
     }
 

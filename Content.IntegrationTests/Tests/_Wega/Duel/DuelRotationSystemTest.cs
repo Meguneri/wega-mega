@@ -249,6 +249,19 @@ public sealed class DuelRotationSystemTest : GameTest
 
             Assert.That(arena1.Scores.Count, Is.EqualTo(0), "Счёт не должен дублироваться на трекере арены");
         });
+
+        // Если перед победой нового чемпиона в хранилище осталась чужая длинная серия,
+        // она должна начаться заново с 1, а не перейти к новому победителю.
+        var scoreSystem = entManager.System<DuelArenaScoreSystem>();
+        var rotationAfterRound = entManager.GetComponent<DuelRotationComponent>(controller);
+        var previousChampion = new NetUserId(new Guid("640bd619-fc8d-4fe2-bf3c-4a5fb17d6ddd"));
+        rotationAfterRound.Streak = 5;
+        rotationAfterRound.StreakUser = previousChampion;
+        scoreSystem.RecordMatchResult(rotationAfterRound, new[] { fighter1, fighter2 }, fighter1);
+
+        Assert.That(rotationAfterRound.Scores[user1], Is.EqualTo(2), "Новый чемпион должен получить ещё одну победу");
+        Assert.That(rotationAfterRound.Streak, Is.EqualTo(1), "При смене чемпиона серия должна сброситься до 1");
+        Assert.That(rotationAfterRound.StreakUser, Is.EqualTo(user1), "Серия должна принадлежать новому чемпиону");
     }
 
     /// <summary>

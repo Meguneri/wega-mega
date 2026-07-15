@@ -35,7 +35,7 @@ public sealed partial class MediaPlayerSystem
     /// Ensures yt-dlp and ffmpeg are available, downloading them if needed. Sends progress/errors
     /// to the requesting admin. Returns false if the tools couldn't be made available.
     /// </summary>
-    private Task<bool> EnsureToolsAsync(ICommonSession session)
+    private Task<bool> EnsureToolsAsync(ICommonSession? session)
     {
         if (_resolvedYtdlp != null)
             return Task.FromResult(true);
@@ -43,7 +43,7 @@ public sealed partial class MediaPlayerSystem
         return _provisionTask ??= ProvisionAsync(session);
     }
 
-    private async Task<bool> ProvisionAsync(ICommonSession session)
+    private async Task<bool> ProvisionAsync(ICommonSession? session)
     {
         try
         {
@@ -71,7 +71,7 @@ public sealed partial class MediaPlayerSystem
         }
     }
 
-    private async Task<string?> ResolveOrDownloadYtdlp(ICommonSession session)
+    private async Task<string?> ResolveOrDownloadYtdlp(ICommonSession? session)
     {
         // 1. Configured path / next to the server binary.
         var configured = ResolveYtdlpPath(_cfg.GetCVar(WegaCVars.MediaPlayerYtdlpPath));
@@ -107,7 +107,7 @@ public sealed partial class MediaPlayerSystem
         return null;
     }
 
-    private async Task<bool> ResolveOrDownloadFfmpeg(ICommonSession session)
+    private async Task<bool> ResolveOrDownloadFfmpeg(ICommonSession? session)
     {
         // 1. Explicit ffmpeg path from config.
         var configured = _cfg.GetCVar(WegaCVars.MediaPlayerFfmpegPath);

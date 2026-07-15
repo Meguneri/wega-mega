@@ -1,0 +1,38 @@
+# Nyanotrasen headgear adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0 / CC-BY-SA-4.0.
+
+- type: entity
+  parent: ClothingHeadBase
+  id: ClothingHeadHelmetKendoMenWega
+  name: men (Nyanotrasen)
+  description: The quintessential head armor of the kendo practitioner.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Head/Helmets/men.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Head/Helmets/men.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.80
+        Slash: 0.95
+        Piercing: 0.95
+
+- type: entity
+  parent: ClothingHeadBase
+  id: ClothingHeadHelmetKabutoWega
+  name: kabuto and menpo (Nyanotrasen)
+  description: A modern replica of a kabuto and menpo.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Head/Helmets/kabuto.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Head/Helmets/kabuto.rsi
+  - type: Item
+    size: Small
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.80
+        Slash: 0.80
+        Piercing: 0.80

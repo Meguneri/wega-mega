@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,7 @@ using Robust.Shared.ContentPack;
 using Robust.Shared.Enums;
 using Robust.Shared.Network;
 using Robust.Shared.Player;
+using Robust.Shared.Random;
 using Robust.Shared.Timing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -39,6 +41,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     [Dependency] private IPlayerManager _playerManager = default!;
     [Dependency] private IResourceManager _resource = default!;
     [Dependency] private ITaskManager _taskManager = default!;
+    [Dependency] private IRobustRandom _random = default!;
 
     private ISawmill _sawmill = default!;
 
@@ -51,6 +54,15 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
     private CurrentTrack? _current;
     private bool _busy;
+
+    /// <summary>Tracks waiting to play after the current one, in order.</summary>
+    private readonly List<MediaQueueItem> _queue = new();
+
+    /// <summary>Repeat the current track instead of advancing when it ends.</summary>
+    private bool _repeat;
+
+    /// <summary>Pick the next queue entry at random instead of in order.</summary>
+    private bool _shuffle;
 
     private sealed class CurrentTrack
     {
@@ -81,8 +93,14 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         SubscribeNetworkEvent<MediaPlayerPlayRequestEvent>(OnPlayRequest);
         SubscribeNetworkEvent<MediaPlayerStopRequestEvent>(OnStopRequest);
         SubscribeNetworkEvent<MediaPlayerPauseRequestEvent>(OnPauseRequest);
+        SubscribeNetworkEvent<MediaPlayerSeekRequestEvent>(OnSeekRequest);
+        SubscribeNetworkEvent<MediaPlayerEnqueueRequestEvent>(OnEnqueueRequest);
+        SubscribeNetworkEvent<MediaPlayerQueueRemoveRequestEvent>(OnQueueRemoveRequest);
+        SubscribeNetworkEvent<MediaPlayerModeRequestEvent>(OnModeRequest);
 
         SubscribeLocalEvent<MediaPlayerControllerComponent, UseInHandEvent>(OnControllerUse);
+
+        InitializeTv();
 
         _playerManager.PlayerStatusChanged += OnPlayerStatusChanged;
     }
@@ -97,12 +115,54 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     {
         base.Update(frameTime);
 
-        // Track finished — clear the state so late joiners don't get stale data.
-        if (_current is { } track && GetPosition(track) > track.Duration + 3f)
+        // A manual play or a queue advance is already fetching a track — don't re-trigger.
+        if (_busy)
+            return;
+
+        // Not finished yet (3s grace so the tail isn't cut).
+        if (_current is not { } track || GetPosition(track) <= track.Duration + 3f)
+            return;
+
+        // Repeat: restart the same track from the top, no re-download needed.
+        if (_repeat)
         {
-            _current = null;
-            BroadcastState();
+            PlayData(track.Id, track.Title, track.Duration, track.Data);
+            return;
         }
+
+        // Clear first so this branch doesn't fire again while the next track downloads.
+        _current = null;
+
+        if (TryDequeueNext(out var next))
+            AdvanceToQueued(next); // async fetch → PlayData when ready
+        else
+            BroadcastState(); // queue empty: nothing playing
+    }
+
+    /// <summary>
+    /// Pops the next queue entry: the front of the queue, or a random one when shuffle is on.
+    /// </summary>
+    private bool TryDequeueNext(out MediaQueueItem item)
+    {
+        item = default!;
+        if (_queue.Count == 0)
+            return false;
+
+        var index = _shuffle ? _random.Next(_queue.Count) : 0;
+        item = _queue[index];
+        _queue.RemoveAt(index);
+        BroadcastQueueState();
+        return true;
+    }
+
+    /// <summary>
+    /// Fire-and-forget fetch + play of a queued entry. The synchronous prefix of
+    /// <see cref="PlayFromSourceAsync"/> sets <see cref="_busy"/>, so <see cref="Update"/> won't
+    /// try to advance again while the download is in flight.
+    /// </summary>
+    private void AdvanceToQueued(MediaQueueItem item)
+    {
+        _ = PlayFromSourceAsync(item.IdOrUrl, null);
     }
 
     private bool CheckAdmin(EntitySessionEventArgs args)
@@ -110,8 +170,12 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         return _adminManager.HasAdminFlag(args.SenderSession, AdminFlags.Fun);
     }
 
-    private void SendStatus(ICommonSession session, string message, bool isError = false)
+    private void SendStatus(ICommonSession? session, string message, bool isError = false)
     {
+        // Queue auto-advance has no requesting session — status lines are simply skipped.
+        if (session == null)
+            return;
+
         RaiseNetworkEvent(new MediaPlayerStatusEvent(message, isError), session);
     }
 
@@ -137,6 +201,18 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         RaiseNetworkEvent(BuildState(), Filter.Broadcast());
     }
 
+    private MediaPlayerQueueStateEvent BuildQueueState()
+    {
+        // Copy so the networked event doesn't alias the live list.
+        var items = _queue.Select(q => new MediaQueueItem { IdOrUrl = q.IdOrUrl, Title = q.Title }).ToList();
+        return new MediaPlayerQueueStateEvent(items, _repeat, _shuffle);
+    }
+
+    private void BroadcastQueueState()
+    {
+        RaiseNetworkEvent(BuildQueueState(), Filter.Broadcast());
+    }
+
     private void SendTrackData(CurrentTrack track, Filter filter)
     {
         var total = (track.Data.Length + ChunkSize - 1) / ChunkSize;
@@ -154,6 +230,12 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     {
         if (args.NewStatus != SessionStatus.InGame)
             return;
+
+        // Sync the queue + modes even when nothing is currently playing.
+        RaiseNetworkEvent(BuildQueueState(), args.Session);
+
+        // Идущий ТВ-клип тоже досылаем новичку.
+        TvSyncNewPlayer(args.Session);
 
         if (_current is not { } track)
             return;
@@ -182,12 +264,14 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     }
 
     /// <summary>
-    /// Stops playback for everyone.
+    /// Stops playback for everyone and clears the queue. Repeat/shuffle modes are kept.
     /// </summary>
     public void Stop()
     {
         _current = null;
+        _queue.Clear();
         BroadcastState();
+        BroadcastQueueState();
     }
 
     private void OnStopRequest(MediaPlayerStopRequestEvent ev, EntitySessionEventArgs args)
@@ -228,6 +312,77 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             return;
 
         TogglePause();
+    }
+
+    /// <summary>
+    /// Jumps the playhead to <paramref name="position"/> seconds for everyone.
+    /// </summary>
+    public void Seek(float position)
+    {
+        if (_current is not { } track)
+            return;
+
+        position = Math.Clamp(position, 0f, track.Duration);
+
+        if (track.Paused)
+            track.PausedPosition = position;
+        else
+            track.StartedAt = _timing.RealTime - TimeSpan.FromSeconds(position);
+
+        BroadcastState();
+    }
+
+    private void OnSeekRequest(MediaPlayerSeekRequestEvent ev, EntitySessionEventArgs args)
+    {
+        if (!CheckAdmin(args))
+            return;
+
+        Seek(ev.Position);
+    }
+
+    private void OnEnqueueRequest(MediaPlayerEnqueueRequestEvent ev, EntitySessionEventArgs args)
+    {
+        if (!CheckAdmin(args))
+            return;
+
+        var idOrUrl = ev.IdOrUrl.Trim();
+        if (idOrUrl.Length is 0 or > 300)
+            return;
+
+        // Nothing playing and not busy → start immediately instead of parking in the queue.
+        if (_current == null && !_busy)
+        {
+            _ = PlayFromSourceAsync(idOrUrl, args.SenderSession);
+            return;
+        }
+
+        _queue.Add(new MediaQueueItem { IdOrUrl = idOrUrl, Title = ev.Title.Trim() });
+        BroadcastQueueState();
+    }
+
+    private void OnQueueRemoveRequest(MediaPlayerQueueRemoveRequestEvent ev, EntitySessionEventArgs args)
+    {
+        if (!CheckAdmin(args))
+            return;
+
+        if (ev.Index < 0)
+            _queue.Clear();
+        else if (ev.Index < _queue.Count)
+            _queue.RemoveAt(ev.Index);
+        else
+            return;
+
+        BroadcastQueueState();
+    }
+
+    private void OnModeRequest(MediaPlayerModeRequestEvent ev, EntitySessionEventArgs args)
+    {
+        if (!CheckAdmin(args))
+            return;
+
+        _repeat = ev.Repeat;
+        _shuffle = ev.Shuffle;
+        BroadcastQueueState();
     }
 
     private void OnControllerUse(Entity<MediaPlayerControllerComponent> ent, ref UseInHandEvent args)
@@ -276,7 +431,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         }
     }
 
-    private async void OnPlayRequest(MediaPlayerPlayRequestEvent ev, EntitySessionEventArgs args)
+    private void OnPlayRequest(MediaPlayerPlayRequestEvent ev, EntitySessionEventArgs args)
     {
         if (!CheckAdmin(args))
             return;
@@ -287,11 +442,19 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             return;
         }
 
-        var idOrUrl = ev.IdOrUrl.Trim();
+        _ = PlayFromSourceAsync(ev.IdOrUrl, args.SenderSession);
+    }
+
+    /// <summary>
+    /// Resolves, downloads and starts a track. Shared by manual play requests and by queue
+    /// auto-advance — pass <paramref name="session"/> null for the latter (no status feedback).
+    /// </summary>
+    private async Task PlayFromSourceAsync(string idOrUrl, ICommonSession? session)
+    {
+        idOrUrl = idOrUrl.Trim();
         if (idOrUrl.Length is 0 or > 300)
             return;
 
-        var session = args.SenderSession;
         _busy = true;
 
         try
@@ -299,7 +462,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             if (!await EnsureToolsAsync(session))
                 return;
 
-            _sawmill.Info($"{session.Name} requested track: {idOrUrl}");
+            _sawmill.Info($"{session?.Name ?? "queue"} requested track: {idOrUrl}");
 
             // Resolve metadata first so we can refuse over-long tracks before downloading.
             SendStatus(session, Loc.GetString("media-player-status-resolving"));
@@ -348,7 +511,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         }
     }
 
-    private async Task<byte[]?> GetOrDownloadTrack(string id, ICommonSession session)
+    private async Task<byte[]?> GetOrDownloadTrack(string id, ICommonSession? session)
     {
         var cacheDir = Path.Combine(_resource.UserData.RootDir ?? ".", CacheFolder);
         Directory.CreateDirectory(cacheDir);
@@ -513,11 +676,16 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     {
         foreach (var result in results)
         {
-            if (string.IsNullOrEmpty(result.ThumbnailUrl))
-                continue;
-
             var id = result.Id;
             var url = result.ThumbnailUrl;
+
+            // Don't skip on an empty primary URL: flat-playlist search sometimes omits the
+            // thumbnail for the first/channel result, but DownloadThumbnailAsync falls back to the
+            // id-based hq/mq/default thumbnails every YouTube video has. Only skip if there's
+            // nothing to work with at all.
+            if (string.IsNullOrEmpty(url) && string.IsNullOrEmpty(id))
+                continue;
+
             _ = Task.Run(async () => await DownloadThumbnailAsync(id, url, session));
         }
     }

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "wega-mega arena cyberpunk pack",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "full"
+    },
+    {
+      "name": "pipe_conduit0",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit1",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit2",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit3",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit4",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit5",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit6",
+      "directions": 4
+    },
+    {
+      "name": "pipe_conduit7",
+      "directions": 4
+    }
+  ]
+}

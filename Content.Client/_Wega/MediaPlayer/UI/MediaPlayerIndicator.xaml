@@ -3,17 +3,19 @@
         xmlns:xe="clr-namespace:Content.Client.UserInterface.XamlExtensions"
         VerticalExpand="False"
         HorizontalExpand="False"
+        MouseFilter="Stop"
         Visible="False">
-    <PanelContainer Name="BackgroundPanel" StyleClasses="BackgroundPanel" HorizontalAlignment="Center">
-        <BoxContainer Orientation="Horizontal" Margin="6 3 8 3" VerticalAlignment="Center">
+    <PanelContainer Name="BackgroundPanel" HorizontalAlignment="Center" MouseFilter="Ignore">
+        <BoxContainer Orientation="Horizontal" VerticalAlignment="Center">
             <TextureRect Name="Icon"
-                         Texture="{xe:Tex '/Textures/Interface/Actions/actions_borg.rsi/musical-module.png'}"
+                         Texture="{xe:Tex '/Textures/_Wega/Interface/MediaPlayer/note.png'}"
                          Stretch="KeepAspectCentered"
-                         MinSize="20 20"
+                         MinSize="16 16"
+                         MaxSize="16 16"
                          VerticalAlignment="Center" />
             <Label Name="TitleLabel"
                    Text=""
-                   Margin="6 0 0 0"
+                   Margin="5 0 0 0"
                    VerticalAlignment="Center"
                    ClipText="True" />
         </BoxContainer>

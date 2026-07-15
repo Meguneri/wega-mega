@@ -1,0 +1,77 @@
+# Frontier Station coats adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0 / CC-BY-SA-4.0.
+
+- type: entity
+  parent: ClothingOuterCoatHoSTrench
+  id: ClothingOuterCoatBHTrenchWega
+  name: "bounty hunter's flak trenchcoat (Frontier Station)"
+  description: A greatcoat enhanced with a bulletproof alloy for some extra protection and style for those with a charismatic presence.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/bounty_hunter_coat.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/bounty_hunter_coat.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.9
+        Slash: 0.9
+        Piercing: 0.4
+        Heat: 0.9
+  - type: ExplosionResistance
+    damageCoefficient: 0.80
+
+- type: entity
+  parent: ClothingOuterStorageBase
+  id: ClothingOuterCoatBishopWega
+  name: bishop's robes (Frontier Station)
+  description: Golden threads aren't actually made of gold. Bummer.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/bishop_robe.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/bishop_robe.rsi
+
+- type: entity
+  parent: ClothingOuterBaseToggleable
+  id: ClothingOuterCoatWitchHunterWega
+  name: witch hunter's coat (Frontier Station)
+  description: Looks even better under constant rain with storm wind.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/witch_hunter_coat.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/witch_hunter_coat.rsi
+  - type: ToggleableClothing
+    clothingPrototype: ClothingHeadHatHoodChaplainHood
+
+- type: entity
+  parent: ClothingOuterStorageBase
+  id: ClothingOuterWizardBrickWega
+  name: brick wizard coat (Frontier Station)
+  description: ClothingOuterWizardBrick
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/brickwizard.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/brickwizard.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.9
+        Slash: 0.8
+        Piercing: 0.8
+        Heat: 0.9
+  - type: ExplosionResistance
+    damageCoefficient: 0.80
+
+- type: entity
+  parent: ClothingOuterStorageBase
+  id: ClothingOuterFakeWizardWega
+  name: fake wizard robe (Frontier Station)
+  description: A rather dull, blue robe meant to mimick real wizard robes.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Coats/wizard-fake.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Coats/wizard-fake.rsi

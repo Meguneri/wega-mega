@@ -2,8 +2,8 @@
         xmlns:controls="clr-namespace:Content.Client.UserInterface.Controls"
         xmlns:xe="clr-namespace:Content.Client.UserInterface.XamlExtensions"
         Title="{Loc 'ui-media-player-title'}"
-        SetSize="900 640"
-        MinSize="760 560">
+        SetSize="820 560"
+        MinSize="600 430">
     <BoxContainer Orientation="Vertical" VerticalExpand="True" HorizontalExpand="True" Margin="10">
 
         <!-- Search / direct URL -->
@@ -17,35 +17,50 @@
 
         <Label Name="StatusLabel" Text="" Margin="2 6 0 6" />
 
-        <!-- Results -->
-        <ItemList Name="ResultsList" VerticalExpand="True" MinHeight="120" MaxHeight="240" Margin="0 0 0 4" SelectMode="Single" />
+        <!-- Results (panel wraps the list so the empty-state hint can sit centered on top).
+             Expands to fill whatever the card/queue leave free, so there's no dead space. -->
+        <PanelContainer Name="ResultsPanel" VerticalExpand="True" MinHeight="96" Margin="0 0 0 4">
+            <ItemList Name="ResultsList" VerticalExpand="True" HorizontalExpand="True" SelectMode="Single" />
+            <Label Name="EmptyHintLabel"
+                   Text="{Loc 'ui-media-player-empty-hint'}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Align="Center" MouseFilter="Ignore" />
+        </PanelContainer>
 
-        <!-- Pagination -->
-        <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 0 0 8">
+        <!-- Pagination + queue controls + enqueue, all on one compact row -->
+        <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 0 0 6" VerticalAlignment="Center">
             <Button Name="PrevPageButton" Text="&lt;" Disabled="True" />
             <Label Name="PageLabel" Text="-" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8 0 8 0" />
             <Button Name="NextPageButton" Text="&gt;" Disabled="True" />
+            <Label Name="QueueHeaderLabel" Text="{Loc 'ui-media-player-queue-empty'}" StyleClasses="LabelSubText"
+                   VerticalAlignment="Center" Margin="16 0 0 0" />
             <Control HorizontalExpand="True" />
+            <Button Name="EnqueueButton" Text="{Loc 'ui-media-player-enqueue-button'}" Disabled="True" Margin="0 0 4 0" />
+            <Button Name="ClearQueueButton" Text="{Loc 'ui-media-player-queue-clear'}" Disabled="True" />
         </BoxContainer>
+
+        <!-- Queue list — collapsed entirely while the queue is empty (see RefreshQueue). -->
+        <ItemList Name="QueueList" MinHeight="54" MaxHeight="108" Margin="0 0 0 6" SelectMode="Single" Visible="False" />
 
         <!-- Now playing card -->
         <PanelContainer Name="NowPlayingPanel" StyleClasses="BackgroundPanel">
-            <BoxContainer Orientation="Vertical" Margin="14 12 14 12">
+            <BoxContainer Orientation="Vertical" Margin="10 8 10 8">
 
-                <BoxContainer Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <BoxContainer Orientation="Horizontal" VerticalAlignment="Center">
                     <TextureRect Name="NoteIcon"
-                                 Texture="{xe:Tex '/Textures/Interface/Actions/actions_borg.rsi/musical-module.png'}"
+                                 Texture="{xe:Tex '/Textures/_Wega/Interface/MediaPlayer/note.png'}"
                                  Stretch="KeepAspectCentered"
-                                 MinSize="24 24"
+                                 MinSize="40 40"
                                  Margin="0 0 8 0"
                                  VerticalAlignment="Center" />
                     <Label Name="NowPlayingLabel" Text="{Loc 'ui-media-player-nothing'}"
-                           StyleClasses="LabelHeading" Align="Center" ClipText="True" />
+                           StyleClasses="LabelHeading" ClipText="True"
+                           HorizontalExpand="True" VerticalAlignment="Center" />
                 </BoxContainer>
 
-                <!-- Progress -->
-                <ProgressBar Name="ProgressBar" MinValue="0" MaxValue="1" Value="0"
-                             MinHeight="14" Margin="0 12 0 4" HorizontalExpand="True" />
+                <!-- Progress: draggable slider so the playhead can be moved -->
+                <Slider Name="ProgressSlider" MinValue="0" MaxValue="1" Value="0"
+                        MinHeight="14" Margin="0 8 0 2" HorizontalExpand="True" />
 
                 <BoxContainer Orientation="Horizontal" HorizontalExpand="True">
                     <Label Name="TimeCurrentLabel" Text="0:00" StyleClasses="LabelSubText" />
@@ -53,17 +68,21 @@
                     <Label Name="TimeTotalLabel" Text="0:00" StyleClasses="LabelSubText" />
                 </BoxContainer>
 
-                <!-- Transport: combined play/pause + stop -->
-                <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 10 0 0" SeparationOverride="6">
+                <!-- Transport: play/pause + stop + repeat + shuffle -->
+                <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 8 0 0" SeparationOverride="6">
                     <Button Name="PlayPauseButton" Text="{Loc 'ui-media-player-play-button'}"
-                            HorizontalExpand="True" SizeFlagsStretchRatio="1" MinHeight="40" Disabled="True" />
+                            HorizontalExpand="True" SizeFlagsStretchRatio="2" MinHeight="32" Disabled="True" />
                     <Button Name="StopButton" Text="{Loc 'ui-media-player-stop-button'}"
-                            HorizontalExpand="True" SizeFlagsStretchRatio="1" MinHeight="40" Disabled="True" />
+                            HorizontalExpand="True" SizeFlagsStretchRatio="2" MinHeight="32" Disabled="True" />
+                    <Button Name="RepeatButton" Text="{Loc 'ui-media-player-repeat-button'}"
+                            HorizontalExpand="True" SizeFlagsStretchRatio="1" MinHeight="32" ToggleMode="True" />
+                    <Button Name="ShuffleButton" Text="{Loc 'ui-media-player-shuffle-button'}"
+                            HorizontalExpand="True" SizeFlagsStretchRatio="1" MinHeight="32" ToggleMode="True" />
                 </BoxContainer>
 
-                <!-- Volume -->
-                <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 12 0 0" VerticalAlignment="Center">
-                    <Label Text="{Loc 'ui-media-player-volume-label'}" VerticalAlignment="Center" />
+                <!-- Volume + mute -->
+                <BoxContainer Orientation="Horizontal" HorizontalExpand="True" Margin="0 8 0 0" VerticalAlignment="Center">
+                    <Button Name="MuteButton" Text="{Loc 'ui-media-player-mute-button'}" ToggleMode="True" VerticalAlignment="Center" />
                     <Slider Name="VolumeSlider" MinValue="0" MaxValue="1" HorizontalExpand="True"
                             Margin="10 0 10 0" VerticalAlignment="Center" />
                     <Label Name="VolumePercentLabel" Text="50%" StyleClasses="LabelSubText"

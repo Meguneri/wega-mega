@@ -28,7 +28,9 @@ public sealed partial class MediaPlayerWindow : FancyWindow
 
     private const string RoundedButtonTex = "/Textures/Interface/Nano/rounded_button.svg.96dpi.png";
     private const string PanelTex = "/Textures/Interface/Nano/black_panel_dark_thin_border.png";
+    private const string NoteTex = "/Textures/_Wega/Interface/MediaPlayer/note.png";
     private Texture _btnTex = default!;
+    private Texture _noteTex = default!;
 
     private static readonly Color SearchingColor = Color.FromHex("#E6B32E"); // gold
     private static readonly Color WorkingColor = Color.FromHex("#5DBEE2");   // cyan
@@ -37,17 +39,24 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     // Player styling — kept in code so the flat colored look matches the designer mockup.
     private static readonly Color AccentColor = Color.FromHex("#38C6D6");    // progress fill
     private static readonly Color BtnNeutral = Color.FromHex("#39424F");
+    private static readonly Color BtnActive = Color.FromHex("#2B5B6B");      // toggled-on tint
     private static readonly Color BtnGreen = Color.FromHex("#3FB950");
     private static readonly Color BtnRed = Color.FromHex("#E24B4A");
     private static readonly Color BtnTextLight = Color.FromHex("#D6DDE3");
-    private static readonly Color BtnTextGreen = Color.FromHex("#0B2912");
     private static readonly Color BtnTextRed = Color.FromHex("#FFECEC");
+    private static readonly Color GrabberColor = Color.FromHex("#EAF2F6");
 
     private readonly MediaPlayerSystem _mediaPlayer;
     private List<MediaSearchResult> _results = [];
 
     private const int PageSize = 10;
     private int _currentPage;
+
+    // Remembers the pre-mute volume so unmuting restores it.
+    private float _volumeBeforeMute = 0.5f;
+
+    // Окно открыто с телевизора: play/stop управляют ТВ-клипом, музыкальные секции скрыты.
+    private bool _tvMode;
 
     public MediaPlayerWindow()
     {
@@ -60,12 +69,32 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         SearchField.OnTextEntered += _ => Search();
         PlayPauseButton.OnPressed += _ => PlayOrPause();
         PlayUrlButton.OnPressed += _ => PlayUrl();
-        StopButton.OnPressed += _ => _mediaPlayer.RequestStop();
+        StopButton.OnPressed += _ =>
+        {
+            if (_tvMode)
+                _mediaPlayer.RequestTvStop();
+            else
+                _mediaPlayer.RequestStop();
+        };
         PrevPageButton.OnPressed += _ => ChangePage(-1);
         NextPageButton.OnPressed += _ => ChangePage(1);
+        EnqueueButton.OnPressed += _ => EnqueueSelected();
 
-        ResultsList.OnItemSelected += _ => SetEnabled(PlayPauseButton, true);
-        ResultsList.OnItemDeselected += _ => SetEnabled(PlayPauseButton, false);
+        ResultsList.OnItemSelected += _ => SetResultSelected(true);
+        ResultsList.OnItemDeselected += _ => SetResultSelected(false);
+
+        // Queue: clicking an entry removes it; the clear button wipes the whole queue.
+        QueueList.OnItemSelected += args => _mediaPlayer.RequestQueueRemove(args.ItemIndex);
+        ClearQueueButton.OnPressed += _ => _mediaPlayer.RequestQueueRemove(-1);
+
+        // Repeat / shuffle are server-side modes; report the button state on toggle.
+        RepeatButton.OnToggled += _ => SendMode();
+        ShuffleButton.OnToggled += _ => SendMode();
+
+        // Seek: apply once the grabber is released, so we don't spam the server mid-drag.
+        ProgressSlider.OnReleased += _ => _mediaPlayer.RequestSeek(ProgressSlider.Value);
+
+        MuteButton.OnToggled += _ => ToggleMute();
 
         VolumeSlider.Value = _cfg.GetCVar(WegaCVars.MediaPlayerVolume);
         UpdateVolumeLabel(VolumeSlider.Value);
@@ -73,15 +102,20 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         {
             _cfg.SetCVar(WegaCVars.MediaPlayerVolume, slider.Value);
             UpdateVolumeLabel(slider.Value);
+            // Raising the volume by hand cancels a mute.
+            if (slider.Value > 0.001f && MuteButton.Pressed)
+                MuteButton.Pressed = false;
         };
 
         _mediaPlayer.SearchReceived += OnSearchReceived;
         _mediaPlayer.StatusReceived += OnStatusReceived;
         _mediaPlayer.StateUpdated += UpdateNowPlaying;
         _mediaPlayer.ThumbnailLoaded += OnThumbnailLoaded;
+        _mediaPlayer.QueueUpdated += RefreshQueue;
 
         ApplyStyle();
         UpdateNowPlaying();
+        RefreshQueue();
 
         // Restore previous search results when reopening the window.
         _results = _mediaPlayer.LastSearchResults;
@@ -94,16 +128,19 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         {
             UpdatePagination();
         }
+
+        UpdateEmptyHint();
     }
 
     /// <summary>
     /// Rounded, colored styling built from the game's own 9-slice textures so the in-game player
-    /// reads like the design mockup: rounded accent-filled progress bar, rounded colored buttons,
+    /// reads like the design mockup: rounded accent-filled progress slider, rounded colored buttons,
     /// and a rounded card behind the transport.
     /// </summary>
     private void ApplyStyle()
     {
         _btnTex = _resCache.GetResource<TextureResource>(RoundedButtonTex).Texture;
+        _noteTex = _resCache.GetResource<TextureResource>(NoteTex).Texture;
         var panelTex = _resCache.GetResource<TextureResource>(PanelTex).Texture;
 
         // Now-playing card — rounded dark panel.
@@ -112,6 +149,11 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         card.SetContentMarginOverride(StyleBox.Margin.All, 12);
         NowPlayingPanel.PanelOverride = card;
 
+        // Results panel — dark box, doubles as the empty-state backdrop.
+        var resultsBox = new StyleBoxTexture { Texture = panelTex, Modulate = Color.FromHex("#1D232C") };
+        resultsBox.SetPatchMargin(StyleBox.Margin.All, 3);
+        ResultsPanel.PanelOverride = resultsBox;
+
         // Search field — rounded dark box to match the card and buttons.
         var field = new StyleBoxTexture { Texture = panelTex, Modulate = Color.FromHex("#1D232C") };
         field.SetPatchMargin(StyleBox.Margin.All, 3);
@@ -119,17 +161,25 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         field.SetContentMarginOverride(StyleBox.Margin.Vertical, 6);
         SearchField.StyleBoxOverride = field;
 
-        // Progress bar — rounded pill: dark channel + accent fill.
-        ProgressBar.BackgroundStyleBoxOverride = BarBox(Color.FromHex("#12161C"));
-        ProgressBar.ForegroundStyleBoxOverride = BarBox(AccentColor);
+        // Progress slider — rounded pill: dark channel + accent fill + light grabber.
+        ProgressSlider.BackgroundStyleBoxOverride = BarBox(Color.FromHex("#12161C"));
+        ProgressSlider.FillStyleBoxOverride = BarBox(AccentColor);
+        ProgressSlider.GrabberStyleBoxOverride = BarBox(GrabberColor);
 
         // Transport + search buttons — rounded, tinted.
         StyleButton(SearchButton, BtnNeutral, BtnTextLight);
         StyleButton(PlayUrlButton, BtnNeutral, BtnTextLight);
         StyleButton(PlayPauseButton, BtnGreen, Color.White);
         StyleButton(StopButton, BtnRed, BtnTextRed);
+        StyleButton(EnqueueButton, BtnNeutral, BtnTextLight);
+        StyleButton(ClearQueueButton, BtnNeutral, BtnTextLight);
 
-        // Result list — teal selection like the mockup.
+        // Toggle buttons recolor when active; refresh their look now and on every state change.
+        StyleToggle(RepeatButton);
+        StyleToggle(ShuffleButton);
+        StyleToggle(MuteButton);
+
+        // Result + queue lists — teal selection like the mockup.
         var listRule = Element<ItemList>()
             .Prop(ItemList.StylePropertyBackground, new StyleBoxFlat { BackgroundColor = Color.FromHex("#1D232C") })
             .Prop(ItemList.StylePropertyItemBackground, new StyleBoxFlat { BackgroundColor = Color.Transparent })
@@ -137,10 +187,13 @@ public sealed partial class MediaPlayerWindow : FancyWindow
             .Prop(ItemList.StylePropertySelectedItemBackground, new StyleBoxFlat { BackgroundColor = Color.FromHex("#2B5B6B") });
 
         var existingRules = _ui.Stylesheet?.Rules ?? Array.Empty<StyleRule>();
-        ResultsList.Stylesheet = new Stylesheet(existingRules.Append(listRule).ToArray());
+        var sheet = new Stylesheet(existingRules.Append(listRule).ToArray());
+        ResultsList.Stylesheet = sheet;
+        QueueList.Stylesheet = sheet;
 
-        // Now-playing title — white, bold heading.
+        // Now-playing title + empty hint.
         NowPlayingLabel.FontColorOverride = Color.White;
+        EmptyHintLabel.FontColorOverride = Color.FromHex("#6B7683");
     }
 
     private StyleBoxTexture BarBox(Color color)
@@ -174,6 +227,22 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     }
 
     /// <summary>
+    /// Styles a toggle button so its background follows the pressed state. Repaints immediately and
+    /// whenever it's toggled; call <see cref="RepaintToggle"/> after changing Pressed in code.
+    /// </summary>
+    private void StyleToggle(Button button)
+    {
+        button.Label.FontColorOverride = BtnTextLight;
+        RepaintToggle(button);
+        button.OnToggled += _ => RepaintToggle(button);
+    }
+
+    private void RepaintToggle(Button button)
+    {
+        button.StyleBoxOverride = ButtonBox(button.Pressed ? BtnActive : BtnNeutral);
+    }
+
+    /// <summary>
     /// Toggles a styled button's enabled state, dimming it while disabled (the flat stylebox
     /// override doesn't grey out on its own).
     /// </summary>
@@ -194,25 +263,38 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         _mediaPlayer.StatusReceived -= OnStatusReceived;
         _mediaPlayer.StateUpdated -= UpdateNowPlaying;
         _mediaPlayer.ThumbnailLoaded -= OnThumbnailLoaded;
+        _mediaPlayer.QueueUpdated -= RefreshQueue;
     }
 
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
 
+        if (_tvMode)
+            return; // прогресс/тайминги относятся к музыке и в ТВ-режиме скрыты
+
         if (!_mediaPlayer.IsPlaying)
         {
-            ProgressBar.Value = 0f;
+            ProgressSlider.SetValueWithoutEvent(0f);
             return;
         }
 
         var position = _mediaPlayer.CurrentPosition;
         var duration = _mediaPlayer.CurrentDuration;
 
-        ProgressBar.MaxValue = duration > 0 ? duration : 1f;
-        ProgressBar.Value = Math.Clamp(position, 0f, ProgressBar.MaxValue);
+        ProgressSlider.MaxValue = duration > 0 ? duration : 1f;
 
-        TimeCurrentLabel.Text = FormatTime(position);
+        // While the user is dragging the grabber, leave its value alone and show the target time.
+        if (ProgressSlider.Grabbed)
+        {
+            TimeCurrentLabel.Text = FormatTime(ProgressSlider.Value);
+        }
+        else
+        {
+            ProgressSlider.SetValueWithoutEvent(Math.Clamp(position, 0f, ProgressSlider.MaxValue));
+            TimeCurrentLabel.Text = FormatTime(position);
+        }
+
         TimeTotalLabel.Text = FormatTime(duration);
     }
 
@@ -244,8 +326,36 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         }
     }
 
+    /// <summary>
+    /// Переключает окно между музыкальным и ТВ-режимом. В ТВ-режиме поиск тот же, но
+    /// «Играть»/«По ссылке»/«Стоп» шлют клип на экраны; очередь/повтор/перемотка — только для музыки.
+    /// </summary>
+    public void SetTvMode(bool tv)
+    {
+        _tvMode = tv;
+        Title = Loc.GetString(tv ? "ui-media-player-title-tv" : "ui-media-player-title");
+
+        EnqueueButton.Visible = !tv;
+        RepeatButton.Visible = !tv;
+        ShuffleButton.Visible = !tv;
+        QueueHeaderLabel.Visible = !tv;
+        ClearQueueButton.Visible = !tv;
+        ProgressSlider.Visible = !tv;
+        TimeCurrentLabel.Visible = !tv;
+        TimeTotalLabel.Visible = !tv;
+
+        RefreshQueue();
+        UpdateNowPlaying();
+    }
+
     private void PlayOrPause()
     {
+        if (_tvMode)
+        {
+            PlaySelected();
+            return;
+        }
+
         var state = _mediaPlayer.LastState;
         if (state?.TrackId != null)
         {
@@ -263,7 +373,12 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         {
             var index = ResultsList.IndexOf(item) + _currentPage * PageSize;
             if (index >= 0 && index < _results.Count)
-                _mediaPlayer.RequestPlay(_results[index].Id);
+            {
+                if (_tvMode)
+                    _mediaPlayer.RequestTvPlay(_results[index].Id);
+                else
+                    _mediaPlayer.RequestPlay(_results[index].Id);
+            }
             return;
         }
     }
@@ -274,13 +389,69 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         if (url.Length == 0)
             return;
 
-        _mediaPlayer.RequestPlay(url);
+        if (_tvMode)
+            _mediaPlayer.RequestTvPlay(url);
+        else
+            _mediaPlayer.RequestPlay(url);
+    }
+
+    private void EnqueueSelected()
+    {
+        foreach (var item in ResultsList.GetSelected())
+        {
+            var index = ResultsList.IndexOf(item) + _currentPage * PageSize;
+            if (index >= 0 && index < _results.Count)
+            {
+                var result = _results[index];
+                _mediaPlayer.RequestEnqueue(result.Id, MediaPlayerSystem.SanitizeTitle(result.Title));
+            }
+            return;
+        }
+    }
+
+    /// <summary>Enables/disables the buttons that act on the selected search result.</summary>
+    private void SetResultSelected(bool selected)
+    {
+        EnqueueButton.Disabled = !selected;
+
+        // ТВ-режим: «Играть» действует только на выбранный результат, паузы у ТВ нет.
+        if (_tvMode)
+        {
+            SetEnabled(PlayPauseButton, selected);
+            return;
+        }
+
+        // Don't disable play/pause while a track is loaded — it still controls that track.
+        if (selected || _mediaPlayer.LastState?.TrackId != null)
+            SetEnabled(PlayPauseButton, true);
+        else
+            SetEnabled(PlayPauseButton, false);
+    }
+
+    private void SendMode()
+    {
+        _mediaPlayer.RequestMode(RepeatButton.Pressed, ShuffleButton.Pressed);
+    }
+
+    private void ToggleMute()
+    {
+        RepaintToggle(MuteButton);
+
+        if (MuteButton.Pressed)
+        {
+            _volumeBeforeMute = VolumeSlider.Value > 0.001f ? VolumeSlider.Value : _volumeBeforeMute;
+            VolumeSlider.Value = 0f; // fires OnValueChanged → applies to the cvar + label
+        }
+        else
+        {
+            VolumeSlider.Value = _volumeBeforeMute > 0.001f ? _volumeBeforeMute : 0.5f;
+        }
     }
 
     private void OnSearchReceived(MediaPlayerSearchResponseEvent ev)
     {
         ResultsList.Clear();
-        SetEnabled(PlayPauseButton, false);
+        SetResultSelected(false);
         _results = _mediaPlayer.LastSearchResults;
         _currentPage = 0;
         SetSearching(false);
@@ -290,6 +461,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
             StatusLabel.Text = ev.Error;
             StatusLabel.FontColorOverride = ErrorColor;
             UpdatePagination();
+            UpdateEmptyHint();
             return;
         }
 
@@ -319,6 +491,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         }
 
         UpdatePagination();
+        UpdateEmptyHint();
     }
 
     private void ChangePage(int delta)
@@ -342,8 +515,17 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         NextPageButton.Disabled = _currentPage >= pageCount - 1;
     }
 
+    private void UpdateEmptyHint()
+    {
+        EmptyHintLabel.Visible = _results.Count == 0;
+    }
+
     private void OnThumbnailLoaded(string id)
     {
+        // Late cover for the now-playing track.
+        if (_mediaPlayer.LastState?.TrackId == id)
+            UpdateCover(id);
+
         var icon = _mediaPlayer.GetThumbnail(id);
         if (icon == null)
             return;
@@ -373,6 +555,17 @@ public sealed partial class MediaPlayerWindow : FancyWindow
 
     private void UpdateNowPlaying()
     {
+        // ТВ-режим: карточка не отражает музыкальный трек — показываем подсказку по ТВ.
+        if (_tvMode)
+        {
+            NowPlayingLabel.Text = Loc.GetString("ui-media-player-tv-hint");
+            UpdateCover(null);
+            PlayPauseButton.Text = Loc.GetString("ui-media-player-play-button");
+            SetEnabled(PlayPauseButton, ResultsList.GetSelected().Any());
+            SetEnabled(StopButton, true); // «Стоп» гасит экраны в любой момент
+            return;
+        }
+
         var state = _mediaPlayer.LastState;
 
         // Nothing loaded.
@@ -381,9 +574,11 @@ public sealed partial class MediaPlayerWindow : FancyWindow
             NowPlayingLabel.Text = Loc.GetString("ui-media-player-nothing");
             TimeCurrentLabel.Text = FormatTime(0);
             TimeTotalLabel.Text = FormatTime(0);
-            ProgressBar.Value = 0f;
-            SetEnabled(PlayPauseButton, false);
+            ProgressSlider.SetValueWithoutEvent(0f);
+            UpdateCover(null);
             SetEnabled(StopButton, false);
+            // Play/pause stays enabled if a search result is selected (so it can start it).
+            SetResultSelected(ResultsList.GetSelected().Any());
             PlayPauseButton.Text = Loc.GetString("ui-media-player-play-button");
             return;
         }
@@ -393,11 +588,47 @@ public sealed partial class MediaPlayerWindow : FancyWindow
 
         NowPlayingLabel.Text = MediaPlayerSystem.SanitizeTitle(state.Title);
         TimeTotalLabel.Text = FormatTime(state.Duration);
+        UpdateCover(state.TrackId);
         SetEnabled(PlayPauseButton, true);
         SetEnabled(StopButton, true);
         PlayPauseButton.Text = Loc.GetString(state.Playing
             ? "ui-media-player-pause-button"
             : "ui-media-player-resume-button");
+    }
+
+    /// <summary>
+    /// Shows the track's cover in the now-playing card, falling back to the note icon when the
+    /// thumbnail hasn't been downloaded (e.g. a track played by direct URL).
+    /// </summary>
+    private void UpdateCover(string? trackId)
+    {
+        var cover = trackId != null ? _mediaPlayer.GetThumbnail(trackId) : null;
+        NoteIcon.Texture = cover ?? _noteTex;
+    }
+
+    private void RefreshQueue()
+    {
+        // Reflect the server's mode state without firing OnToggled, then repaint.
+        RepeatButton.Pressed = _mediaPlayer.Repeat;
+        ShuffleButton.Pressed = _mediaPlayer.Shuffle;
+        RepaintToggle(RepeatButton);
+        RepaintToggle(ShuffleButton);
+
+        QueueList.Clear();
+        var queue = _mediaPlayer.Queue;
+        foreach (var item in queue)
+        {
+            var title = item.Title.Length > 0 ? item.Title : item.IdOrUrl;
+            QueueList.AddItem(MediaPlayerSystem.SanitizeTitle(title));
+        }
+
+        // Collapse the list entirely when empty so it doesn't reserve a dead black band.
+        // В ТВ-режиме очередь музыкальная и не показывается вовсе.
+        QueueList.Visible = !_tvMode && queue.Count > 0;
+        ClearQueueButton.Disabled = queue.Count == 0;
+        QueueHeaderLabel.Text = queue.Count == 0
+            ? Loc.GetString("ui-media-player-queue-empty")
+            : Loc.GetString("ui-media-player-queue-count", ("count", queue.Count));
     }
 
     private void UpdateVolumeLabel(float value)

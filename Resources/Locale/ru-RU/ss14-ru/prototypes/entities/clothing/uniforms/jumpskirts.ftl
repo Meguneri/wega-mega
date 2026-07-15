@@ -132,3 +132,6 @@ ent-ClothingUniformJumpskirtPsychologist = юбка-комбинезон пси�
     .desc = Я не теряю вещи. Я кладу вещи в места, которые потом ускользают от меня.
 ent-ClothingUniformJumpskirtClown = юбка клоуна
     .desc = ХОНК!
+
+ent-ClothingUniformJumpskirtMailCarrierWega = юбка-комбинезон почтальона (Nyanotrasen)
+    .desc = Враг собак повсюду.

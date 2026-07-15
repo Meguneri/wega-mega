@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "wega-mega arena cyberpunk pack",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "full"
+    },
+    {
+      "name": "concrete_hazard0",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard1",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard2",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard3",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard4",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard5",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard6",
+      "directions": 4
+    },
+    {
+      "name": "concrete_hazard7",
+      "directions": 4
+    }
+  ]
+}

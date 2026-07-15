@@ -61,6 +61,17 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     public List<MediaSearchResult> LastSearchResults { get; private set; } = [];
 
     /// <summary>
+    /// Current playback queue, mirrored from the server.
+    /// </summary>
+    public List<MediaQueueItem> Queue { get; private set; } = [];
+
+    /// <summary>Whether the current track repeats on end.</summary>
+    public bool Repeat { get; private set; }
+
+    /// <summary>Whether the queue advances in random order.</summary>
+    public bool Shuffle { get; private set; }
+
+    /// <summary>
     /// Last playback state received from the server, for UI display.
     /// </summary>
     public MediaPlayerStateEvent? LastState { get; private set; }
@@ -94,6 +105,7 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             : 0f;
 
     public event Action? StateUpdated;
+    public event Action? QueueUpdated;
     public event Action<MediaPlayerSearchResponseEvent>? SearchReceived;
     public event Action<MediaPlayerStatusEvent>? StatusReceived;
 
@@ -121,7 +133,10 @@ public sealed partial class MediaPlayerSystem : EntitySystem
         });
         SubscribeNetworkEvent<MediaPlayerStatusEvent>(ev => StatusReceived?.Invoke(ev));
         SubscribeNetworkEvent<MediaPlayerThumbnailEvent>(OnThumbnail);
-        SubscribeNetworkEvent<OpenMediaPlayerEvent>(_ => OpenWindow());
+        SubscribeNetworkEvent<MediaPlayerQueueStateEvent>(OnQueueState);
+        SubscribeNetworkEvent<OpenMediaPlayerEvent>(ev => OpenWindow(ev.TvMode));
+
+        InitializeTv();
     }
 
     public override void Shutdown()
@@ -135,17 +150,26 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
     /// <summary>
     /// Opens the media player window, reusing the existing one if already open.
+    /// Отдельная безпараметровая перегрузка нужна для method-group (ClickAction индикатора).
     /// </summary>
-    public void OpenWindow()
+    public void OpenWindow() => OpenWindow(false);
+
+    /// <summary>
+    /// Opens the media player window. <paramref name="tvMode"/> — окно управляет ТВ-экранами
+    /// (открыто кликом по телевизору), а не глобальной музыкой.
+    /// </summary>
+    public void OpenWindow(bool tvMode)
     {
         if (_window is { Disposed: false })
         {
+            _window.SetTvMode(tvMode);
             _window.MoveToFront();
             return;
         }
 
         _window = new MediaPlayerWindow();
         _window.OnClose += () => _window = null;
+        _window.SetTvMode(tvMode);
         _window.OpenCentered();
     }
 
@@ -167,6 +191,35 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     public void RequestPause()
     {
         RaiseNetworkEvent(new MediaPlayerPauseRequestEvent());
+    }
+
+    public void RequestSeek(float position)
+    {
+        RaiseNetworkEvent(new MediaPlayerSeekRequestEvent(position));
+    }
+
+    public void RequestEnqueue(string idOrUrl, string title)
+    {
+        RaiseNetworkEvent(new MediaPlayerEnqueueRequestEvent(idOrUrl, title));
+    }
+
+    /// <summary>Removes a queue entry by index, or clears the whole queue when index is negative.</summary>
+    public void RequestQueueRemove(int index)
+    {
+        RaiseNetworkEvent(new MediaPlayerQueueRemoveRequestEvent(index));
+    }
+
+    public void RequestMode(bool repeat, bool shuffle)
+    {
+        RaiseNetworkEvent(new MediaPlayerModeRequestEvent(repeat, shuffle));
+    }
+
+    private void OnQueueState(MediaPlayerQueueStateEvent ev)
+    {
+        Queue = ev.Items;
+        Repeat = ev.Repeat;
+        Shuffle = ev.Shuffle;
+        QueueUpdated?.Invoke();
     }
 
     /// <summary>
@@ -248,6 +301,8 @@ public sealed partial class MediaPlayerSystem : EntitySystem
 
         if (_streamEntity != null)
             _audio.SetGain(_streamEntity, volume);
+
+        TvUpdateVolume(volume);
     }
 
     private void OnTrackChunk(MediaPlayerTrackChunkEvent ev)
@@ -308,24 +363,20 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             return;
         }
 
-        // Same track already loaded: just pause/resume + resync, don't restart.
-        if (_playingId == ev.TrackId && _streamEntity is { } ent)
+        // Same track with a live audio source: pause/resume + resync position (covers seeking,
+        // in both playing and paused states), don't restart.
+        if (_playingId == ev.TrackId
+            && _streamEntity is { } ent
+            && TryComp<AudioComponent>(ent, out _))
         {
-            if (ev.Playing)
-            {
-                _audio.SetState(ent, AudioState.Playing);
-                _audio.SetPlaybackPosition(ent, ev.Position);
-            }
-            else
-            {
-                _audio.SetState(ent, AudioState.Paused);
-            }
-
+            _audio.SetPlaybackPosition(ent, ev.Position);
+            _audio.SetState(ent, ev.Playing ? AudioState.Playing : AudioState.Paused);
             StateUpdated?.Invoke();
             return;
         }
 
-        // New track: start it once the data has arrived.
+        // New track — or the previous source already ended (repeat / seek past end): (re)start
+        // from the cached data once it's available.
         _pendingState = ev;
         TryStartPlayback();
         StateUpdated?.Invoke();

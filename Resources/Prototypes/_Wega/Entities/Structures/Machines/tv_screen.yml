@@ -1,0 +1,46 @@
+# Прототип кинотеатра: экран, на который сервер транслирует видеоклип
+# (команды tvplay <url> / tvstop, см. MediaPlayerSystem.Tv). Видео-слой
+# рисуется клиентом поверх спрайта динамической текстурой.
+
+# Имя/описание — через канонические ключи ent-TvCinemaScreen в ftl.
+- type: entity
+  id: TvCinemaScreen
+  parent: BaseStructure
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Machines/tv_screen.rsi
+    layers:
+    - state: frame
+    # Mobs + Y-сортировка: стоящий ЗА телевизором игрок накрывается корпусом,
+    # стоящий перед ним — рисуется поверх (как у генератора аномалий).
+    drawdepth: Mobs
+    noRot: true
+  # Корпус плавно тает, когда за ним прячется твой собственный персонаж.
+  - type: SpriteFade
+  - type: TvScreen
+  - type: Physics
+    bodyType: Static
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-1.4,-0.9,1.4,-0.3"
+        density: 200
+        mask:
+        - MachineMask
+        layer:
+        - MachineLayer
+  - type: Anchorable
+  - type: InteractionOutline
+  - type: Clickable
+  - type: Damageable
+    damageModifierSet: Metallic
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 150
+      behaviors:
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]

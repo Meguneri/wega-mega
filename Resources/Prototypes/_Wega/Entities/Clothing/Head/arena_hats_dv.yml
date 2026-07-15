@@ -1,0 +1,24 @@
+# Delta-V headgear adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0.
+
+- type: entity
+  parent: ClothingHeadBase
+  id: ClothingHeadHatCapSecWega
+  name: security cap (Delta-V)
+  description: A cap worn by security personnel.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Head/Hats/cap_sec.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Head/Hats/cap_sec.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: ClothingHeadHatBeretDetWega
+  name: detective's beret (Delta-V)
+  description: For forensic specialists and dogged investigators.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Head/Hats/beret_det.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Head/Hats/beret_det.rsi

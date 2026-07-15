@@ -101,7 +101,6 @@
 | Тактический жилет наёмника | `ClothingOuterVestWebMerc` | 3 TC |
 | Доги | `ClothingOuterDogi` | 2 TC |
 | Бронированный медицинский халат | `ClothingOuterCoatAMG` | 2 TC |
-| Броня смотрителя | `ClothingOuterArmorWarden` | 6 TC |
 | Рейдовая броня | `ClothingOuterArmorRaid` | 6 TC |
 | Карп | `ClothingOuterHardsuitCarp` | 2 TC |
 | Инженерный | `ClothingOuterHardsuitEngineering` | 4 TC |

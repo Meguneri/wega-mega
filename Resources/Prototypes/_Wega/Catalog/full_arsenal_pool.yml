@@ -1238,17 +1238,6 @@
   categories:
   - FullArsenal
 
-- type: listing
-  id: FullArsenalArmorWarden
-  name: full-arsenal-armor-warden-name
-  description: full-arsenal-armor-warden-desc
-  productEntity: ClothingOuterArmorWarden
-  cost:
-    Telecrystal: 6
-  categories:
-  - FullArsenal
-  - FullArsenalArmor
-
 # uplink raid bundle: 8 TC with extras; armor alone ≈ 6
 - type: listing
   id: FullArsenalArmorRaid

@@ -56,10 +56,56 @@ public sealed class MediaPlayerStopRequestEvent : EntityEventArgs;
 public sealed class MediaPlayerPauseRequestEvent : EntityEventArgs;
 
 /// <summary>
-/// Server tells a client to open the media player window (e.g. from using the player item).
+/// Admin client asks the server to jump the playhead to <see cref="Position"/> seconds.
+/// Applies to everyone, since playback is server-synced.
 /// </summary>
 [Serializable, NetSerializable]
-public sealed class OpenMediaPlayerEvent : EntityEventArgs;
+public sealed class MediaPlayerSeekRequestEvent(float position) : EntityEventArgs
+{
+    public float Position { get; } = position;
+}
+
+/// <summary>
+/// Admin client asks the server to append a track to the queue. <see cref="Title"/> is the
+/// display name known at enqueue time (before the track is downloaded), used for the queue UI.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MediaPlayerEnqueueRequestEvent(string idOrUrl, string title) : EntityEventArgs
+{
+    public string IdOrUrl { get; } = idOrUrl;
+    public string Title { get; } = title;
+}
+
+/// <summary>
+/// Admin client asks the server to remove a queue entry by index, or clear the whole queue
+/// when <see cref="Index"/> is negative.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MediaPlayerQueueRemoveRequestEvent(int index) : EntityEventArgs
+{
+    public int Index { get; } = index;
+}
+
+/// <summary>
+/// Admin client asks the server to set the repeat / shuffle playback modes for everyone.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MediaPlayerModeRequestEvent(bool repeat, bool shuffle) : EntityEventArgs
+{
+    public bool Repeat { get; } = repeat;
+    public bool Shuffle { get; } = shuffle;
+}
+
+/// <summary>
+/// Server tells a client to open the media player window (e.g. from using the player item).
+/// <see cref="TvMode"/> — окно открыто с телевизора: кнопки «Играть»/«По ссылке»/«Стоп»
+/// управляют ТВ-клипом, а не глобальной музыкой.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class OpenMediaPlayerEvent(bool tvMode = false) : EntityEventArgs
+{
+    public bool TvMode { get; } = tvMode;
+}
 
 /// <summary>
 /// Server sends a progress/status line ("downloading...", errors) to the requesting admin.
@@ -110,4 +156,26 @@ public sealed class MediaPlayerThumbnailEvent(string trackId, byte[] pngData) : 
 {
     public string TrackId { get; } = trackId;
     public byte[] PngData { get; } = pngData;
+}
+
+/// <summary>
+/// One entry in the playback queue, as shown in the client UI.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MediaQueueItem
+{
+    public string IdOrUrl = string.Empty;
+    public string Title = string.Empty;
+}
+
+/// <summary>
+/// Current queue and playback modes, broadcast to every client whenever they change.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MediaPlayerQueueStateEvent(List<MediaQueueItem> items, bool repeat, bool shuffle)
+    : EntityEventArgs
+{
+    public List<MediaQueueItem> Items { get; } = items;
+    public bool Repeat { get; } = repeat;
+    public bool Shuffle { get; } = shuffle;
 }

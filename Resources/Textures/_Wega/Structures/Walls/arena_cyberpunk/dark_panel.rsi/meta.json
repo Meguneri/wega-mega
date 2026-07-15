@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "wega-mega arena cyberpunk pack",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "full"
+    },
+    {
+      "name": "dark_panel0",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel1",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel2",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel3",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel4",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel5",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel6",
+      "directions": 4
+    },
+    {
+      "name": "dark_panel7",
+      "directions": 4
+    }
+  ]
+}

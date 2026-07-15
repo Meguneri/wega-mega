@@ -1,0 +1,68 @@
+# Nyanotrasen uniforms adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0 / CC-BY-SA-4.0.
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitMailCarrierWega
+  name: mail carrier's jumpsuit (Nyanotrasen)
+  description: Enemy of dogs everywhere.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/mailman_ny.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/mailman_ny.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: ClothingUniformJumpskirtMailCarrierWega
+  name: mail carrier's jumpskirt (Nyanotrasen)
+  description: Enemy of dogs everywhere.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpskirt/mailman_ny.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpskirt/mailman_ny.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitTshirtJeansWega
+  name: white t-shirt and jeans (Nyanotrasen)
+  description: Even in space, this combo is still in style.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/tshirtjeans_ny.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/tshirtjeans_ny.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitTshirtJeansGrayWega
+  name: gray t-shirt and jeans (Nyanotrasen)
+  description: Even though there are no forests in space, this combo is still practical.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/tshirtjeansgray_ny.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/tshirtjeansgray_ny.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitTshirtJeansPeachWega
+  name: peach t-shirt and jeans (Nyanotrasen)
+  description: Even though your favorite emo clothing store is back at home, this combo is still edgy.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/tshirtjeanspeach_ny.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/tshirtjeanspeach_ny.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitPrisonGuardWega
+  name: prison guard's uniform (Nyanotrasen)
+  description: A comfortable, durable, waterproof uniform made to keep prison staff comfortable and safe.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/prisonguard_ny.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/prisonguard_ny.rsi

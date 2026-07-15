@@ -300,7 +300,6 @@
 | Отражающая броня | `ClothingOuterArmorReflective` | 4 TC |
 | Пулестойкая броня | `ClothingOuterArmorBulletproof` | 5 TC |
 | Культистская броня | `ClothingOuterArmorCult` | 7 TC |
-| Броня смотрителя | `ClothingOuterArmorWarden` | 6 TC |
 | Рейдовая броня | `ClothingOuterArmorRaid` | 6 TC |
 | Тяжёлая броня | `ClothingOuterArmorHeavy` | 18 TC |
 | Тяжёлая броня (зелёная) | `ClothingOuterArmorHeavyGreen` | 18 TC |

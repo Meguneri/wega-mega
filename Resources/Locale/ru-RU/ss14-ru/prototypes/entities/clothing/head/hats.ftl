@@ -178,3 +178,8 @@ ent-ClothingHeadPropellerHat = кепка с пропеллером
     .desc = Ты самый лучший мальчик.
 ent-ClothingHeadHatMitreClown = митра Хонкоматери
     .desc = Прихожанам трудно разглядеть банановую кожуру на полу, когда они смотрят на вашу великолепную шляпу.
+
+ent-ClothingHeadHatCapSecWega = кепка СБ (Delta-V)
+    .desc = Кепка, которую носят сотрудники службы безопасности.
+ent-ClothingHeadHatBeretDetWega = берет детектива (Delta-V)
+    .desc = Для судебных экспертов и упорных следователей.

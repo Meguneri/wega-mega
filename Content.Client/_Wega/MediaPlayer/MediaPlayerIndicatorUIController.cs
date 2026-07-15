@@ -27,6 +27,9 @@ public sealed class MediaPlayerIndicatorUIController : UIController
             return;
 
         var indicator = screen.GetOrAddWidget<MediaPlayerIndicator>();
+        // Wire the click-to-open once; GetOrAddWidget returns the same instance each frame.
+        indicator.ClickAction ??= _mediaPlayer.OpenWindow;
+
         var state = _mediaPlayer.LastState;
         var loaded = state is { TrackId: not null };
 

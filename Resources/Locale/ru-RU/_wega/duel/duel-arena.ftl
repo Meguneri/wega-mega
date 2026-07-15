@@ -10,10 +10,6 @@ duel-arena-not-started-need-two = Дуэль не началась: нужно �
 
 duel-arena-started = Дуэль началась! { $fighters }
 
-duel-arena-sudden-death = Внезапная смерть! Время боя истекло — безопасная зона сжимается, а через 30 секунд дуэль завершится вничью!
-
-duel-arena-timeout-draw = Время боя истекло! Ничья! Снаряжение убрано.
-
 duel-arena-scores-reset = Счёт дуэльной арены обнулён.
 
 duel-arena-cleaned = Арена очищена: выданное снаряжение убрано.

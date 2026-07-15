@@ -1,16 +1,12 @@
-using System.Linq;
 using System.Numerics;
 using Content.Shared._Wega.Duel.Components;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.FixedPoint;
-using Content.Shared.Interaction;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
-using Content.Shared.Physics;
-using Content.Shared.Weapons.Ranged.Systems;
 using Robust.Server.GameObjects;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
@@ -21,6 +17,8 @@ namespace Content.Server._Wega.Duel.Systems;
 
 /// <summary>
 /// Система миньона-помощника для проигравшего 3 дуэли подряд.
+/// Дрон только следует за владельцем и лечит его — стрелять он не умеет (убрано намеренно,
+/// чтобы поддержка отстающего не превращалась во вторую пушку на арене).
 /// </summary>
 public sealed partial class ArenaLoserMinionSystem : EntitySystem
 {
@@ -29,8 +27,6 @@ public sealed partial class ArenaLoserMinionSystem : EntitySystem
     [Dependency] private PhysicsSystem _physics = default!;
     [Dependency] private DamageableSystem _damageable = default!;
     [Dependency] private MobThresholdSystem _mobThreshold = default!;
-    [Dependency] private SharedInteractionSystem _interaction = default!;
-    [Dependency] private SharedGunSystem _gun = default!;
 
     /// <summary>
     /// Удаляет всех миньонов, чьи владельцы входят в <paramref name="owners"/> (бойцы завершившегося
@@ -85,7 +81,6 @@ public sealed partial class ArenaLoserMinionSystem : EntitySystem
             {
                 var dir = dist > 0 ? offset.Normalized() : Vector2.UnitX;
                 _physics.SetLinearVelocity(uid, dir * minion.MoveSpeed, body: phys);
-                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} following owner {ToPrettyString(minion.MinionOwner)} dist={dist:0.00}");
             }
             else
             {
@@ -95,43 +90,24 @@ public sealed partial class ArenaLoserMinionSystem : EntitySystem
             if (now < minion.NextAction)
                 continue;
 
-            minion.NextAction = now + TimeSpan.FromSeconds(minion.ActionCooldown);
-
-            // Лечим, только когда владелец рядом и просел ниже порога — иначе стреляем.
+            // Лечим, только когда владелец рядом и ранен. Кулдаун взводим лишь при реальном
+            // лечении — иначе, подлетев к раненому владельцу, дрон ждал бы полный цикл впустую.
             if (dist <= minion.FollowRadius + 0.5f && ShouldHeal(minion))
             {
-                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} healing owner {ToPrettyString(minion.MinionOwner)}");
+                minion.NextAction = now + TimeSpan.FromSeconds(minion.ActionCooldown);
                 HealOwner(uid, minion);
-                continue;
-            }
-
-            if (TryFindTarget(uid, minion, ownerPos, out var target))
-            {
-                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} shooting target {ToPrettyString(target)}");
-                ShootAt(uid, minion, target);
-            }
-            else
-            {
-                Log.Info($"[duel-arena-loserminion] minion {ToPrettyString(uid)} no target found");
             }
         }
     }
 
     /// <summary>
     /// Спавнит миньона-помощника рядом с указанным владельцем.
-    /// Через <paramref name="enemies"/> передаётся список противников (обычно дуэлянты той же арены);
-    /// владелец из него отфильтровывается автоматически.
     /// </summary>
-    public EntityUid SpawnMinion(EntityUid owner, EntityCoordinates coords, IEnumerable<EntityUid>? enemies = null)
+    public EntityUid SpawnMinion(EntityUid owner, EntityCoordinates coords)
     {
         var minion = Spawn("ArenaLoserMinion", coords);
-        Log.Debug($"[duel-arena-loserminion] SpawnMinion: spawned entity {ToPrettyString(minion)} at {coords} for owner {ToPrettyString(owner)}");
         if (TryComp<ArenaLoserMinionComponent>(minion, out var comp))
-        {
             comp.MinionOwner = owner;
-            if (enemies != null)
-                comp.Enemies = enemies.Where(e => e != owner).ToList();
-        }
         else
             Log.Warning($"[duel-arena-loserminion] SpawnMinion: spawned entity {ToPrettyString(minion)} does not have ArenaLoserMinionComponent!");
 
@@ -157,91 +133,6 @@ public sealed partial class ArenaLoserMinionSystem : EntitySystem
 
         var healthFraction = 1f - damage.Float() / crit.Value.Float();
         return healthFraction < minion.HealThreshold;
-    }
-
-    private bool TryFindTarget(EntityUid minionUid, ArenaLoserMinionComponent minion, Vector2 ownerPos, out EntityUid target)
-    {
-        target = default;
-        EntityUid? closest = null;
-        var closestDist = float.MaxValue;
-        var ownerMapId = Transform(minion.MinionOwner).MapID;
-
-        // Если известны противники по дуэли — стреляем только по ним.
-        if (minion.Enemies.Count > 0)
-        {
-            foreach (var enemy in minion.Enemies)
-            {
-                if (!IsValidTarget(minionUid, minion, enemy, ownerPos, ownerMapId, out var dist) || dist >= closestDist)
-                    continue;
-
-                closest = enemy;
-                closestDist = dist;
-            }
-        }
-        else
-        {
-            var query = EntityQueryEnumerator<MobStateComponent, TransformComponent>();
-            while (query.MoveNext(out var uid, out _, out _))
-            {
-                if (!IsValidTarget(minionUid, minion, uid, ownerPos, ownerMapId, out var dist) || dist >= closestDist)
-                    continue;
-
-                closest = uid;
-                closestDist = dist;
-            }
-        }
-
-        if (closest == null)
-            return false;
-
-        target = closest.Value;
-        return true;
-    }
-
-    private bool IsValidTarget(EntityUid minionUid, ArenaLoserMinionComponent minion, EntityUid candidate,
-        Vector2 ownerPos, MapId ownerMapId, out float dist)
-    {
-        dist = float.MaxValue;
-
-        if (candidate == minion.MinionOwner || !Exists(candidate) || TerminatingOrDeleted(candidate))
-            return false;
-
-        // По чужим дронам-помощникам не стреляем.
-        if (HasComp<ArenaLoserMinionComponent>(candidate))
-            return false;
-
-        // Цель должна быть на той же карте и жива/в криту (не мертва).
-        if (!TryComp<MobStateComponent>(candidate, out var mob) || mob.CurrentState == MobState.Dead)
-            return false;
-
-        var xform = Transform(candidate);
-        if (xform.MapID != ownerMapId)
-            return false;
-
-        var pos = _transform.GetWorldPosition(xform);
-        dist = (pos - ownerPos).Length();
-        if (dist > minion.AttackRadius)
-            return false;
-
-        // Сквозь стены не стреляем. Дистанцию до цели меряем от владельца, а видимость — от
-        // миньона, поэтому даём запас в FollowRadius.
-        return _interaction.InRangeUnobstructed(minionUid, candidate,
-            minion.AttackRadius + minion.FollowRadius, CollisionGroup.Opaque);
-    }
-
-    private void ShootAt(EntityUid minionUid, ArenaLoserMinionComponent minion, EntityUid target)
-    {
-        var start = _transform.GetWorldPosition(minionUid);
-        var end = _transform.GetWorldPosition(target);
-        var dir = end - start;
-        dir = dir.LengthSquared() > 0.001f ? dir.Normalized() : Vector2.UnitX;
-
-        var spawnPos = new MapCoordinates(start + dir * 0.5f, Transform(minionUid).MapID);
-        var projectile = Spawn(minion.ProjectileProto, spawnPos);
-
-        // Оружие — миньон, стрелок — владелец: снаряд игнорирует обоих,
-        // а урон в админ-логах атрибутируется игроку.
-        _gun.ShootProjectile(projectile, dir, Vector2.Zero, minionUid, minion.MinionOwner, minion.ProjectileSpeed);
     }
 
     private void HealOwner(EntityUid minionUid, ArenaLoserMinionComponent minion)

@@ -1,0 +1,133 @@
+# Metro 14 decoration adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0.
+
+- type: entity
+  parent: BaseStructure
+  id: BurningBarrelWega
+  name: burning barrel (Metro 14)
+  description: A barrel with burning trash inside. Perfect for sitting next to it and warming your hands.
+  components:
+  - type: Sprite
+    noRot: true
+    sprite: _Wega/Structures/Decoration/firebarrel.rsi
+    layers:
+      - state: barrel
+      - state: burning
+  - type: PointLight
+    radius: 5
+    energy: 3
+    color: "#FFC90C"
+  - type: Destructible
+    thresholds:
+      - trigger:
+          !type:DamageTrigger
+          damage: 50
+        behaviors:
+        - !type:DoActsBehavior
+          acts: [ "Destruction" ]
+  - type: AmbientSound
+    volume: -5
+    range: 5
+    sound:
+      path: /Audio/Ambience/Objects/fireplace.ogg
+  - type: AlwaysHot
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-0.18,-0.48,0.18,0.28"
+        density: 200
+        mask:
+        - MachineMask
+        layer:
+        - MachineLayer
+
+# Metro 14 storage/chemical barrels adapted for Wega arena content.
+# Textures licensed under CC-BY-SA-3.0.
+
+- type: entity
+  parent: CrateGenericSteel
+  id: BarrelRustedWega
+  name: rusted barrel (Metro 14)
+  description: An old rusted barrel. You can store items in it.
+  components:
+  - type: Icon
+    state: icon
+  - type: Sprite
+    sprite: _Wega/Structures/Decoration/barrels/rusted.rsi
+
+- type: entity
+  parent: BarrelRustedWega
+  id: BarrelBlueWega
+  name: blue barrel (Metro 14)
+  description: A blue barrel. You can store items in it.
+  components:
+  - type: Icon
+    state: icon
+  - type: Sprite
+    sprite: _Wega/Structures/Decoration/barrels/blue.rsi
+
+- type: entity
+  parent: BarrelRustedWega
+  id: BarrelYellowWega
+  name: yellow barrel (Metro 14)
+  description: A yellow barrel. You can store items in it.
+  components:
+  - type: Icon
+    state: icon
+  - type: Sprite
+    sprite: _Wega/Structures/Decoration/barrels/yellow.rsi
+
+- type: entity
+  parent: BaseBarrelChemRadioactive
+  id: BarrelRadiationWasteWega
+  name: radioactive waste barrel (Metro 14)
+  description: Don't get near it!
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Decoration/barrels/radiation.rsi
+    state: icon
+    noRot: true
+  - type: RadiationSource
+    intensity: 2
+  - type: Solution
+    solution:
+      reagents:
+      - ReagentId: Radium
+        Quantity: 500
+
+- type: entity
+  parent: BaseBarrelChem
+  id: BarrelFuelWega
+  name: fuel barrel (Metro 14)
+  description: A barrel full of welding fuel. Highly explosive.
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Decoration/barrels/explosive.rsi
+    state: icon
+    noRot: true
+  - type: Solution
+    solution:
+      reagents:
+      - ReagentId: WeldingFuel
+        Quantity: 500
+  - type: Explosive
+    explosionType: Default
+    totalIntensity: 120
+
+- type: entity
+  parent: BaseBarrelChem
+  id: BarrelToxinWega
+  name: toxin barrel (Metro 14)
+  description: A barrel full of toxins. I wouldn't drink it if I were you...
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Decoration/barrels/green.rsi
+    state: icon
+    noRot: true
+  - type: Solution
+    solution:
+      reagents:
+      - ReagentId: Toxin
+        Quantity: 500

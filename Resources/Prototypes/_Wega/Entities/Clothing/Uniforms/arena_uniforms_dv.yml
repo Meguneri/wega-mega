@@ -1,0 +1,35 @@
+# Delta-V uniforms adapted for Wega arena content.
+# Textures licensed under CC0-1.0 / CC-BY-SA-4.0.
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformBlackTurtleneckWega
+  name: black turtleneck (Delta-V)
+  description: A simple black turtleneck. Perfect for any wannabe spy.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/black_turtleneck.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/black_turtleneck.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitSecTurtleWega
+  name: senior officer's turtleneck (Delta-V)
+  description: A comfortable and tight-fitting turtleneck for those with the resolve to reach the position of Senior Officer.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/security_alt.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/security_alt.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: ClothingUniformJumpsuitSecWhiteWega
+  name: white security jumpsuit (Delta-V)
+  description: A cool white shirt over charcoal trousers, for the calm and collected security officer.
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/security_white.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Uniforms/Jumpsuit/security_white.rsi
