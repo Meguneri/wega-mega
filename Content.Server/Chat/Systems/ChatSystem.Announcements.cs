@@ -29,6 +29,9 @@ public sealed partial class ChatSystem
             if (sender == Loc.GetString("admin-announce-announcer-default")) announcementSound = new SoundPathSpecifier(CentComAnnouncementSound); // Corvax-Announcements: Support custom alert sound from admin panel
             _audio.PlayGlobal(announcementSound ?? DefaultAnnouncementSound, Filter.Broadcast(), true, AudioParams.Default.WithVolume(-2f));
         }
+        // Corvax-Wega-start: событие объявления для LLM-NPC
+        RaiseLocalEvent(new Content.Server._Wega.Chat.StationAnnouncedEvent(sender, message));
+        // Corvax-Wega-end
         _adminLogger.Add(LogType.Chat, LogImpact.Low, $"Global station announcement from {sender}: {message}");
     }
 
@@ -50,6 +53,9 @@ public sealed partial class ChatSystem
         {
             _audio.PlayGlobal(announcementSound ?? DefaultAnnouncementSound, filter, true, AudioParams.Default.WithVolume(-2f));
         }
+        // Corvax-Wega-start: событие объявления для LLM-NPC
+        RaiseLocalEvent(new Content.Server._Wega.Chat.StationAnnouncedEvent(sender, message));
+        // Corvax-Wega-end
         _adminLogger.Add(LogType.Chat, LogImpact.Low, $"Station Announcement from {sender}: {message}");
     }
 
@@ -84,6 +90,9 @@ public sealed partial class ChatSystem
             _audio.PlayGlobal(announcementSound ?? DefaultAnnouncementSound, filter, true, AudioParams.Default.WithVolume(-2f));
         }
 
+        // Corvax-Wega-start: событие объявления для LLM-NPC
+        RaiseLocalEvent(new Content.Server._Wega.Chat.StationAnnouncedEvent(sender, message));
+        // Corvax-Wega-end
         _adminLogger.Add(LogType.Chat, LogImpact.Low, $"Station Announcement on {station} from {sender}: {message}");
     }
 }

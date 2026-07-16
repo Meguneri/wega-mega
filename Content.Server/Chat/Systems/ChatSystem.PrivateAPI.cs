@@ -227,6 +227,9 @@ public sealed partial class ChatSystem
             return;
 
         SendInVoiceRange(ChatChannel.Emotes, action, wrappedMessage, source, range, author);
+        // Corvax-Wega-start: событие эмоута для LLM-NPC (движок его не поднимает, в отличие от речи)
+        RaiseLocalEvent(new Content.Server._Wega.Chat.EntityEmotedEvent(source, action));
+        // Corvax-Wega-end
         if (!hideLog)
             if (name != Name(source))
                 _adminLogger.Add(LogType.Chat, LogImpact.Low, $"Emote from {source} as {name}: {action}");

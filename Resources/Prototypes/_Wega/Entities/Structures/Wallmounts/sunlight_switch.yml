@@ -1,0 +1,19 @@
+# Выключатель «солнца» для арены: при маппинге включает дневной свет
+# на всей карте, по клику переключает день/тьму (остаются только лампы).
+- type: entity
+  parent: BaseWallmountMetallic
+  id: SunlightSwitchWega
+  suffix: Wega
+  components:
+  - type: WallMount
+    arc: 360
+  - type: Sprite
+    drawdepth: SmallObjects
+    sprite: Structures/Wallmounts/switch.rsi
+    state: on
+  - type: Rotatable
+  - type: UseDelay
+    delay: 0.5
+  - type: SunlightSwitch
+  - type: Transform
+    anchored: true

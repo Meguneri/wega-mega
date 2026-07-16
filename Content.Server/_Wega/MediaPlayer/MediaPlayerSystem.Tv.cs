@@ -21,7 +21,12 @@ public sealed partial class MediaPlayerSystem
 {
     private const int TvWidth = 160;      // ширина кадра; высота по аспекту (чётная)
     private const int TvFps = 15;         // кадров в секунду
-    private const int TvMaxSeconds = 30;  // длина зацикленного клипа
+
+    // Рассылка кадров/аудио размазана по тикам: полное видео — это тысячи кадров, и слать их
+    // одним тиком значит застопорить сервер и переполнить надёжный сетевой канал. За тик уходит
+    // не больше этого числа кадров и чанков (на каждого адресата).
+    private const int TvFramesPerTick = 20;
+    private const int TvAudioChunksPerTick = 4;
 
     private string? _tvClipId;
     private List<byte[]> _tvFrames = new();
@@ -31,6 +36,18 @@ public sealed partial class MediaPlayerSystem
     private TimeSpan _tvStartedAt;
     private float _tvDuration;
     private bool _tvBusy;
+
+    /// <summary>Незавершённые порционные рассылки клипа (broadcast + досылки поздним игрокам).</summary>
+    private readonly List<TvSendJob> _tvSends = new();
+
+    private sealed class TvSendJob
+    {
+        public Filter Filter = default!;
+        public string ClipId = string.Empty;
+        public int FrameCursor;
+        public int AudioCursor;
+        public int AudioTotal;
+    }
 
     private void InitializeTv()
     {
@@ -105,32 +122,20 @@ public sealed partial class MediaPlayerSystem
             var cacheDir = Path.Combine(_resource.UserData.RootDir ?? ".", CacheFolder);
             Directory.CreateDirectory(cacheDir);
 
-            // Скачиваем ТОЛЬКО нужный отрезок (--download-sections): иначе двухчасовой фильм
-            // упирался в --max-filesize и tvplay падал «не удалось скачать». Низкого разрешения
-            // достаточно — кадры всё равно 160px шириной. С запасом +5с, чтобы не потерять хвост.
+            // Качаем видео ЦЕЛИКОМ (≤360p — файл небольшой). Потолок 2 ГБ как защита от диска на
+            // случай многочасового ролика; для обычных клипов/клипов-песен запас огромный.
             var videoPath = Directory.EnumerateFiles(cacheDir, $"tv_{id}.*")
                 .FirstOrDefault(f => !f.EndsWith(".ogg"));
             if (videoPath == null)
             {
                 SendStatus(session, Loc.GetString("media-player-status-downloading"));
                 var outTemplate = Path.Combine(cacheDir, "tv_%(id)s.%(ext)s");
-                var formatArgs = "--no-playlist -f \"best[height<=360][ext=mp4]/best[height<=360]/best\" " +
-                                 $"--max-filesize 500M -o \"{outTemplate}\" --no-warnings";
 
                 var (dlExit, _, dlErr) = await RunYtdlp(
-                    $"{formatArgs} --download-sections \"*0-{TvMaxSeconds + 5}\" --force-keyframes-at-cuts -- \"{Sanitize(id)}\"");
+                    "--no-playlist -f \"best[height<=360][ext=mp4]/best[height<=360]/best\" " +
+                    $"--max-filesize 2G -o \"{outTemplate}\" --no-warnings -- \"{Sanitize(id)}\"");
                 videoPath = Directory.EnumerateFiles(cacheDir, $"tv_{id}.*")
                     .FirstOrDefault(f => !f.EndsWith(".ogg"));
-
-                // Отрезочное скачивание капризнее обычного (нужен ffmpeg-даунлоадер) — при неудаче
-                // пробуем скачать файл целиком, как раньше.
-                if (dlExit != 0 || videoPath == null)
-                {
-                    _sawmill.Warning($"yt-dlp section download failed, retrying full download: {dlErr}");
-                    (dlExit, _, dlErr) = await RunYtdlp($"{formatArgs} -- \"{Sanitize(id)}\"");
-                    videoPath = Directory.EnumerateFiles(cacheDir, $"tv_{id}.*")
-                        .FirstOrDefault(f => !f.EndsWith(".ogg"));
-                }
 
                 if (dlExit != 0 || videoPath == null)
                 {
@@ -140,18 +145,19 @@ public sealed partial class MediaPlayerSystem
                 }
             }
 
-            // Режем первые TvMaxSeconds в PNG-кадры во временную папку.
+            // Режем ВСЁ видео в PNG-кадры во временную папку.
             // PNG, не JPEG: клиентская песочница разрешает декодировать только через
             // IClyde.LoadTextureFromPNGStream (Image.Load из ImageSharp в вайтлисте нет).
+            // %06d — до миллиона кадров (полное видео на 15 fps): 4 цифры хватило бы лишь на ~11 мин.
             SendStatus(session, Loc.GetString("media-player-status-broadcasting"));
             var framesDir = Path.Combine(cacheDir, $"tvframes_{id}");
             if (Directory.Exists(framesDir))
                 Directory.Delete(framesDir, recursive: true);
             Directory.CreateDirectory(framesDir);
 
-            var pattern = Path.Combine(framesDir, "f_%04d.png");
+            var pattern = Path.Combine(framesDir, "f_%06d.png");
             var (ffExit, ffErr) = await RunFfmpeg(
-                $"-i \"{videoPath}\" -t {TvMaxSeconds} -vf \"fps={TvFps},scale={TvWidth}:-2\" \"{pattern}\"");
+                $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" \"{pattern}\"");
             var frameFiles = Directory.EnumerateFiles(framesDir, "f_*.png").OrderBy(f => f).ToList();
             if (ffExit != 0 || frameFiles.Count == 0)
             {
@@ -178,12 +184,12 @@ public sealed partial class MediaPlayerSystem
             // -ac 1: ОБЯЗАТЕЛЬНО моно — позиционный источник движка не умеет позиционировать
             // стерео (assert «Make sure the audio is MONO» и краш клиента).
             var (aExit, aErr) = await RunFfmpeg(
-                $"-i \"{videoPath}\" -t {TvMaxSeconds} -vn -ac 1 -c:a libvorbis -b:a 96k -f ogg \"{audioPath}\"");
+                $"-i \"{videoPath}\" -vn -ac 1 -c:a libvorbis -b:a 96k -f ogg \"{audioPath}\"");
             if (aExit != 0 && aErr.Contains("Encoder not found"))
             {
                 _sawmill.Warning("libvorbis missing, retrying TV audio with the native vorbis encoder");
                 (aExit, aErr) = await RunFfmpeg(
-                    $"-i \"{videoPath}\" -t {TvMaxSeconds} -vn -ac 1 -c:a vorbis -strict -2 -f ogg \"{audioPath}\"");
+                    $"-i \"{videoPath}\" -vn -ac 1 -c:a vorbis -strict -2 -f ogg \"{audioPath}\"");
             }
             if (aExit != 0 || !File.Exists(audioPath))
             {
@@ -221,9 +227,15 @@ public sealed partial class MediaPlayerSystem
         _tvClipId = null;
         _tvFrames = new List<byte[]>();
         _tvAudio = null;
+        _tvSends.Clear();
         RaiseNetworkEvent(new TvStopEvent(), Filter.Broadcast());
     }
 
+    /// <summary>
+    /// Шлёт стартовое событие сразу (оно маленькое), а объёмные кадры/аудио ставит в порционную
+    /// рассылку — их дотачивает <see cref="TvTickSend"/> по несколько за тик, чтобы не завалить
+    /// сервер и сетевой канал разом.
+    /// </summary>
     private void TvBroadcast(Filter filter)
     {
         if (_tvClipId is not { } id || _tvFrames.Count == 0 || _tvAudio is not { } audio)
@@ -233,17 +245,47 @@ public sealed partial class MediaPlayerSystem
         var position = (float)((_timing.RealTime - _tvStartedAt).TotalSeconds % _tvDuration);
         RaiseNetworkEvent(new TvStartEvent(id, TvFps, _tvFrames.Count, _tvWidth, _tvHeight, position), filter);
 
-        for (var i = 0; i < _tvFrames.Count; i++)
-            RaiseNetworkEvent(new TvFrameEvent(id, i, _tvFrames[i]), filter);
-
-        var totalChunks = (audio.Length + ChunkSize - 1) / ChunkSize;
-        for (var i = 0; i < totalChunks; i++)
+        _tvSends.Add(new TvSendJob
         {
-            var offset = i * ChunkSize;
-            var size = Math.Min(ChunkSize, audio.Length - offset);
-            var chunk = new byte[size];
-            Array.Copy(audio, offset, chunk, 0, size);
-            RaiseNetworkEvent(new TvAudioChunkEvent(id, i, totalChunks, chunk), filter);
+            Filter = filter,
+            ClipId = id,
+            AudioTotal = (audio.Length + ChunkSize - 1) / ChunkSize,
+        });
+    }
+
+    /// <summary>Дотачивает порционные рассылки: за тик — до TvFramesPerTick кадров и TvAudioChunksPerTick чанков на задачу.</summary>
+    private void TvTickSend()
+    {
+        if (_tvSends.Count == 0)
+            return;
+
+        for (var j = _tvSends.Count - 1; j >= 0; j--)
+        {
+            var job = _tvSends[j];
+
+            // Клип сменился/остановлен, пока досылали — задача устарела, выкидываем.
+            if (job.ClipId != _tvClipId || _tvAudio is not { } audio)
+            {
+                _tvSends.RemoveAt(j);
+                continue;
+            }
+
+            var frameEnd = Math.Min(job.FrameCursor + TvFramesPerTick, _tvFrames.Count);
+            for (; job.FrameCursor < frameEnd; job.FrameCursor++)
+                RaiseNetworkEvent(new TvFrameEvent(job.ClipId, job.FrameCursor, _tvFrames[job.FrameCursor]), job.Filter);
+
+            var chunkEnd = Math.Min(job.AudioCursor + TvAudioChunksPerTick, job.AudioTotal);
+            for (; job.AudioCursor < chunkEnd; job.AudioCursor++)
+            {
+                var offset = job.AudioCursor * ChunkSize;
+                var size = Math.Min(ChunkSize, audio.Length - offset);
+                var chunk = new byte[size];
+                Array.Copy(audio, offset, chunk, 0, size);
+                RaiseNetworkEvent(new TvAudioChunkEvent(job.ClipId, job.AudioCursor, job.AudioTotal, chunk), job.Filter);
+            }
+
+            if (job.FrameCursor >= _tvFrames.Count && job.AudioCursor >= job.AudioTotal)
+                _tvSends.RemoveAt(j);
         }
     }
 

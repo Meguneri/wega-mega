@@ -22,7 +22,8 @@ public sealed partial class CellServerSystem : EntitySystem
 
     private void OnShutdown(Entity<CellServerComponent> ent, ref ComponentShutdown args)
     {
-        foreach (var client in ent.Comp.Clients)
+        // ToArray: UnregisterClient удаляет из Clients — нельзя итерировать список, меняя его.
+        foreach (var client in ent.Comp.Clients.ToArray())
         {
             UnregisterClient((ent, ent), client);
         }
@@ -49,12 +50,16 @@ public sealed partial class CellServerSystem : EntitySystem
 
     public void UnregisterClient(Entity<CellServerComponent?> server, Entity<CellClientComponent?> client)
     {
-        if (!Resolve(server, ref server.Comp) || !Resolve(client, ref client.Comp))
+        // logMissing: false — при выгрузке мира (выход из игры, конец раунда) клиент может быть
+        // уже удалён; отвязка мёртвого клиента — штатная ситуация, а не повод сыпать ошибки в лог.
+        if (!Resolve(server, ref server.Comp, false))
             return;
 
         server.Comp.Clients.Remove(client);
-        client.Comp.Server = null;
         Dirty(server);
+
+        if (Resolve(client, ref client.Comp, false))
+            client.Comp.Server = null;
     }
 
     public bool HasClient(Entity<CellServerComponent?> server, Entity<CellClientComponent?> client)

@@ -101,6 +101,7 @@ entities:
     - type: Transform
       pos: -19.90211,-19.870247
       parent: 1
+    - type: Roof
     - type: MapGrid
       chunks:
         0,0:

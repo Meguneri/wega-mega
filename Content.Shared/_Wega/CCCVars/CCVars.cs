@@ -170,4 +170,43 @@ public sealed partial class WegaCVars
 
     public static readonly CVarDef<float> LavalandSpawnIntervalMax =
         CVarDef.Create("lavaland.spawn_interval_max", 600f, CVar.SERVER | CVar.REPLICATED);
+
+    // --- LLM-NPC (компаньон на языковой модели) ---------------------------------------------
+
+    /// <summary>Мастер-выключатель: без этого NPC-мозг вообще не обращается к API.</summary>
+    public static readonly CVarDef<bool> LlmNpcEnabled =
+        CVarDef.Create("wega.llm_npc_enabled", false, CVar.SERVERONLY);
+
+    /// <summary>
+    /// URL OpenAI-совместимого chat-completions эндпоинта. По умолчанию — OpenRouter
+    /// (внутри доступны Haiku, DeepSeek, Gemini). Для прямого Anthropic нужен отдельный адаптер.
+    /// </summary>
+    public static readonly CVarDef<string> LlmNpcEndpoint =
+        CVarDef.Create("wega.llm_npc_endpoint", "https://openrouter.ai/api/v1/chat/completions", CVar.SERVERONLY);
+
+    /// <summary>API-ключ провайдера. Задаётся в server_config.toml (не в git). Пустой = NPC молчит.</summary>
+    public static readonly CVarDef<string> LlmNpcApiKey =
+        CVarDef.Create("wega.llm_npc_api_key", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
+
+    /// <summary>Идентификатор модели у провайдера.</summary>
+    public static readonly CVarDef<string> LlmNpcModel =
+        CVarDef.Create("wega.llm_npc_model", "anthropic/claude-haiku-4.5", CVar.SERVERONLY);
+
+    /// <summary>Секунд тишины после последней услышанной реплики, прежде чем NPC решит ответить.</summary>
+    public static readonly CVarDef<float> LlmNpcReplyDelay =
+        CVarDef.Create("wega.llm_npc_reply_delay", 2.5f, CVar.SERVERONLY);
+
+    /// <summary>
+    /// Дать NPC инструмент веб-поиска (tool-calling через DuckDuckGo): модель сама решает, когда
+    /// полезть в интернет за фактом. Работает только с моделями, поддерживающими tool-calling.
+    /// </summary>
+    public static readonly CVarDef<bool> LlmNpcWebSearch =
+        CVarDef.Create("wega.llm_npc_web_search", false, CVar.SERVERONLY);
+
+    /// <summary>
+    /// Дать NPC инструмент make_drink и список реальных коктейлей игры: он сможет по просьбе смешать
+    /// настоящий напиток и вложить стакан себе в руку. Работает только с моделями с tool-calling.
+    /// </summary>
+    public static readonly CVarDef<bool> LlmNpcMakeDrinks =
+        CVarDef.Create("wega.llm_npc_make_drinks", true, CVar.SERVERONLY);
 }

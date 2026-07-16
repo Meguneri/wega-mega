@@ -115,6 +115,9 @@ public sealed partial class MediaPlayerSystem : EntitySystem
     {
         base.Update(frameTime);
 
+        // Порционная досылка ТВ-клипа — независимо от состояния музыки, поэтому до ранних return.
+        TvTickSend();
+
         // A manual play or a queue advance is already fetching a track — don't re-trigger.
         if (_busy)
             return;
