@@ -22,6 +22,7 @@ public sealed partial class LlmNpcSystem
     [Dependency] private Robust.Shared.Random.IRobustRandom _random = default!;
     [Dependency] private Content.Shared.StatusEffectNew.StatusEffectsSystem _status = default!;
     [Dependency] private Content.Shared.Damage.Systems.DamageableSystem _damageable = default!;
+    [Dependency] private Content.Shared.Weapons.Melee.SharedMeleeWeaponSystem _melee = default!;
 
     /// <summary>Радиус, в котором NPC ищет человека/предмет по имени (шире слуха: «отнеси за стол»).</summary>
     private const float FindRange = 12f;
@@ -69,6 +70,8 @@ public sealed partial class LlmNpcSystem
                     CancelErrand(uid, npc);
                 continue;
             }
+
+            UpdateRegen(uid, npc, now);
 
             if (npc.Errand == LlmErrand.None)
             {
@@ -300,6 +303,46 @@ public sealed partial class LlmNpcSystem
         RegisterSteering(uid, target).Range = ArriveRange - 0.2f;
     }
 
+    /// <summary>Паника: бежим от обидчика — точка в противоположную сторону, ~9 тайлов.</summary>
+    private void FleeFrom(EntityUid uid, EntityUid attacker)
+    {
+        if (!TryComp<LlmNpcComponent>(uid, out var npc))
+            return;
+
+        var away = _transform.GetWorldPosition(uid) - _transform.GetWorldPosition(attacker);
+        if (away.LengthSquared() < 0.01f)
+            away = new System.Numerics.Vector2(1, 0);
+        away = System.Numerics.Vector2.Normalize(away) * 9f;
+
+        CancelErrand(uid, npc);
+        npc.Errand = LlmErrand.Wander;
+        npc.WanderTo = Transform(uid).Coordinates.Offset(away);
+        npc.ErrandTimeout = _timing.RealTime + TimeSpan.FromSeconds(15);
+        EnsureComp<ActiveNPCComponent>(uid);
+        RegisterSteering(uid, npc.WanderTo.Value).Range = ArriveRange;
+    }
+
+    /// <summary>
+    /// «Отлежаться»: медленное самолечение лёгких ран, только вне боя (10с без урона). Не магия
+    /// бессмертия — просто чтобы после стычки она не ковыляла побитой весь раунд без медиков.
+    /// </summary>
+    private void UpdateRegen(EntityUid uid, LlmNpcComponent npc, TimeSpan now)
+    {
+        if (now < npc.NextRegen || now - npc.LastHurtAt < TimeSpan.FromSeconds(10))
+            return;
+        npc.NextRegen = now + TimeSpan.FromSeconds(2);
+
+#pragma warning disable CS0618
+        if (_damageable.GetTotalDamage(uid) <= 0)
+            return;
+#pragma warning restore CS0618
+
+        var heal = new Content.Shared.Damage.DamageSpecifier();
+        foreach (var type in new[] { "Blunt", "Slash", "Piercing", "Heat" })
+            heal.DamageDict.Add(type, -1.5);
+        _damageable.TryChangeDamage(uid, heal, ignoreResistances: true);
+    }
+
     /// <summary>Дошли до цели: завершаем поручение по его типу.</summary>
     private void Arrive(EntityUid uid, LlmNpcComponent npc, EntityUid target)
     {
@@ -403,7 +446,7 @@ public sealed partial class LlmNpcSystem
     private NPCSteeringComponent RegisterSteering(EntityUid uid, Robust.Shared.Map.EntityCoordinates coords)
     {
         var steering = _steering.Register(uid, coords);
-        steering.Flags = PathFlags.Interact | PathFlags.Access;
+        steering.Flags = PathFlags.Interact | PathFlags.Access | PathFlags.Climbing;
         // КРИТИЧНО: Register по уже существующей компоненте НЕ сбрасывает статус. Если прошлый
         // маршрут закончился InRange/NoPath, стиринг считает «уже на месте» и не двигается —
         // из-за этого работало только первое перемещение после спавна.

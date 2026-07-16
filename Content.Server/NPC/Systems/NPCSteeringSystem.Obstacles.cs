@@ -82,7 +82,9 @@ public sealed partial class NPCSteeringSystem
             var isClimbable = (poly.Data.Flags & PathfindingBreadcrumbFlag.Climb) != 0x0;
 
             // Just walk into it stupid
-            if (isDoor && !isAccessRequired)
+            // Corvax-Wega: двери с доступом апстрим не пытался открывать вовсе (рассчитывал на bump).
+            // С флагом Access пробуем активировать — сам DoorSystem проверит доступ и откажет чужим.
+            if (isDoor && (!isAccessRequired || (component.Flags & PathFlags.Access) != 0x0))
             {
                 // ... At least if it's not a bump open.
                 foreach (var ent in obstacleEnts)

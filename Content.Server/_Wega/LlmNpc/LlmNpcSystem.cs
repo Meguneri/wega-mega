@@ -92,6 +92,9 @@ public sealed partial class LlmNpcSystem : EntitySystem
         EnsureComp<Content.Shared.Chat.TypingIndicator.TypingIndicatorComponent>(ent);
         EnsureComp<AppearanceComponent>(ent);
 
+        // Умение перелезать столы/стойку — для маршрутов (PathFlags.Climbing).
+        EnsureComp<Content.Shared.Climbing.Components.ClimbingComponent>(ent);
+
         if (!ent.Comp.ForceFemale || !TryComp<HumanoidProfileComponent>(ent, out var humanoid))
             return;
 
@@ -158,6 +161,7 @@ public sealed partial class LlmNpcSystem : EntitySystem
             return;
 
         var now = _timing.RealTime;
+        ent.Comp.LastHurtAt = now;
         if (now < ent.Comp.NextPain)
             return;
         ent.Comp.NextPain = now + TimeSpan.FromSeconds(4);
@@ -169,7 +173,22 @@ public sealed partial class LlmNpcSystem : EntitySystem
         _chat.TrySendInGameICMessage(ent, total >= 15 ? "вскрикивает от боли" : "вздрагивает и морщится от боли",
             InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
 
-        NoteOwnAction(ent, ent.Comp, $"почувствовала боль — кто-то или что-то её ударило (урон {total})");
+#pragma warning disable CS0618
+        var myTotal = _damageable.GetTotalDamage(ent.Owner);
+#pragma warning restore CS0618
+
+        // Сильно избита — инстинкт: бросить всё и бежать от обидчика, отлежаться в стороне.
+        if (myTotal > 55 && args.Origin is { } attacker && Exists(attacker))
+        {
+            FleeFrom(ent, attacker);
+            NoteOwnAction(ent, ent.Comp,
+                "тебе СИЛЬНО досталось — ты в панике убегаешь от обидчика, чтобы спрятаться и отлежаться");
+            return;
+        }
+
+        NoteOwnAction(ent, ent.Comp, args.Origin is { } who && Exists(who)
+            ? $"почувствовала боль — её ударил {MetaData(who).EntityName} (урон {total})"
+            : $"почувствовала боль (урон {total})");
         if (ent.Comp.MuteUntil == null)
             ent.Comp.ReplyAt = now + TimeSpan.FromSeconds(1.2);
     }
@@ -563,6 +582,14 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "налью тебе виски, или хочешь что-то покрепче, например Манхэттен?» " +
             "ХОРОШО: «Ну и вид у тебя. Что стряслось?» " +
             "Развёрнуто (и то не более 50 слов) — только если прямо попросили рассказать подробнее.");
+        sb.AppendLine();
+        sb.AppendLine(
+            "САМОУВАЖЕНИЕ: в обиду себя не давай, эскалация по нарастающей. Грубость → колкость " +
+            "словами. Наглость руками или пошлость после предупреждения → slap (пощёчина). Тебя " +
+            "УДАРИЛИ или изводят несмотря на пощёчину → attack (настоящий удар, можно тем, что в " +
+            "руке). Никогда не бей первой без причины, не добивай лежачих и не дерись насмерть — " +
+            "проучить, а не убить. Если противник сильнее и тебе крепко достаётся — отступай (walk " +
+            "в сторону от него) и зови на помощь словами.");
         sb.AppendLine();
         sb.AppendLine(
             "ПОСЛУШАНИЕ: прямые указания о твоём поведении исполняй НЕМЕДЛЕННО и буквально. " +

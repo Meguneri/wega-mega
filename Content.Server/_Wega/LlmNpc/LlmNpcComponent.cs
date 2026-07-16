@@ -137,6 +137,14 @@ public sealed partial class LlmNpcComponent : Component
     /// <summary>Троттлинг реакции на боль (не вздрагивать на каждый тик урона).</summary>
     [ViewVariables]
     public TimeSpan NextPain;
+
+    /// <summary>Когда её последний раз ранили (для «отлежаться» — реген только вне боя).</summary>
+    [ViewVariables]
+    public TimeSpan LastHurtAt;
+
+    /// <summary>Следующий тик самолечения.</summary>
+    [ViewVariables]
+    public TimeSpan NextRegen;
 }
 
 /// <summary>Виды поручений тела LLM-NPC.</summary>

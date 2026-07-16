@@ -147,6 +147,41 @@ public sealed partial class LlmNpcSystem
         },
     };
 
+    private static readonly object SlapDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "slap",
+            description = "Отвешиваешь звонкую пощёчину. Для лёгкого проступка: пошлость, наглость, " +
+                          "распускание рук. Предупреждение, а не драка.",
+            parameters = new
+            {
+                type = "object",
+                properties = new { person = new { type = "string", description = "кому" } },
+                required = new[] { "person" },
+            },
+        },
+    };
+
+    private static readonly object AttackDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "attack",
+            description = "Реально бьёшь (рукой или тем, что в руке). ТОЛЬКО для самозащиты: тебя " +
+                          "ударили или систематически изводят после предупреждений. Один вызов — один " +
+                          "удар. НИКОГДА не добивай лежачих.",
+            parameters = new
+            {
+                type = "object",
+                properties = new { person = new { type = "string", description = "кого" } },
+                required = new[] { "person" },
+            },
+        },
+    };
+
     private static readonly object WalkDecl = new
     {
         type = "function",
@@ -277,6 +312,18 @@ public sealed partial class LlmNpcSystem
         {
             var person = LlmBackend.Arg(argsJson, "person");
             return string.IsNullOrWhiteSpace(person) ? "Не указано, за кем идти." : StartFollow(uid, person!);
+        }));
+
+        tools.Add(BodyTool("slap", SlapDecl, argsJson =>
+        {
+            var person = LlmBackend.Arg(argsJson, "person");
+            return string.IsNullOrWhiteSpace(person) ? "Не указано, кому." : DoSlap(uid, person!);
+        }));
+
+        tools.Add(BodyTool("attack", AttackDecl, argsJson =>
+        {
+            var person = LlmBackend.Arg(argsJson, "person");
+            return string.IsNullOrWhiteSpace(person) ? "Не указано, кого." : DoAttack(uid, person!);
         }));
 
         tools.Add(BodyTool("walk", WalkDecl, argsJson =>
@@ -460,6 +507,58 @@ public sealed partial class LlmNpcSystem
             BeginErrand(uid, npc, LlmErrand.GiveItem, target, glass);
         else
             CancelErrand(uid, npc);
+    }
+
+    /// <summary>Пощёчина: близко — символический урон + громкий эмоут. Предупреждение, не драка.</summary>
+    private string DoSlap(EntityUid uid, string personName)
+    {
+        if (FindPerson(uid, personName) is not { } target)
+            return $"Не вижу рядом «{personName}».";
+
+        var dist = (_transform.GetWorldPosition(uid) - _transform.GetWorldPosition(target)).Length();
+        if (dist > 2f)
+            return "Слишком далеко для пощёчины — сначала подойди (go_to).";
+        if (_mobState.IsIncapacitated(target))
+            return "Он и так лежит — оставь.";
+
+        _rotateToFace.TryFaceCoordinates(uid, _transform.GetWorldPosition(target));
+        var spec = new Content.Shared.Damage.DamageSpecifier();
+        spec.DamageDict.Add("Blunt", 1);
+        _damageable.TryChangeDamage(target, spec, origin: uid);
+        _chat.TrySendInGameICMessage(uid, $"отвешивает звонкую пощёчину — {MetaData(target).EntityName}",
+            InGameICChatType.Emote, ChatTransmitRange.Normal);
+        NoteOwnAction(uid, Comp<LlmNpcComponent>(uid), $"дала пощёчину {MetaData(target).EntityName}");
+        return "Пощёчина отвешена. В say — короткая колкость по делу.";
+    }
+
+    /// <summary>Настоящий удар: рукой или предметом в руке, один за вызов, лежачих не бьём.</summary>
+    private string DoAttack(EntityUid uid, string personName)
+    {
+        if (FindPerson(uid, personName) is not { } target)
+            return $"Не вижу рядом «{personName}».";
+
+        if (_mobState.IsIncapacitated(target))
+            return "Он уже лежит — хватит, ты не добиваешь.";
+
+#pragma warning disable CS0618
+        if (_damageable.GetTotalDamage(target) > 70)
+#pragma warning restore CS0618
+            return "Он уже еле стоит — достаточно, отойди (walk/stop).";
+
+        var dist = (_transform.GetWorldPosition(uid) - _transform.GetWorldPosition(target)).Length();
+        if (dist > 2f)
+            return "Слишком далеко — сначала подойди (go_to).";
+
+        if (!_melee.TryGetWeapon(uid, out var weaponUid, out var weapon))
+            return "Нечем ударить.";
+
+        _rotateToFace.TryFaceCoordinates(uid, _transform.GetWorldPosition(target));
+        var hit = _melee.AttemptLightAttack(uid, weaponUid, weapon, target);
+        NoteOwnAction(uid, Comp<LlmNpcComponent>(uid),
+            hit ? $"ударила {MetaData(target).EntityName} в ответ" : "замахнулась, но промазала");
+        return hit
+            ? "Удар нанесён. Один — и хватит, если он не продолжает."
+            : "Промахнулась.";
     }
 
     /// <summary>Порций реакции на один стакан (~30 единиц готового напитка).</summary>
