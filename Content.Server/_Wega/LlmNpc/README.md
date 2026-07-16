@@ -1,0 +1,108 @@
+# LLM-NPC «Ева» — компаньон на языковой модели
+
+NPC, который слышит происходящее вокруг, думает через OpenAI-совместимый API и живёт в мире:
+говорит, ходит, готовит настоящие коктейли, помнит людей. Прототип: `MobLlmCompanion`
+(`Resources/Prototypes/_Wega/Entities/Mobs/NPCs/llm_companion.yml`) — спавнить за барной стойкой,
+точка спавна становится её «своим местом».
+
+## Архитектура (три слоя)
+
+```
+ГОЛОВА  LlmNpcSystem.cs      — слух (речь+эмоуты), осмотр, промпт, вызов API, исполнение ответа
+ДЕЙСТВИЯ LlmNpcSystem.Actions — инструменты (tool-calling): web_search, make_drink, go_to,
+                                give_item, pick_up, follow, stop; запасы бара
+ТЕЛО    LlmNpcSystem.Body     — поручения (стиринг/pathfinding), взгляд, блуждание, вручение
+        LlmBackend            — HTTP к chat-completions: tool-loop, JSON-режим, ретраи, gpt-5/o*
+        LlmNpcMemory          — файл памяти data/llm_npc/<name>.md + автоконсолидация
+        LlmDrinks             — каталог реальных коктейлей из ReactionPrototype (группа Drinks)
+        LlmSearch             — веб-поиск (DuckDuckGo Instant Answers, бесключевой)
+```
+
+Ответ модели — строго JSON `{say, emote, remember}` (форсируется `response_format: json_object`;
+не-JSON фолбэком уходит в say, чтобы NPC никогда не молчал после действий).
+
+## CVar'ы (`[wega]` в server_config.toml)
+
+| cvar | default | смысл |
+|---|---|---|
+| `llm_npc_enabled` | false | мастер-выключатель |
+| `llm_npc_api_key` | "" | ключ (SERVERONLY+CONFIDENTIAL; только в untracked toml!) |
+| `llm_npc_endpoint` | openrouter.ai/... | любой OpenAI-совместимый chat-completions |
+| `llm_npc_model` | anthropic/claude-haiku-4.5 | id модели у провайдера |
+| `llm_npc_reply_delay` | 2.5 | секунд тишины перед ответом |
+| `llm_npc_web_search` | false | инструмент web_search |
+| `llm_npc_make_drinks` | true | каталог напитков + make_drink |
+
+Модели: нужен tool-calling. Проверено: gpt-4o(-mini), gpt-4.1, gpt-5-mini (reasoning-ветка:
+без temperature, `max_completion_tokens`, `reasoning_effort=low` — определяется по префиксу
+`gpt-5`/`o1`/`o3`/`o4`). RP без цензуры — OpenRouter (deepseek-chat с инструментами; magnum/euryale
+без). Цены/выбор — см. историю: gpt-5-mini лучший баланс.
+
+## Ключевые решения и грабли (не наступать повторно)
+
+- **Стиринг без HTN**: `EnsureComp<ActiveNPCComponent>` + `NPCSteeringSystem.Register` (паттерн
+  ArrestBotSystem). ГРАБЛИ: (1) Register по живой компоненте НЕ сбрасывает `Status` — после
+  первого прибытия он вечно `InRange`, и NPC больше никогда не двигается: всегда ставить
+  `Status = Moving` (см. `RegisterSteering`); (2) `GetFlags(uid)` требует NPC-мозг и для нас
+  возвращает None — двери непроходимы: ставим `PathFlags.Interact|Access`; (3) перерегистрация
+  каждый тик за движущейся целью отменяет недостроенный путь — троттлить (порог 1.5 тайла,
+  `RepathIfTargetMoved`); (4) гость за барной стойкой недостижим вплотную (NoPath) — вручать
+  через стойку с 2.6 тайла при NoPath/InRange.
+- **Слух**: EntitySpokeEvent — только речь; для эмоутов и объявлений добавлены свои события
+  (помеченные вставки Corvax-Wega в ChatSystem.PrivateAPI/Announcements). Фильтры: только
+  MobState (вендоматы кричат рекламу тем же каналом!), прямая видимость (не сквозь стены),
+  не слушать других LLM-NPC (зациклятся).
+- **Свои действия — в контекст** (`NoteOwnAction`): свои эмоуты NPC не слышит, и без заметок
+  модель считала заказ невыполненным («спасибо» → делала второй коктейль).
+- **Ингредиенты — три источника**: раздатчики (сливаем из бутылей), вендинг-автоматы
+  (АлкоМат = VendingMachineBooze, НЕ ReagentDispenser! счётчик бутылок реально уменьшается),
+  принесённые предметы рядом/в руках (яйцо = Solution с реагентом Egg; предмет расходуется).
+  Реакция в стакане идёт настоящей химией (TryAddReagent → UpdateChemicals); Shake/Stir-рецепты —
+  фолбэк готовым продуктом после честного расхода сырья.
+- **Мелкие модели** спамят инструментами: последний раунд tool-loop принудительно без
+  инструментов + прямое требование ответить; защиты от дублей make_drink/give_item;
+  во время готовки другие поручения тела блокируются (go_to обрывал GoMix — коктейль исчезал).
+- **Акценты рас** (вульп «ррр») приходят уже искажёнными — промпт велит не комментировать.
+- **Юникод от моделей** (неразрывные дефисы, умные кавычки) — нет в шрифте игры, чистится
+  SanitizeText.
+- **Живость**: облачко печати (TypingIndicator через Appearance), взгляд на ближайшего игрока
+  (0.5с троттлинг), блуждание у Home (15–45с), поворот к говорящему/при вручении, снятие
+  SSDIndicator/MindExaminable (иначе «Zz» и «в КРС»), проактивные приветствия (кулдаун 5 мин)
+  и разбитие тишины (90с тишины, кулдаун 4 мин), станционные объявления в контекст.
+- **Память**: `- [stamp] факт` построчно, дедуп по вхождению; при 40+ строках фоновая
+  консолидация той же моделью в досье (CompleteTextAsync). Мусор чистить руками в
+  `data/llm_npc/bartender.md`.
+
+## Деплой на VPS
+
+```bash
+cd /opt/wega/server && git pull
+dotnet build Content.Server/Content.Server.csproj -c Release   # ВСЕГДА Release:
+# Debug и Release собираются в ОДНУ папку, сервис (--no-build) запускает последний собранный!
+systemctl restart wega && journalctl -u wega -f
+```
+
+Конфиг: `/opt/wega/server/server_config.toml` (untracked, переживает git reset). Секция `[wega]`
+строго одна. Ключ — только там, никогда в git/чат; засветился — перевыпустить.
+
+Локально конфиг: `bin/Content.Server/server_config.toml` (PreserveNewest — переживает сборки,
+но не clean). Память локально: `bin/Content.Server/data/llm_npc/`.
+
+## Диагностика (sawmill `llm_npc`)
+
+`думает: модель X` → запрос ушёл; `инструмент N(args) → результат` → tool-calling;
+`проверка запасов «X»: ... реагент Y: нужно N, есть M` → почему отказ; `вычерпано/открыта
+бутылка/использован предмет` → расход; `финальный раунд: инструменты отключены` → анти-спам;
+`ответ: say=...` → успех; `HTTP-запрос упал (попытка k/3)` → сеть (есть 3 ретрая);
+`память консолидирована` → сжатие памяти.
+
+## Не сделано / идеи
+
+- Отношения per-игрок (шкала симпатии поверх досье).
+- Brave Search вместо DuckDuckGo (новости).
+- Лор станции файлом в промпт.
+- Реакция на касания кликом (InteractionSuccessEvent) + запрет раздевания (RemComp Strippable).
+- Персона из логов игрока: каркас есть (LlmPersona/LlmNpcSystem.Persona, команда llm_persona) —
+  дистилляция стиля из сырых логов в `data/llm_npc/persona_*.md`.
+- Движковый фикс скролла ItemList (медиаплеер) живёт НЕЗАКОММИЧЕННЫМ в сабмодуле RobustToolbox —
+  клиентские сборки для игроков собирать с этой машины, иначе фикс потеряется.
