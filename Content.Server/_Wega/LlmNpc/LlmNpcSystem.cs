@@ -375,13 +375,12 @@ public sealed partial class LlmNpcSystem : EntitySystem
         {
             // Ремарки в скобках («(улыбается)») — не речь: вырезаем из say, первую переносим
             // в emote, если тот пуст. Люди не проговаривают скобки вслух.
-            var match = System.Text.RegularExpressions.Regex.Match(reply.Say!, @"\(([^)]{3,60})\)");
+            var match = ParentheticalRegex.Match(reply.Say!);
             if (match.Success)
             {
                 if (string.IsNullOrWhiteSpace(reply.Emote))
                     reply.Emote = match.Groups[1].Value;
-                reply.Say = System.Text.RegularExpressions.Regex
-                    .Replace(reply.Say!, @"\s*\([^)]*\)", " ").Trim();
+                reply.Say = ParentheticalStripRegex.Replace(reply.Say!, " ").Trim();
             }
 
             reply.Say = TrimSpeech(SanitizeText(reply.Say!));
@@ -411,6 +410,12 @@ public sealed partial class LlmNpcSystem : EntitySystem
                 .ContinueWith(_ => MaybeConsolidateAsync(memoryFile));
         }
     }
+
+    // Предкомпилированные регэкспы для чистки ремарок (RA0026: без строк-паттернов в вызовах).
+    private static readonly System.Text.RegularExpressions.Regex ParentheticalRegex =
+        new(@"\(([^)]{3,60})\)", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex ParentheticalStripRegex =
+        new(@"\s*\([^)]*\)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     // Файлы, для которых консолидация уже идёт — вторую параллельно не запускаем.
     private readonly HashSet<string> _consolidating = new();
