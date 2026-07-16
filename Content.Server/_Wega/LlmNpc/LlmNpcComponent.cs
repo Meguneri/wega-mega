@@ -126,6 +126,17 @@ public sealed partial class LlmNpcComponent : Component
     /// <summary>Раньше этого времени тишину не разбиваем (кулдаун, чтобы не бубнила без конца).</summary>
     [ViewVariables]
     public TimeSpan NextNudge;
+
+    /// <summary>
+    /// До этого времени NPC молчит (инструмент be_quiet после «помолчи»). Слышать продолжает;
+    /// прямое обращение по имени снимает мьют досрочно.
+    /// </summary>
+    [ViewVariables]
+    public TimeSpan? MuteUntil;
+
+    /// <summary>Троттлинг реакции на боль (не вздрагивать на каждый тик урона).</summary>
+    [ViewVariables]
+    public TimeSpan NextPain;
 }
 
 /// <summary>Виды поручений тела LLM-NPC.</summary>

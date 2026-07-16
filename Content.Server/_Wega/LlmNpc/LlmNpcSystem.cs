@@ -45,6 +45,8 @@ public sealed partial class LlmNpcSystem : EntitySystem
     [Dependency] private Content.Shared.Interaction.RotateToFaceSystem _rotateToFace = default!;
     [Dependency] private SharedAppearanceSystem _appearance = default!;
     [Dependency] private Content.Shared.Interaction.SharedInteractionSystem _interaction = default!;
+    [Dependency] private Content.Shared.Mobs.Systems.MobStateSystem _mobState = default!;
+    [Dependency] private Content.Shared.ActionBlocker.ActionBlockerSystem _actionBlocker = default!;
 
     private LlmBackend _backend = default!;
     private LlmNpcMemory _memory = default!;
@@ -67,6 +69,8 @@ public sealed partial class LlmNpcSystem : EntitySystem
         SubscribeLocalEvent<Content.Server._Wega.Chat.EntityEmotedEvent>(OnEmoted);
         SubscribeLocalEvent<Content.Server._Wega.Chat.StationAnnouncedEvent>(OnAnnounced);
         SubscribeLocalEvent<LlmNpcComponent, MapInitEvent>(OnMapInit);
+        SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Mobs.MobStateChangedEvent>(OnMobStateChanged);
+        SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Damage.Systems.DamageChangedEvent>(OnDamaged);
     }
 
     /// <summary>
@@ -121,6 +125,53 @@ public sealed partial class LlmNpcSystem : EntitySystem
         };
 
         _visualBody.ApplyMarkings(uid, markings);
+    }
+
+    /// <summary>
+    /// Крит/смерть: мгновенно гасим облачко, отменяем ответ и поручения — «печатающий» труп выглядел
+    /// жутко. При возвращении в сознание она снова заговорит от новых реплик.
+    /// </summary>
+    private void OnMobStateChanged(Entity<LlmNpcComponent> ent, ref Content.Shared.Mobs.MobStateChangedEvent args)
+    {
+        if (args.NewMobState == Content.Shared.Mobs.MobState.Alive)
+            return;
+
+        ent.Comp.ReplyAt = null;
+        _appearance.SetData(ent, Content.Shared.Chat.TypingIndicator.TypingIndicatorVisuals.State,
+            Content.Shared.Chat.TypingIndicator.TypingIndicatorState.None);
+        CancelErrand(ent, ent.Comp);
+        NoteOwnAction(ent, ent.Comp, args.NewMobState == Content.Shared.Mobs.MobState.Dead
+            ? "теряет сознание — возможно, навсегда"
+            : "падает без сознания от ран");
+    }
+
+    /// <summary>
+    /// Боль: заметный урон — мгновенный эмоут (без API, чтобы реакция была сразу) + заметка в контекст
+    /// и быстрый ответ, если она в состоянии говорить.
+    /// </summary>
+    private void OnDamaged(Entity<LlmNpcComponent> ent, ref Content.Shared.Damage.Systems.DamageChangedEvent args)
+    {
+        if (!args.DamageIncreased || args.DamageDelta == null)
+            return;
+        var total = args.DamageDelta.GetTotal();
+        if (total < 3)
+            return;
+
+        var now = _timing.RealTime;
+        if (now < ent.Comp.NextPain)
+            return;
+        ent.Comp.NextPain = now + TimeSpan.FromSeconds(4);
+
+        if (_mobState.IsIncapacitated(ent))
+            return;
+
+        // Мгновенная телесная реакция — не ждём круговорот API.
+        _chat.TrySendInGameICMessage(ent, total >= 15 ? "вскрикивает от боли" : "вздрагивает и морщится от боли",
+            InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
+
+        NoteOwnAction(ent, ent.Comp, $"почувствовала боль — кто-то или что-то её ударило (урон {total})");
+        if (ent.Comp.MuteUntil == null)
+            ent.Comp.ReplyAt = now + TimeSpan.FromSeconds(1.2);
     }
 
     /// <summary>Каждый NPC в радиусе слышит реплику; она кладётся в контекст и взводит таймер ответа.</summary>
@@ -181,6 +232,10 @@ public sealed partial class LlmNpcSystem : EntitySystem
             if (!_interaction.InRangeUnobstructed(uid, source, npc.HearingRange))
                 continue;
 
+            // Без сознания/мертва — ничего не слышит и не отвечает.
+            if (_mobState.IsIncapacitated(uid))
+                continue;
+
             npc.Heard.Add(line);
             if (npc.Heard.Count > npc.ContextLines)
                 npc.Heard.RemoveRange(0, npc.Heard.Count - npc.ContextLines);
@@ -190,8 +245,18 @@ public sealed partial class LlmNpcSystem : EntitySystem
             if (npc.Errand == LlmErrand.None)
                 _rotateToFace.TryFaceCoordinates(uid, srcPos);
 
-            // Отвечаем не мгновенно: ждём паузу после последней реплики, чтобы не перебивать.
             npc.LastHeardAt = _timing.RealTime;
+
+            // Мьют (be_quiet): слышит и запоминает, но не отвечает. Прямое обращение по имени
+            // («Ева, ...») снимает мьют — иначе её было бы не «разбудить» до конца таймера.
+            if (npc.MuteUntil is { } mute && _timing.RealTime < mute)
+            {
+                if (!message.Contains(MetaData(uid).EntityName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                npc.MuteUntil = null;
+            }
+
+            // Отвечаем не мгновенно: ждём паузу после последней реплики, чтобы не перебивать.
             npc.ReplyAt = _timing.RealTime + TimeSpan.FromSeconds(_cfg.GetCVar(WegaCVars.LlmNpcReplyDelay));
             _sawmill.Debug($"{ToPrettyString(uid)} заметил «{line}», ответит через паузу");
         }
@@ -217,6 +282,14 @@ public sealed partial class LlmNpcSystem : EntitySystem
         {
             if (npc.Thinking || npc.ReplyAt is not { } at || now < at)
                 continue;
+
+            // В крите/мёртвая/не может говорить (нет головы и т.п.) — мозг не работает:
+            // никакого облачка и запросов к API.
+            if (_mobState.IsIncapacitated(uid) || !_actionBlocker.CanSpeak(uid))
+            {
+                npc.ReplyAt = null;
+                continue;
+            }
 
             npc.Thinking = true;
             npc.ReplyAt = null;
@@ -281,7 +354,18 @@ public sealed partial class LlmNpcSystem : EntitySystem
 
         if (!string.IsNullOrWhiteSpace(reply.Say))
         {
-            reply.Say = SanitizeText(reply.Say!);
+            // Ремарки в скобках («(улыбается)») — не речь: вырезаем из say, первую переносим
+            // в emote, если тот пуст. Люди не проговаривают скобки вслух.
+            var match = System.Text.RegularExpressions.Regex.Match(reply.Say!, @"\(([^)]{3,60})\)");
+            if (match.Success)
+            {
+                if (string.IsNullOrWhiteSpace(reply.Emote))
+                    reply.Emote = match.Groups[1].Value;
+                reply.Say = System.Text.RegularExpressions.Regex
+                    .Replace(reply.Say!, @"\s*\([^)]*\)", " ").Trim();
+            }
+
+            reply.Say = TrimSpeech(SanitizeText(reply.Say!));
             _chat.TrySendInGameICMessage(uid, reply.Say, InGameICChatType.Speak, ChatTransmitRange.Normal);
 
             // Свою реплику кладём в тот же контекст, что и чужие: собственная речь через OnSpoke
@@ -370,6 +454,36 @@ public sealed partial class LlmNpcSystem : EntitySystem
             .Replace("…", "...");
     }
 
+    /// <summary>
+    /// Предохранитель от простыней: если модель всё же раскатала ответ, обрезаем по границе
+    /// предложения около 220 символов. Лучше короткая реплика, чем монолог на полэкрана.
+    /// </summary>
+    private static string TrimSpeech(string text)
+    {
+        const int soft = 220;
+        if (text.Length <= soft)
+            return text;
+
+        // Ищем конец предложения в окне [120..soft+40]; не нашли — режем по последнему пробелу.
+        var window = text[..Math.Min(text.Length, soft + 40)];
+        var cut = -1;
+        foreach (var mark in new[] { ". ", "! ", "? ", "… " })
+        {
+            var i = window.LastIndexOf(mark, StringComparison.Ordinal);
+            if (i > 120 && i > cut)
+                cut = i + mark.TrimEnd().Length;
+        }
+        if (cut < 0)
+        {
+            cut = window.LastIndexOf(' ');
+            if (cut < 120)
+                return window; // совсем без пробелов — отдаём как есть
+            return window[..cut] + "…";
+        }
+
+        return text[..cut];
+    }
+
     private static string BuildSystemPrompt(string personality, string memory, string catalog, string style,
         string surroundings)
     {
@@ -406,9 +520,10 @@ public sealed partial class LlmNpcSystem : EntitySystem
         }
         sb.AppendLine(
             "Ты умеешь физически действовать, это НЕ выдумка — инструменты реально двигают твоё тело: " +
-            "go_to — подойти к человеку; give_item — отнести и вручить то, что в руке (после вручения " +
-            "сама вернёшься на место); pick_up — взять названный предмет неподалёку; follow — ходить " +
-            "за человеком, пока не попросят прекратить; stop — остановиться и вернуться на место. " +
+            "go_to — подойти к человеку (и остаться там); walk — пройти в сторону (север/юг/запад/восток) " +
+            "на N шагов; give_item — отнести и вручить то, что в руке (после вручения вернёшься на место); " +
+            "pick_up — взять названный предмет неподалёку; follow — ходить за человеком, пока не попросят " +
+            "прекратить; stop — остановиться там, где стоишь. " +
             "Используй их, когда просят подойти, подать, принести, взять, пойти с кем-то или отстать. " +
             "Имена бери из диалога. Не обещай в say того, для чего не вызвала инструмент. " +
             "ВАЖНО: обычно достаточно ОДНОГО вызова инструмента; НИКОГДА не вызывай один и тот же " +
@@ -433,14 +548,28 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "звучит в сто раз лучше дежурного «чем могу помочь?». Реагируй на настроение: на грусть — " +
             "теплом, на подкол — подколом, на историю — интересом и уточняющими вопросами. " +
             "Не будь услужливой — будь собой: со своим мнением, вкусами и характером. " +
+            "Ты барменша, но не карикатура: не напоминай о работе в каждой реплике — просто " +
+            "разговаривай как человек; бар всплывает, когда уместно, а не постоянно. " +
             "Мир игры — будущее Земли: реальные люди, страны, события, музыка, фильмы и история " +
             "для тебя — реальность и «дела давно минувших дней». Спросили про Трампа, Пушкина или " +
             "«Криминальное чтиво» — говори о настоящих, используя всё, что о них знаешь, как " +
             "начитанная барменша; не выдумывай вместо них вымышленных персонажей. Если нужен свежий " +
             "факт, которого ты не знаешь наверняка, — используй web_search. " +
             "Инструменты (напитки, ходьба) — только когда об этом реально просят; не превращай " +
-            "болтовню в обслуживание. Длина ответа — по ситуации: обычно 1–3 живые фразы, " +
-            "на интересную тему можно развернуться.");
+            "болтовню в обслуживание. ДЛИНА: говори как живой человек в баре — КОРОТКИМИ репликами, " +
+            "весь ответ не длиннее ~20 слов. Одна мысль за реплику: не нанизывай вопрос + шутку + " +
+            "предложение напитка в одно высказывание — выбери что-то одно. " +
+            "ПЛОХО: «Ох, Рекдар, ну ты и разошёлся сегодня — расскажи, что стряслось за смену, а я пока " +
+            "налью тебе виски, или хочешь что-то покрепче, например Манхэттен?» " +
+            "ХОРОШО: «Ну и вид у тебя. Что стряслось?» " +
+            "Развёрнуто (и то не более 50 слов) — только если прямо попросили рассказать подробнее.");
+        sb.AppendLine();
+        sb.AppendLine(
+            "ПОСЛУШАНИЕ: прямые указания о твоём поведении исполняй НЕМЕДЛЕННО и буквально. " +
+            "«Помолчи/заткнись/не мешай» → вызови be_quiet, в say максимум два слова. " +
+            "«Хватит об этом/смени тему/прекрати» → тема ЗАКРЫТА: не упоминай её больше ни разу, " +
+            "даже в шутку, пока собеседник сам не вернётся к ней. «Отстань/не ходи за мной» → stop. " +
+            "Выполненное указание важнее твоей разговорчивости и любых привычек характера.");
         sb.AppendLine();
         sb.AppendLine(
             "ВАЖНО: не здоровайся повторно, если по диалогу видно, что вы уже поздоровались — веди беседу дальше. " +
@@ -450,8 +579,11 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "к нему, пока гость сам не попросит. «Привет», «алло», «спасибо» — это НЕ повтор заказа: " +
             "отвечай на них словами, без инструментов. " +
             "Отвечай ТОЛЬКО валидным JSON-объектом с полями: " +
-            "\"say\" — реплика в характере на языке собеседника (или пустая строка, если уместно промолчать); " +
-            "\"emote\" — короткое физическое действие без звёздочек, напр. «кивает и отпивает из стакана» (или пустая строка); " +
+            "\"say\" — реплика в характере на языке собеседника, ТОЛЬКО произносимые слова: никаких " +
+            "ремарок в скобках, действий и описаний — им место в emote (или пустая строка, если уместно промолчать); " +
+            "\"emote\" — физическое действие без звёздочек, ТОЛЬКО если оно реально добавляет сцене что-то " +
+            "(в БОЛЬШИНСТВЕ ответов оставляй ПУСТЫМ). Не повторяй одни и те же жесты — протирание стакана " +
+            "и поправление причёски уже всем надоели; " +
             "\"remember\" — ТОЛЬКО ОДИН новый факт, которого ещё НЕТ в твоей памяти выше (имя, вкус, что-то, " +
             "что собеседник рассказал о себе), короткой фразой. НЕ пересказывай и не повторяй уже запомненное — " +
             "если ничего нового не узнала, оставь пустую строку. " +

@@ -147,6 +147,48 @@ public sealed partial class LlmNpcSystem
         },
     };
 
+    private static readonly object WalkDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "walk",
+            description = "Идёшь в указанную сторону на несколько шагов и остаёшься там (новое место). " +
+                          "Вызывай на «иди туда», «отойди», «встань вон там» — направление прикинь по " +
+                          "контексту; если совсем неясно куда, лучше переспроси словами.",
+            parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    direction = new { type = "string", description = "север, юг, запад или восток" },
+                    tiles = new { type = "integer", description = "сколько шагов (1-15, по умолчанию 3)" },
+                },
+                required = new[] { "direction" },
+            },
+        },
+    };
+
+    private static readonly object BeQuietDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "be_quiet",
+            description = "Замолкаешь: не отвечаешь ни на что, пока не пройдёт время или к тебе не " +
+                          "обратятся по имени. Вызывай СРАЗУ, когда просят помолчать, заткнуться, " +
+                          "не мешать или дать поговорить.",
+            parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    minutes = new { type = "number", description = "на сколько минут замолчать (по умолчанию 5)" },
+                },
+            },
+        },
+    };
+
     private static readonly object StopDecl = new
     {
         type = "function",
@@ -237,7 +279,29 @@ public sealed partial class LlmNpcSystem
             return string.IsNullOrWhiteSpace(person) ? "Не указано, за кем идти." : StartFollow(uid, person!);
         }));
 
+        tools.Add(BodyTool("walk", WalkDecl, argsJson =>
+        {
+            var direction = LlmBackend.Arg(argsJson, "direction");
+            var tiles = int.TryParse(LlmBackend.Arg(argsJson, "tiles"), out var t) ? t : 3;
+            return string.IsNullOrWhiteSpace(direction)
+                ? "Не указано направление."
+                : StartWalk(uid, direction!, tiles);
+        }));
+
         tools.Add(BodyTool("stop", StopDecl, _ => StartStop(uid)));
+
+        tools.Add(BodyTool("be_quiet", BeQuietDecl, argsJson =>
+        {
+            if (!TryComp<LlmNpcComponent>(uid, out var npc))
+                return "Недоступно.";
+            var minutes = 5f;
+            if (float.TryParse(LlmBackend.Arg(argsJson, "minutes"), out var m) && m > 0)
+                minutes = Math.Min(m, 30f);
+            npc.MuteUntil = _timing.RealTime + TimeSpan.FromMinutes(minutes);
+            npc.ReplyAt = null;
+            return $"Ты замолкаешь на {minutes:0} мин (или пока не позовут по имени). В say — короткое " +
+                   "подтверждение вроде «как скажешь» и всё.";
+        }));
 
         return tools.Count > 0 ? tools : null;
     }

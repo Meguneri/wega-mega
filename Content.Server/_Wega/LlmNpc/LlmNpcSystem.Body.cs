@@ -62,6 +62,14 @@ public sealed partial class LlmNpcSystem
         var query = EntityQueryEnumerator<LlmNpcComponent>();
         while (query.MoveNext(out var uid, out var npc))
         {
+            // Без сознания — тело не работает: ни поручений, ни взгляда, ни блуждания.
+            if (_mobState.IsIncapacitated(uid))
+            {
+                if (npc.Errand != LlmErrand.None)
+                    CancelErrand(uid, npc);
+                continue;
+            }
+
             if (npc.Errand == LlmErrand.None)
             {
                 UpdateGaze(uid, npc, now);
@@ -243,6 +251,10 @@ public sealed partial class LlmNpcSystem
         {
             _rotateToFace.TryFaceCoordinates(uid, _transform.GetWorldPosition(target));
 
+            // В мьюте (be_quiet) проактивность выключена — молчать значит молчать.
+            if (npc.MuteUntil is { } mute && now < mute)
+                return;
+
             // Проактивность 1: новый гость подошёл близко — поздороваться первой.
             // Кулдаун на человека, чтобы не приветствовать каждые полминуты.
             if (nearestDist <= 4f
@@ -326,6 +338,10 @@ public sealed partial class LlmNpcSystem
                 break;
             }
         }
+
+        // GoTo: пришла по команде — теперь её место ЗДЕСЬ (не утаскивать блужданием обратно в бар).
+        if (npc.Errand == LlmErrand.GoTo)
+            npc.Home = Transform(uid).Coordinates;
 
         // GoTo/PickUp: остаёмся на месте — дальше распорядится голова.
         CancelErrand(uid, npc);
@@ -479,6 +495,40 @@ public sealed partial class LlmNpcSystem
         return $"Ты идёшь следом за {MetaData(target).EntityName}, пока не попросят остановиться.";
     }
 
+    /// <summary>
+    /// walk: пройти в указанном направлении на N тайлов («иди туда», «отойди», «встань к окну»).
+    /// Место (Home) переносится в точку назначения — она не убредает обратно.
+    /// </summary>
+    private string StartWalk(EntityUid uid, string direction, int tiles)
+    {
+        if (!TryComp<LlmNpcComponent>(uid, out var npc))
+            return "Тело недоступно.";
+
+        if (BusyBrewing(npc) is { } busy)
+            return busy;
+
+        tiles = Math.Clamp(tiles, 1, 15);
+        var dir = direction.Trim().ToLowerInvariant() switch
+        {
+            "север" or "north" or "вверх" => new System.Numerics.Vector2(0, tiles),
+            "юг" or "south" or "вниз" => new System.Numerics.Vector2(0, -tiles),
+            "восток" or "east" or "вправо" or "направо" => new System.Numerics.Vector2(tiles, 0),
+            "запад" or "west" or "влево" or "налево" => new System.Numerics.Vector2(-tiles, 0),
+            _ => default,
+        };
+        if (dir == default)
+            return "Не поняла направление: используй север/юг/запад/восток.";
+
+        var target = Transform(uid).Coordinates.Offset(dir);
+        npc.Errand = LlmErrand.Wander;
+        npc.WanderTo = target;
+        npc.ErrandTimeout = _timing.RealTime + TimeSpan.FromSeconds(20);
+        npc.Home = target; // новое «своё место»
+        EnsureComp<ActiveNPCComponent>(uid);
+        RegisterSteering(uid, target).Range = ArriveRange - 0.2f;
+        return $"Ты идёшь на {direction} ({tiles} шагов) и останешься там.";
+    }
+
     /// <summary>stop: прекратить текущее занятие (следование, дорогу) и вернуться на своё место.</summary>
     private string StartStop(EntityUid uid)
     {
@@ -489,10 +539,12 @@ public sealed partial class LlmNpcSystem
             return "Ты и так ничем не занята.";
 
         var wasBrewing = npc.PendingDrink?.Name;
-        CancelErrand(uid, npc, goHome: true);
+        CancelErrand(uid, npc);
+        // «Стой» значит стой: остаёмся здесь, и это место — новое «своё» (не убредать обратно).
+        npc.Home = Transform(uid).Coordinates;
         return wasBrewing != null
-            ? $"Ты бросила готовить «{wasBrewing}» и возвращаешься на своё место."
-            : "Ты остановилась и возвращаешься на своё место.";
+            ? $"Ты бросила готовить «{wasBrewing}» и остановилась; теперь твоё место здесь."
+            : "Ты остановилась; теперь твоё место здесь.";
     }
 
     // --- поиск целей рядом ---
