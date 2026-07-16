@@ -122,19 +122,24 @@ public sealed partial class MediaPlayerSystem
             var cacheDir = Path.Combine(_resource.UserData.RootDir ?? ".", CacheFolder);
             Directory.CreateDirectory(cacheDir);
 
+            // Миграция кэша: старые файлы tv_* качались 30-секундными обрезками (до фикса полного
+            // видео) и переиспользовались вечно — «телевизор показывает только фрагмент». Сносим.
+            foreach (var stale in Directory.EnumerateFiles(cacheDir, "tv_*"))
+                File.Delete(stale);
+
             // Качаем видео ЦЕЛИКОМ (≤360p — файл небольшой). Потолок 2 ГБ как защита от диска на
             // случай многочасового ролика; для обычных клипов/клипов-песен запас огромный.
-            var videoPath = Directory.EnumerateFiles(cacheDir, $"tv_{id}.*")
+            var videoPath = Directory.EnumerateFiles(cacheDir, $"tvfull_{id}.*")
                 .FirstOrDefault(f => !f.EndsWith(".ogg"));
             if (videoPath == null)
             {
                 SendStatus(session, Loc.GetString("media-player-status-downloading"));
-                var outTemplate = Path.Combine(cacheDir, "tv_%(id)s.%(ext)s");
+                var outTemplate = Path.Combine(cacheDir, "tvfull_%(id)s.%(ext)s");
 
                 var (dlExit, _, dlErr) = await RunYtdlp(
                     "--no-playlist -f \"best[height<=360][ext=mp4]/best[height<=360]/best\" " +
                     $"--max-filesize 2G -o \"{outTemplate}\" --no-warnings -- \"{Sanitize(id)}\"");
-                videoPath = Directory.EnumerateFiles(cacheDir, $"tv_{id}.*")
+                videoPath = Directory.EnumerateFiles(cacheDir, $"tvfull_{id}.*")
                     .FirstOrDefault(f => !f.EndsWith(".ogg"));
 
                 if (dlExit != 0 || videoPath == null)
@@ -180,7 +185,7 @@ public sealed partial class MediaPlayerSystem
 
             // Звуковая дорожка того же отрезка — ogg-vorbis. Клиент привяжет её к сущностям
             // телевизоров (позиционный звук), а не к глобальному плееру.
-            var audioPath = Path.Combine(cacheDir, $"tv_{id}.ogg");
+            var audioPath = Path.Combine(cacheDir, $"tvfull_{id}.ogg");
             // -ac 1: ОБЯЗАТЕЛЬНО моно — позиционный источник движка не умеет позиционировать
             // стерео (assert «Make sure the audio is MONO» и краш клиента).
             var (aExit, aErr) = await RunFfmpeg(
