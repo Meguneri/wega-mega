@@ -298,16 +298,28 @@ public sealed partial class LlmNpcSystem
         if (npc.Home is not { } home || now < npc.NextWander)
             return;
 
-        npc.NextWander = now + TimeSpan.FromSeconds(_random.NextFloat(15f, 45f));
+        // Идёт разговор (речь < 30 сек назад) и гость рядом — стоим и слушаем, не расхаживаем
+        // перед носом у собеседника.
+        if (now - npc.LastHeardAt < TimeSpan.FromSeconds(30) && npc.LastHeardAt != TimeSpan.Zero)
+        {
+            npc.NextWander = now + TimeSpan.FromSeconds(15);
+            return;
+        }
 
-        // Целевая точка: свой тайл или сосед слева/справа/сверху/снизу.
-        var dx = _random.Next(-1, 2);
-        var dy = dx == 0 ? _random.Next(-1, 2) : 0;
+        npc.NextWander = now + TimeSpan.FromSeconds(_random.NextFloat(10f, 35f));
+
+        // Целевая точка: до двух тайлов от «своего места» в любую сторону — прогуляться вдоль
+        // стойки, переставить бутылку, глянуть в иллюминатор. Радиус мал, так что она всегда
+        // остаётся «у себя»; сам якорь двигается только командами (стой тут / walk / go_to).
+        var dx = _random.Next(-2, 3);
+        var dy = _random.Next(-2, 3);
+        if (dx == 0 && dy == 0)
+            dy = 1;
         var target = home.Offset(new System.Numerics.Vector2(dx, dy));
 
         npc.Errand = LlmErrand.Wander;
         npc.WanderTo = target;
-        npc.ErrandTimeout = now + TimeSpan.FromSeconds(6);
+        npc.ErrandTimeout = now + TimeSpan.FromSeconds(8);
         EnsureComp<ActiveNPCComponent>(uid);
         RegisterSteering(uid, target).Range = ArriveRange - 0.2f;
     }
@@ -680,9 +692,30 @@ public sealed partial class LlmNpcSystem
                     break;
             }
 
-            people.Add(marks.Count > 0
+            // Отношение к человеку на эту смену (set_attitude) — модель видит его каждый ход.
+            if (TryComp<LlmNpcComponent>(uid, out var self)
+                && self.Attitude.TryGetValue(MetaData(mob).EntityName, out var attitude))
+                marks.Add($"твоё отношение: {attitude}");
+
+            var entry = marks.Count > 0
                 ? $"{MetaData(mob).EntityName} ({string.Join(", ", marks)})"
-                : MetaData(mob).EntityName);
+                : MetaData(mob).EntityName;
+
+            // Внешность: флейвор-текст персонажа (то, что видно при осмотре) — коротко, для близких.
+            // Она может отреагировать на вид человека, но промпт велит не зацикливаться.
+            if (dist <= 5f && TryComp<Content.Shared.DetailExaminable.DetailExaminableComponent>(mob, out var detail))
+            {
+                var look = !string.IsNullOrWhiteSpace(detail.Content) ? detail.Content : detail.CharacterContent;
+                if (!string.IsNullOrWhiteSpace(look))
+                {
+                    look = look.Replace('\n', ' ').Trim();
+                    if (look.Length > 160)
+                        look = look[..160] + "…";
+                    entry += $" — внешность: «{look}»";
+                }
+            }
+
+            people.Add(entry);
             if (people.Count >= 8)
                 break;
         }

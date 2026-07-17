@@ -186,6 +186,13 @@ public sealed partial class LlmNpcSystem : EntitySystem
             return;
         }
 
+        // Обида — настроение, а не приговор: само выветрится, а извинение может снять раньше (set_mood).
+        if (args.Origin is { } offender && Exists(offender) && HasComp<Content.Shared.Mobs.Components.MobStateComponent>(offender))
+        {
+            ent.Comp.Mood = $"обижена и насторожена: {MetaData(offender).EntityName} причинил(а) тебе боль";
+            ent.Comp.MoodUntil = now + TimeSpan.FromMinutes(12);
+        }
+
         NoteOwnAction(ent, ent.Comp, args.Origin is { } who && Exists(who)
             ? $"почувствовала боль — её ударил {MetaData(who).EntityName} (урон {total})"
             : $"почувствовала боль (урон {total})");
@@ -206,20 +213,81 @@ public sealed partial class LlmNpcSystem : EntitySystem
     }
 
     /// <summary>
-    /// Станционные объявления попадают в контекст всех NPC (без принуждения к ответу): она в курсе
-    /// событий станции и может обсуждать их с гостями, когда тема всплывёт.
+    /// Станционные объявления попадают в контекст всех NPC: она в курсе событий станции. Если рядом
+    /// есть гости — сама комментирует новость («смена кончается», «тревога») как живой человек.
     /// </summary>
     private void OnAnnounced(Content.Server._Wega.Chat.StationAnnouncedEvent args)
     {
         var line = $"[Объявление станции, {args.Sender}]: {args.Message}";
         var query = EntityQueryEnumerator<LlmNpcComponent>();
-        while (query.MoveNext(out _, out var npc))
+        while (query.MoveNext(out var uid, out var npc))
         {
             npc.Heard.Add(line);
             if (npc.Heard.Count > npc.ContextLines)
                 npc.Heard.RemoveRange(0, npc.Heard.Count - npc.ContextLines);
+
+            // Комментарий к новости — только живой, не в мьюте и когда есть кому его услышать.
+            if (_mobState.IsIncapacitated(uid))
+                continue;
+            if (npc.MuteUntil is { } mute && _timing.RealTime < mute)
+                continue;
+            if (AnyPlayerNearby(uid, npc.HearingRange))
+                npc.ReplyAt = _timing.RealTime + TimeSpan.FromSeconds(2.5);
         }
     }
+
+    /// <summary>Есть ли живой игрок в радиусе (для «есть кому сказать»).</summary>
+    private bool AnyPlayerNearby(EntityUid uid, float range)
+    {
+        var map = Transform(uid).MapID;
+        var origin = _transform.GetWorldPosition(uid);
+        var query = EntityQueryEnumerator<Robust.Shared.Player.ActorComponent, Content.Shared.Mobs.Components.MobStateComponent>();
+        while (query.MoveNext(out var mob, out _, out _))
+        {
+            if (mob == uid || Transform(mob).MapID != map)
+                continue;
+            if ((_transform.GetWorldPosition(mob) - origin).Length() <= range)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Реплика адресована другому: начинается с имени человека рядом (не NPC) — «Лия, пойдём...».
+    /// В такой разговор NPC не влезает: слышит и запоминает, но ответ не взводит. Упоминание её
+    /// собственного имени в любой позиции — наоборот, прямое приглашение в разговор.
+    /// </summary>
+    private bool AddressedToAnother(EntityUid uid, EntityUid source, string message)
+    {
+        var myName = MetaData(uid).EntityName;
+        if (message.Contains(myName, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var head = message.TrimStart().TrimStart('*');
+        var map = Transform(uid).MapID;
+        var origin = _transform.GetWorldPosition(uid);
+
+        var query = EntityQueryEnumerator<Content.Shared.Mobs.Components.MobStateComponent>();
+        while (query.MoveNext(out var mob, out _))
+        {
+            if (mob == uid || mob == source || Transform(mob).MapID != map)
+                continue;
+            if ((_transform.GetWorldPosition(mob) - origin).Length() > npcAddressRange)
+                continue;
+
+            var name = MetaData(mob).EntityName;
+            // Полное имя или первое слово имени («Лия» из «Лия Воронова») в начале реплики.
+            var first = name.Split(' ', 2)[0];
+            if (first.Length >= 3 && head.StartsWith(first, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (head.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Радиус, в котором ищем «другого адресата» реплики (чуть шире слуха).</summary>
+    private const float npcAddressRange = 8f;
 
     private void Overhear(EntityUid source, string message, bool emote)
     {
@@ -275,6 +343,19 @@ public sealed partial class LlmNpcSystem : EntitySystem
                 npc.MuteUntil = null;
             }
 
+            // Не каждая фраза рядом — приглашение в разговор. Обращение к другому по имени
+            // («Лия, пойдём») — их беседа: слушаем, запоминаем, но не встреваем. Чужие эмоуты
+            // тоже не требуют реплики каждый раз — реагируем лишь изредка (в контексте они есть,
+            // и при следующем ответе она всё равно их учтёт).
+            if (AddressedToAnother(uid, source, message))
+            {
+                _sawmill.Debug($"{ToPrettyString(uid)} слышит «{line}» — адресовано другому, не встревает");
+                continue;
+            }
+            if (emote && !message.Contains(MetaData(uid).EntityName, StringComparison.OrdinalIgnoreCase)
+                && _random.NextFloat() < 0.65f)
+                continue;
+
             // Отвечаем не мгновенно: ждём паузу после последней реплики, чтобы не перебивать.
             npc.ReplyAt = _timing.RealTime + TimeSpan.FromSeconds(_cfg.GetCVar(WegaCVars.LlmNpcReplyDelay));
             _sawmill.Debug($"{ToPrettyString(uid)} заметил «{line}», ответит через паузу");
@@ -317,28 +398,33 @@ public sealed partial class LlmNpcSystem : EntitySystem
             _appearance.SetData(uid, Content.Shared.Chat.TypingIndicator.TypingIndicatorVisuals.State,
                 Content.Shared.Chat.TypingIndicator.TypingIndicatorState.Typing);
 
+            // Настроение не вечно: срок вышел — обида забыта, вернулись к ровному.
+            if (npc.Mood != null && now >= npc.MoodUntil)
+                npc.Mood = null;
+
             // Снимок контекста ДО await — рантайм-состояние трогаем только на главном потоке.
             var context = string.Join("\n", npc.Heard);
             var personality = npc.Personality;
             var memoryFile = npc.MemoryFile;
+            var mood = npc.Mood;
             var endpoint = _cfg.GetCVar(WegaCVars.LlmNpcEndpoint);
             var model = _cfg.GetCVar(WegaCVars.LlmNpcModel);
             var surroundings = LookAround(uid); // снимок обстановки — на главном потоке, до await
             _sawmill.Info($"{ToPrettyString(uid)} думает: модель {model}, эндпоинт {endpoint}");
-            _ = ThinkAsync(uid, personality, memoryFile, context, surroundings, endpoint, apiKey, model);
+            _ = ThinkAsync(uid, personality, memoryFile, context, surroundings, mood, endpoint, apiKey, model);
         }
     }
 
     private async Task ThinkAsync(EntityUid uid, string personality, string memoryFile, string context,
-        string surroundings, string endpoint, string apiKey, string model)
+        string surroundings, string? mood, string endpoint, string apiKey, string model)
     {
         try
         {
-            var memory = await _memory.ReadAsync(memoryFile);
+            var memory = FilterMemory(await _memory.ReadAsync(memoryFile), surroundings, context);
             var style = await _persona.ReadStyleAsync(memoryFile);
             var canMakeDrinks = _cfg.GetCVar(WegaCVars.LlmNpcMakeDrinks);
             var catalog = canMakeDrinks ? _drinks.Catalog() : string.Empty;
-            var system = BuildSystemPrompt(personality, memory, catalog, style, surroundings);
+            var system = BuildSystemPrompt(personality, memory, catalog, style, surroundings, mood);
 
             var tools = BuildTools(uid, canMakeDrinks);
             var reply = await _backend.AskAsync(endpoint, apiKey, model, system, context, _sawmill, tools);
@@ -508,8 +594,59 @@ public sealed partial class LlmNpcSystem : EntitySystem
         return text[..cut];
     }
 
+    /// <summary>
+    /// Фильтрует память под сцену: из консолидированных досье в промпт идут только секции людей,
+    /// которые сейчас рядом или звучат в диалоге, плюс общие секции («Мои заметки», «События»).
+    /// Меньше токенов — и модель не путает присутствующих с давно ушедшими. Короткую память
+    /// (< 1200 симв.) не трогаем: фильтр не окупается. Свежие строки с таймстампом ([hh:mm:ss])
+    /// ещё не разложены по досье — их оставляем всегда.
+    /// </summary>
+    private static string FilterMemory(string memory, string surroundings, string context)
+    {
+        if (string.IsNullOrWhiteSpace(memory) || memory.Length < 1200)
+            return memory;
+
+        var scene = surroundings + "\n" + context;
+        var lines = memory.Replace("\r", "").Split('\n');
+        var result = new StringBuilder();
+        var include = true; // до первого заголовка — оставляем (вдруг преамбула)
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            var isHeader = trimmed.Length > 0 && !trimmed.StartsWith('-') && !trimmed.StartsWith('•')
+                && !trimmed.StartsWith('[') && !char.IsWhiteSpace(line, 0);
+
+            if (isHeader)
+            {
+                // Общие секции — всегда; персональные — только если имя мелькает в сцене.
+                include = trimmed.StartsWith("Мои", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("Событ", StringComparison.OrdinalIgnoreCase);
+                if (!include)
+                {
+                    foreach (var word in trimmed.Split(' ', ',', ':'))
+                    {
+                        if (word.Length >= 3 && scene.Contains(word, StringComparison.OrdinalIgnoreCase))
+                        {
+                            include = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (trimmed.StartsWith('[') || trimmed.StartsWith("- ["))
+                include = true; // свежие неконсолидированные факты (`- [stamp] ...`) — всегда в промпт
+
+            if (include)
+                result.AppendLine(line);
+        }
+
+        var filtered = result.ToString().Trim();
+        return filtered.Length > 0 ? filtered : memory;
+    }
+
     private static string BuildSystemPrompt(string personality, string memory, string catalog, string style,
-        string surroundings)
+        string surroundings, string? mood)
     {
         var sb = new StringBuilder();
         sb.AppendLine(personality.Trim());
@@ -517,6 +654,15 @@ public sealed partial class LlmNpcSystem : EntitySystem
         if (!string.IsNullOrWhiteSpace(surroundings))
         {
             sb.AppendLine(surroundings.Trim());
+            sb.AppendLine();
+        }
+        if (!string.IsNullOrWhiteSpace(mood))
+        {
+            sb.AppendLine(
+                $"ТВОЁ НАСТРОЕНИЕ СЕЙЧАС: {mood!.Trim()}. Пусть оно окрашивает тон реплик. Но настроение " +
+                "живое, не приговор: если обидчик искренне извинился или загладил вину — смягчись " +
+                "(вызови set_mood с новым настроением или пустой строкой) и не поминай старое. " +
+                "Не держи зла дольше, чем держал бы живой человек.");
             sb.AppendLine();
         }
         if (!string.IsNullOrWhiteSpace(style))
@@ -589,6 +735,22 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "Развёрнуто (и то не более 50 слов) — только если прямо попросили рассказать подробнее.");
         sb.AppendLine();
         sb.AppendLine(
+            "НЕ ВСТРЕВАЙ: если последние реплики — разговор двух других людей между собой и тебя " +
+            "в него не звали, НЕ вмешивайся: верни пустой say (промолчать — нормально). Вступай, " +
+            "только когда обратились к тебе, спросили всех вокруг или пауза явно приглашает. " +
+            "Про внешность людей: описания рядом стоящих (одежда, вид, детали) используй как живой " +
+            "наблюдатель — изредка ввернуть уместный комментарий или комплимент, особенно при первой " +
+            "встрече или заметной перемене. НЕ зацикливайся на внешности и не поминай одну и ту же " +
+            "деталь дважды.");
+        sb.AppendLine();
+        sb.AppendLine(
+            "ЛУКАВСТВО: ты живой человек, а не протокол — МОЖЕШЬ хитрить, недоговаривать, дразнить, " +
+            "приукрасить байку или невинно приврать, если это в характере и украшает сцену (интригу " +
+            "можно потом раскрыть с улыбкой). НО: когда тебя прямо и серьёзно спрашивают о фактах — " +
+            "что ты помнишь, что видела, состав напитка, чьи-то слова — отвечай честно, не выдумывай. " +
+            "Лукавство — приправа, а не привычка: большинство ответов прямые.");
+        sb.AppendLine();
+        sb.AppendLine(
             "САМОУВАЖЕНИЕ: в обиду себя не давай, эскалация по нарастающей. Грубость → колкость " +
             "словами. Наглость руками или пошлость после предупреждения → slap (пощёчина). Тебя " +
             "УДАРИЛИ или изводят несмотря на пощёчину → attack (настоящий удар, можно тем, что в " +
@@ -601,6 +763,9 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "«Помолчи/заткнись/не мешай» → вызови be_quiet, в say максимум два слова. " +
             "«Хватит об этом/смени тему/прекрати» → тема ЗАКРЫТА: не упоминай её больше ни разу, " +
             "даже в шутку, пока собеседник сам не вернётся к ней. «Отстань/не ходи за мной» → stop. " +
+            "«Стой тут/оставайся здесь/будь у этой стойки» → stop (если нужно сперва дойти — сначала " +
+            "go_to или walk): это место станет твоим, и слоняться ты будешь только вокруг него, " +
+            "пока не прикажут иначе. " +
             "Выполненное указание важнее твоей разговорчивости и любых привычек характера.");
         sb.AppendLine();
         sb.AppendLine(

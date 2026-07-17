@@ -224,6 +224,50 @@ public sealed partial class LlmNpcSystem
         },
     };
 
+    private static readonly object SetMoodDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "set_mood",
+            description = "Меняешь своё текущее настроение (оно окрашивает тон следующих реплик). " +
+                          "Вызывай при РЕАЛЬНОЙ перемене: тебя обидели → «обижена на ...»; обидчик " +
+                          "искренне извинился или загладил вину → смени на мягче или передай пустую " +
+                          "строку (= ровное настроение, обида прощена). Не злоупотребляй.",
+            parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    mood = new { type = "string", description = "настроение короткой фразой; пустая строка = ровное" },
+                },
+                required = new[] { "mood" },
+            },
+        },
+    };
+
+    private static readonly object SetAttitudeDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "set_attitude",
+            description = "Запоминаешь своё отношение к человеку на эту смену (видишь его рядом с его " +
+                          "именем). Вызывай при заметной перемене: нагрубил → «холодно, он хамил»; " +
+                          "извинился и загладил → верни «тепло». Пустая строка = обычное ровное отношение.",
+            parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    person = new { type = "string", description = "имя человека" },
+                    attitude = new { type = "string", description = "отношение парой слов; пустая строка = обычное" },
+                },
+                required = new[] { "person", "attitude" },
+            },
+        },
+    };
+
     private static readonly object StopDecl = new
     {
         type = "function",
@@ -336,6 +380,40 @@ public sealed partial class LlmNpcSystem
         }));
 
         tools.Add(BodyTool("stop", StopDecl, _ => StartStop(uid)));
+
+        tools.Add(BodyTool("set_mood", SetMoodDecl, argsJson =>
+        {
+            if (!TryComp<LlmNpcComponent>(uid, out var npc))
+                return "Недоступно.";
+            var mood = LlmBackend.Arg(argsJson, "mood")?.Trim();
+            if (string.IsNullOrWhiteSpace(mood))
+            {
+                npc.Mood = null;
+                return "Настроение снова ровное — старое отпущено.";
+            }
+            npc.Mood = mood;
+            npc.MoodUntil = _timing.RealTime + TimeSpan.FromMinutes(20);
+            return $"Настроение теперь: «{mood}». Со временем само выровняется.";
+        }));
+
+        tools.Add(BodyTool("set_attitude", SetAttitudeDecl, argsJson =>
+        {
+            if (!TryComp<LlmNpcComponent>(uid, out var npc))
+                return "Недоступно.";
+            var person = LlmBackend.Arg(argsJson, "person")?.Trim();
+            if (string.IsNullOrWhiteSpace(person))
+                return "Не указано, к кому.";
+            var attitude = LlmBackend.Arg(argsJson, "attitude")?.Trim();
+            // Отношение вешаем на полное имя из мира (модель может назвать только «Лия»).
+            var name = FindPerson(uid, person!) is { } t ? MetaData(t).EntityName : person!;
+            if (string.IsNullOrWhiteSpace(attitude))
+            {
+                npc.Attitude.Remove(name);
+                return $"Отношение к {name} снова обычное.";
+            }
+            npc.Attitude[name] = attitude!;
+            return $"Теперь ты относишься к {name}: {attitude}.";
+        }));
 
         tools.Add(BodyTool("be_quiet", BeQuietDecl, argsJson =>
         {

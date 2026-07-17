@@ -134,6 +134,27 @@ public sealed partial class LlmNpcComponent : Component
     [ViewVariables]
     public TimeSpan? MuteUntil;
 
+    // --- настроение и отношения (живое состояние, не вечное) ---
+
+    /// <summary>
+    /// Текущее настроение свободным текстом («обижена на Иванова — он её ударил»). Уходит в промпт
+    /// и окрашивает тон. null = ровное. Ставится кодом (боль) и самой моделью (set_mood): извинились
+    /// и загладили вину — модель смягчает или очищает, а по <see cref="MoodUntil"/> обида забывается сама.
+    /// </summary>
+    [ViewVariables]
+    public string? Mood;
+
+    /// <summary>Когда настроение само вернётся к ровному (обиды не вечны).</summary>
+    [ViewVariables]
+    public TimeSpan MoodUntil;
+
+    /// <summary>
+    /// Отношение к людям на эту смену: имя → короткий текст («тепло», «настороженно», «холодно»).
+    /// Меняет сама модель через set_attitude; долговременное уходит в память через remember.
+    /// </summary>
+    [ViewVariables]
+    public readonly Dictionary<string, string> Attitude = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Троттлинг реакции на боль (не вздрагивать на каждый тик урона).</summary>
     [ViewVariables]
     public TimeSpan NextPain;
