@@ -195,11 +195,30 @@ public sealed partial class DuelRotationSystem : EntitySystem
         }
 
         // Индекс арены, на которой только что закончился бой (по карте любого из бойцов).
+        var currentMap = duelists.Select(d => Transform(d).MapID).FirstOrDefault();
+        var nextIndex = PickNextArenaIndex(comp, currentMap, out var replayedCurrent);
+
+        if (replayedCurrent)
+            Log.Info("[duel-rotation] других арен нет — переигрываем на текущей, бойцы возвращены на спавны");
+
+        // Только переносим бойцов на арену — раунд НЕ вооружаем автоматически.
+        // Старт объявляется лишь после нажатия кнопки старта на самой арене (как и первый раунд),
+        // иначе «дуэль началась» печаталось бы до нажатия кнопки.
+        MoveAndStart(comp, nextIndex, duelists);
+    }
+
+    /// <summary>
+    /// Выбирает индекс следующей арены: случайную из загруженных, кроме той, на которой только что
+    /// был бой (без повтора подряд). Если других загруженных арен нет — переигрываем текущую
+    /// (<paramref name="replayedCurrent"/> = true): бойцов всё равно возвращаем на спавн-маркеры,
+    /// чтобы новый раунд начался с углов.
+    /// </summary>
+    private int PickNextArenaIndex(DuelRotationComponent comp, MapId currentMap, out bool replayedCurrent)
+    {
         // Важно искать честно: FirstOrDefault на словаре вернул бы Key=0 при ненайденной карте,
         // из-за чего реальная текущая арена могла бы остаться в кандидатах (телепорт на ту же
         // карту → «карта не меняется») либо единственная арена выпасть из кандидатов (нет телепорта).
-        int currentIndex = -1;
-        var currentMap = duelists.Select(d => Transform(d).MapID).FirstOrDefault();
+        var currentIndex = -1;
         foreach (var kv in comp.LoadedArenas)
         {
             if (kv.Value == currentMap)
@@ -209,20 +228,13 @@ public sealed partial class DuelRotationSystem : EntitySystem
             }
         }
 
-        // Предпочитаем ДРУГУЮ арену (тогда поле боя сменится). Если другой нет — переигрываем на
-        // текущей: бойцов всё равно возвращаем на спавн-маркеры, чтобы новый раунд начался с углов.
+        // Предпочитаем ДРУГУЮ арену (тогда поле боя сменится).
         var candidates = comp.LoadedArenas.Keys.Where(i => i != currentIndex).ToList();
-        var nextIndex = candidates.Count > 0
-            ? _random.Pick(candidates)
-            : (currentIndex >= 0 ? currentIndex : _random.Pick(comp.LoadedArenas.Keys.ToList()));
+        replayedCurrent = candidates.Count == 0;
+        if (!replayedCurrent)
+            return _random.Pick(candidates);
 
-        if (candidates.Count == 0)
-            Log.Info("[duel-rotation] других арен нет — переигрываем на текущей, бойцы возвращены на спавны");
-
-        // Только переносим бойцов на арену — раунд НЕ вооружаем автоматически.
-        // Старт объявляется лишь после нажатия кнопки старта на самой арене (как и первый раунд),
-        // иначе «дуэль началась» печаталось бы до нажатия кнопки.
-        MoveAndStart(comp, nextIndex, duelists);
+        return currentIndex >= 0 ? currentIndex : _random.Pick(comp.LoadedArenas.Keys.ToList());
     }
 
     /// <summary>
@@ -254,12 +266,26 @@ public sealed partial class DuelRotationSystem : EntitySystem
             Log.Warning($"[duel-rotation] на арене (индекс {arenaIndex}) бойцов ({ordered.Count}) больше, " +
                 $"чем спавн-маркеров ({spawns.Count}) — лишние ставятся со сдвигом, чтобы не оказаться на одном тайле");
 
-        // Назначаем каждому бойцу маркер БЕЗ коллизий, в два прохода. Раньше слот считался как
-        // i % spawns.Count и лишь затем, возможно, переопределялся закреплённым спавном — но слоты не
-        // резервировались, поэтому round-robin одного бойца и закреплённый спавн другого могли совпасть:
-        // второго сдвигало на соседний тайл вместо свободного маркера (баг «не на тот спавн» между
-        // раундами при входе персональными кнопками). Теперь сначала резервируем закреплённые спавны,
-        // потом раздаём оставшиеся свободные; сдвиг — только если бойцов реально больше, чем маркеров.
+        var slotOf = AssignSpawnSlots(comp, spawns, ordered);
+        PlaceFighters(spawns, ordered, slotOf);
+
+        comp.CurrentArena = arenaIndex;
+
+        // Бойцы расставлены — раунд готовится: трекер выдаст арсенал-ящики заранее, у спавнов.
+        RaiseArenaPreparing(map);
+    }
+
+    /// <summary>
+    /// Назначает каждому бойцу слот спавн-маркера БЕЗ коллизий, в два прохода. Раньше слот считался
+    /// как i % spawns.Count и лишь затем, возможно, переопределялся закреплённым спавном — но слоты не
+    /// резервировались, поэтому round-robin одного бойца и закреплённый спавн другого могли совпасть:
+    /// второго сдвигало на соседний тайл вместо свободного маркера (баг «не на тот спавн» между
+    /// раундами при входе персональными кнопками). Теперь сначала резервируем закреплённые спавны,
+    /// потом раздаём оставшиеся свободные; сдвиг — только если бойцов реально больше, чем маркеров.
+    /// Возвращает массив индексов слотов в порядке бойцов.
+    /// </summary>
+    private int[] AssignSpawnSlots(DuelRotationComponent comp, List<EntityUid> spawns, List<EntityUid> ordered)
+    {
         var slotOf = new int[ordered.Count];
         var reserved = new bool[spawns.Count];
 
@@ -302,8 +328,16 @@ public sealed partial class DuelRotationSystem : EntitySystem
             }
         }
 
-        // Расставляем. Сдвиг на соседнюю клетку (n,0) применяется только когда на один маркер реально
-        // попало больше одного бойца (бойцов больше, чем маркеров) — иначе двое оказались бы на тайле.
+        return slotOf;
+    }
+
+    /// <summary>
+    /// Расставляет бойцов по назначенным слотам. Сдвиг на соседнюю клетку (n,0) применяется только
+    /// когда на один маркер реально попало больше одного бойца (бойцов больше, чем маркеров) —
+    /// иначе двое оказались бы на одном тайле.
+    /// </summary>
+    private void PlaceFighters(List<EntityUid> spawns, List<EntityUid> ordered, int[] slotOf)
+    {
         var usage = new int[spawns.Count];
         for (var i = 0; i < ordered.Count; i++)
         {
@@ -316,11 +350,6 @@ public sealed partial class DuelRotationSystem : EntitySystem
             StopPulls(ordered[i]);
             _transform.SetCoordinates(ordered[i], coords);
         }
-
-        comp.CurrentArena = arenaIndex;
-
-        // Бойцы расставлены — раунд готовится: трекер выдаст арсенал-ящики заранее, у спавнов.
-        RaiseArenaPreparing(map);
     }
 
     /// <summary>
@@ -344,12 +373,6 @@ public sealed partial class DuelRotationSystem : EntitySystem
         }
     }
 
-    /// <summary>
-    /// Кнопка входа с хаба: при нажатии собирает ВСЕХ мобов на гриде кнопки (игроков И NPC) и
-    /// переносит их на арену из <see cref="DuelArenaEntryComponent.ArenaIndex"/>. Бой при этом НЕ
-    /// стартует — раунд запускается отдельно (кнопкой старта на самой арене). Контроллер ротации
-    /// ищем первый на сервере (он один).
-    /// </summary>
     /// <summary>
     /// Нажатие кнопки входа: НЕ телепортирует сразу, а открывает окно выбора тира арсенал-ящиков.
     /// Сам вход (телепорт + спавн ящиков) выполняется по кнопке «Войти» в окне — см. OnEntryConfirm.

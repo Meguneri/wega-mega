@@ -5,6 +5,7 @@ using System.Numerics;
 using Content.IntegrationTests.Fixtures;
 using Content.Server._Wega.Duel.Components;
 using Content.Server._Wega.Duel.Systems;
+using Content.Shared._Wega.Duel;
 using Content.Shared._Wega.Duel.Components;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Prototypes;
@@ -373,6 +374,352 @@ public sealed class DuelRotationSystemTest : GameTest
             Assert.That(minionOwner, Is.Not.Null,
                 "Миньон должен заспавниться у проигравшего 3 раунда подряд в ротации");
             Assert.That(minionOwner, Is.EqualTo(fighter2), "Миньон должен принадлежать проигравшему");
+        });
+    }
+
+    /// <summary>
+    /// Закреплённый спавн (PreferredSpawns): боец с предпочтением возвращается на свой маркер
+    /// при переходе на следующую арену, а второй боец занимает ближайший свободный.
+    /// </summary>
+    [Test]
+    public async Task RotationKeepsPreferredSpawnTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+        var mindSystem = entManager.System<SharedMindSystem>();
+        var transformSystem = entManager.System<SharedTransformSystem>();
+        var playerManager = server.ResolveDependency<Robust.Server.Player.IPlayerManager>();
+
+        var testMap1 = await pair.CreateTestMap();
+        var testMap2 = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid tracker1 = default;
+        EntityUid spawn0Map2 = default;
+        EntityUid spawn1Map2 = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap1.Grid, testMap1.Tile.Tile);
+            ExpandGrid(mapSystem, testMap2.Grid, testMap2.Tile.Tile);
+
+            var tile1 = testMap1.Tile;
+            var coords1 = new EntityCoordinates(tile1.GridUid, tile1.GridIndices.X, tile1.GridIndices.Y);
+            var tile2 = testMap2.Tile;
+            var coords2 = new EntityCoordinates(tile2.GridUid, tile2.GridIndices.X, tile2.GridIndices.Y);
+
+            controller = entManager.SpawnEntity(null, coords1);
+            var rotation = entManager.AddComponent<DuelRotationComponent>(controller);
+            rotation.Loaded = true;
+            rotation.LoadedArenas[0] = testMap1.MapId;
+            rotation.LoadedArenas[1] = testMap2.MapId;
+
+            tracker1 = entManager.SpawnEntity("DuelArenaTracker", coords1);
+            entManager.GetComponent<DuelArenaComponent>(tracker1).RotationController = controller;
+
+            spawn0Map2 = entManager.SpawnEntity("DuelArenaSpawnMarker", coords2.Offset(new Vector2(2, 0)));
+            spawn1Map2 = entManager.SpawnEntity("DuelArenaSpawnMarker1", coords2.Offset(new Vector2(2, 2)));
+
+            fighter1 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 0)));
+            fighter2 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 1)));
+
+            // Боец 1 — реальный игрок с закреплённым спавном №1 (как после входа персональной кнопкой).
+            var player = playerManager.Sessions.Single();
+            var mindId = mindSystem.CreateMind(player.UserId);
+            mindSystem.TransferTo(mindId, fighter1);
+            rotation.PreferredSpawns[player.UserId] = 1;
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker1, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena1 = entManager.GetComponent<DuelArenaComponent>(tracker1);
+            Assert.That(arena1.IsActive, Is.True, "Дуэль на первой арене должна быть активной");
+
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            static bool Near(Vector2 pos, Vector2 target) => (pos - target).LengthSquared() <= 0.01f;
+
+            Assert.That(Near(transformSystem.GetWorldPosition(fighter1), transformSystem.GetWorldPosition(spawn1Map2)), Is.True,
+                "Боец с закреплённым спавном должен вернуться на маркер №1");
+            Assert.That(Near(transformSystem.GetWorldPosition(fighter2), transformSystem.GetWorldPosition(spawn0Map2)), Is.True,
+                "Второй боец должен занять свободный маркер №0");
+        });
+    }
+
+    /// <summary>
+    /// Бойцов больше, чем спавн-маркеров: лишний встаёт на занятый маркер со сдвигом (1,0),
+    /// чтобы двое не оказались на одном тайле.
+    /// </summary>
+    [Test]
+    public async Task RotationOffsetsOverflowFightersTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+        var transformSystem = entManager.System<SharedTransformSystem>();
+
+        var testMap1 = await pair.CreateTestMap();
+        var testMap2 = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid tracker1 = default;
+        EntityUid spawn0Map2 = default;
+        EntityUid spawn1Map2 = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+        EntityUid fighter3 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap1.Grid, testMap1.Tile.Tile);
+            ExpandGrid(mapSystem, testMap2.Grid, testMap2.Tile.Tile);
+
+            var tile1 = testMap1.Tile;
+            var coords1 = new EntityCoordinates(tile1.GridUid, tile1.GridIndices.X, tile1.GridIndices.Y);
+            var tile2 = testMap2.Tile;
+            var coords2 = new EntityCoordinates(tile2.GridUid, tile2.GridIndices.X, tile2.GridIndices.Y);
+
+            controller = entManager.SpawnEntity(null, coords1);
+            var rotation = entManager.AddComponent<DuelRotationComponent>(controller);
+            rotation.Loaded = true;
+            rotation.LoadedArenas[0] = testMap1.MapId;
+            rotation.LoadedArenas[1] = testMap2.MapId;
+
+            tracker1 = entManager.SpawnEntity("DuelArenaTracker", coords1);
+            entManager.GetComponent<DuelArenaComponent>(tracker1).RotationController = controller;
+
+            // На второй арене только два маркера — третьему бойцу места не хватит.
+            spawn0Map2 = entManager.SpawnEntity("DuelArenaSpawnMarker", coords2.Offset(new Vector2(2, 0)));
+            spawn1Map2 = entManager.SpawnEntity("DuelArenaSpawnMarker1", coords2.Offset(new Vector2(2, 2)));
+
+            fighter1 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 0)));
+            fighter2 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 1)));
+            fighter3 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 2)));
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker1, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena1 = entManager.GetComponent<DuelArenaComponent>(tracker1);
+            Assert.That(arena1.IsActive, Is.True, "Дуэль должна быть активной");
+            Assert.That(arena1.Duelists.Count, Is.EqualTo(3), "Должно быть зарегистрировано 3 дуэлянта");
+
+            // Бой идёт, пока живы двое — убиваем двоих, чтобы раунд завершился.
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+            Assert.That(arena1.IsActive, Is.True, "С двумя живыми бойцами раунд должен продолжаться");
+            damageableSystem.TryChangeDamage(fighter3, damage, true);
+            Assert.That(arena1.IsActive, Is.False, "Раунд должен завершиться");
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            static bool Near(Vector2 pos, Vector2 target) => (pos - target).LengthSquared() <= 0.01f;
+
+            var spawn0Pos = transformSystem.GetWorldPosition(spawn0Map2);
+            var spawn1Pos = transformSystem.GetWorldPosition(spawn1Map2);
+            var shiftedPos = spawn0Pos + new Vector2(1f, 0f);
+
+            var fighters = new[] { fighter1, fighter2, fighter3 };
+            foreach (var f in fighters)
+            {
+                Assert.That(transformSystem.GetMapCoordinates(f).MapId, Is.EqualTo(testMap2.MapId),
+                    "Все бойцы должны оказаться на второй арене");
+            }
+
+            var positions = fighters.Select(f => transformSystem.GetWorldPosition(f)).ToList();
+            Assert.That(positions.Count(p => Near(p, spawn0Pos)), Is.EqualTo(1), "Один боец — на маркере №0");
+            Assert.That(positions.Count(p => Near(p, spawn1Pos)), Is.EqualTo(1), "Один боец — на маркере №1");
+            Assert.That(positions.Count(p => Near(p, shiftedPos)), Is.EqualTo(1),
+                "Лишний боец — на маркере №0 со сдвигом (1,0)");
+        });
+    }
+
+    /// <summary>
+    /// Переход на следующую арену НЕ вооружает раунд автоматически: арена ждёт кнопки старта
+    /// в фазе Preparing, иначе «дуэль началась» печаталось бы до нажатия кнопки.
+    /// </summary>
+    [Test]
+    public async Task RotationDoesNotAutoArmNextArenaTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap1 = await pair.CreateTestMap();
+        var testMap2 = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid tracker1 = default;
+        EntityUid tracker2 = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap1.Grid, testMap1.Tile.Tile);
+            ExpandGrid(mapSystem, testMap2.Grid, testMap2.Tile.Tile);
+
+            var tile1 = testMap1.Tile;
+            var coords1 = new EntityCoordinates(tile1.GridUid, tile1.GridIndices.X, tile1.GridIndices.Y);
+            var tile2 = testMap2.Tile;
+            var coords2 = new EntityCoordinates(tile2.GridUid, tile2.GridIndices.X, tile2.GridIndices.Y);
+
+            controller = entManager.SpawnEntity(null, coords1);
+            var rotation = entManager.AddComponent<DuelRotationComponent>(controller);
+            rotation.Loaded = true;
+            rotation.LoadedArenas[0] = testMap1.MapId;
+            rotation.LoadedArenas[1] = testMap2.MapId;
+
+            tracker1 = entManager.SpawnEntity("DuelArenaTracker", coords1);
+            entManager.GetComponent<DuelArenaComponent>(tracker1).RotationController = controller;
+            tracker2 = entManager.SpawnEntity("DuelArenaTracker", coords2);
+            entManager.GetComponent<DuelArenaComponent>(tracker2).RotationController = controller;
+
+            entManager.SpawnEntity("DuelArenaSpawnMarker", coords2.Offset(new Vector2(2, 0)));
+            entManager.SpawnEntity("DuelArenaSpawnMarker1", coords2.Offset(new Vector2(2, 2)));
+
+            fighter1 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 0)));
+            fighter2 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 1)));
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker1, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena1 = entManager.GetComponent<DuelArenaComponent>(tracker1);
+            Assert.That(arena1.IsActive, Is.True, "Дуэль на первой арене должна быть активной");
+
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena2 = entManager.GetComponent<DuelArenaComponent>(tracker2);
+            Assert.That(arena2.IsActive, Is.False, "Следующая арена не должна вооружаться автоматически");
+            Assert.That(arena2.Phase, Is.EqualTo(DuelArenaPhase.Preparing),
+                "Следующая арена должна ждать кнопки старта в фазе Preparing");
+
+            var arena1 = entManager.GetComponent<DuelArenaComponent>(tracker1);
+            Assert.That(arena1.IsActive, Is.False, "Прошлая арена должна быть завершена");
+        });
+    }
+
+    /// <summary>
+    /// Единственная загруженная арена: перехода на другую нет — бойцы возвращаются на спавн-маркеры
+    /// той же арены (переигровка), CurrentArena не меняется.
+    /// </summary>
+    [Test]
+    public async Task RotationReplaysSingleArenaTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var prototypeManager = server.ResolveDependency<IPrototypeManager>();
+        var damageableSystem = server.System<DamageableSystem>();
+        var mapSystem = server.System<SharedMapSystem>();
+        var transformSystem = entManager.System<SharedTransformSystem>();
+
+        var testMap1 = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid tracker1 = default;
+        EntityUid spawn0 = default;
+        EntityUid spawn1 = default;
+        EntityUid fighter1 = default;
+        EntityUid fighter2 = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap1.Grid, testMap1.Tile.Tile);
+
+            var tile1 = testMap1.Tile;
+            var coords1 = new EntityCoordinates(tile1.GridUid, tile1.GridIndices.X, tile1.GridIndices.Y);
+
+            controller = entManager.SpawnEntity(null, coords1);
+            var rotation = entManager.AddComponent<DuelRotationComponent>(controller);
+            rotation.Loaded = true;
+            rotation.LoadedArenas[0] = testMap1.MapId;
+
+            tracker1 = entManager.SpawnEntity("DuelArenaTracker", coords1);
+            entManager.GetComponent<DuelArenaComponent>(tracker1).RotationController = controller;
+
+            spawn0 = entManager.SpawnEntity("DuelArenaSpawnMarker", coords1.Offset(new Vector2(1, 0)));
+            spawn1 = entManager.SpawnEntity("DuelArenaSpawnMarker1", coords1.Offset(new Vector2(1, 1)));
+
+            // Бойцы стоят НЕ на маркерах — переигровка должна вернуть их на спавны.
+            fighter1 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 0)));
+            fighter2 = entManager.SpawnEntity("DuelRotationTestDummy", coords1.Offset(new Vector2(3, 1)));
+
+            var startEv = new SignalReceivedEvent("Open");
+            entManager.EventBus.RaiseLocalEvent(tracker1, ref startEv);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            var arena1 = entManager.GetComponent<DuelArenaComponent>(tracker1);
+            Assert.That(arena1.IsActive, Is.True, "Дуэль должна быть активной");
+
+            DamageSpecifier damage = new(prototypeManager.Index(TestDamageType), FixedPoint2.New(100000));
+            damageableSystem.TryChangeDamage(fighter2, damage, true);
+        });
+
+        await pair.RunTicksSync(1);
+
+        await server.WaitAssertion(() =>
+        {
+            static bool Near(Vector2 pos, Vector2 target) => (pos - target).LengthSquared() <= 0.01f;
+
+            var rotation = entManager.GetComponent<DuelRotationComponent>(controller);
+            Assert.That(rotation.CurrentArena, Is.EqualTo(0), "При единственной арене CurrentArena не должен меняться");
+
+            var fighter1Pos = transformSystem.GetWorldPosition(fighter1);
+            var fighter2Pos = transformSystem.GetWorldPosition(fighter2);
+            var spawn0Pos = transformSystem.GetWorldPosition(spawn0);
+            var spawn1Pos = transformSystem.GetWorldPosition(spawn1);
+
+            Assert.That(Near(fighter1Pos, spawn0Pos) || Near(fighter1Pos, spawn1Pos), Is.True,
+                "Первый боец должен вернуться на один из спавнов той же арены");
+            Assert.That(Near(fighter2Pos, spawn0Pos) || Near(fighter2Pos, spawn1Pos), Is.True,
+                "Второй боец должен вернуться на один из спавнов той же арены");
+            Assert.That(fighter1Pos, Is.Not.EqualTo(fighter2Pos), "Бойцы должны занять разные спавны");
         });
     }
 
