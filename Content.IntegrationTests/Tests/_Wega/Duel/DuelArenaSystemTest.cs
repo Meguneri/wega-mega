@@ -90,6 +90,35 @@ public sealed class DuelArenaSystemTest : GameTest
     damage:
       types:
         Heat: 5
+
+- type: entity
+  name: DuelTestExemptItem
+  id: DuelTestExemptItem
+  components:
+  - type: ArenaIssuedItem
+  - type: ArenaCleanupExempt
+  - type: Sprite
+    sprite: Objects/Misc/guardian_info.rsi
+
+- type: entity
+  name: DuelTestFootwear
+  id: DuelTestFootwear
+  components:
+  - type: ArenaIssuedItem
+  - type: Clothing
+    slots:
+    - FEET
+  - type: Sprite
+    sprite: Objects/Misc/guardian_info.rsi
+
+- type: entity
+  name: DuelTestArenaCrate
+  id: DuelTestArenaCrate
+  components:
+  - type: SurplusBundle
+    markIssuedItems: true
+  - type: Sprite
+    sprite: Objects/Misc/guardian_info.rsi
 ";
 
     private static readonly ProtoId<DamageTypePrototype> TestDamageType = "Blunt";
@@ -762,6 +791,175 @@ public sealed class DuelArenaSystemTest : GameTest
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной");
             Assert.That(arena.PendingRestore, Is.False, "ArmDuel должен сбросить PendingRestore");
+        });
+    }
+
+    /// <summary>
+    /// Исключённые из очистки предметы (ArenaCleanupExempt — ручной спавн из спавн-меню) переживают
+    /// очистку, даже если на них успела повиснуть метка ArenaIssuedItem.
+    /// </summary>
+    [Test]
+    public async Task CleanupPreservesExemptItemTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid exemptItem = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            controller = entManager.SpawnEntity("DuelCleanupController", coordinates);
+            exemptItem = entManager.SpawnEntity("DuelTestExemptItem", coordinates.Offset(new Vector2(1, 0)));
+
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(exemptItem), Is.True);
+            Assert.That(entManager.HasComponent<ArenaCleanupExemptComponent>(exemptItem), Is.True);
+
+            var cleanEv = new SignalReceivedEvent("Trigger");
+            entManager.EventBus.RaiseLocalEvent(controller, ref cleanEv);
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(entManager.Deleted(exemptItem), Is.False, "Exempt-предмет не должен удаляться очисткой");
+        });
+    }
+
+    /// <summary>
+    /// Заякоренные сущности (стены/мебель карты) очистка не трогает, даже если метка
+    /// ArenaIssuedItem попала на них по ошибке.
+    /// </summary>
+    [Test]
+    public async Task CleanupPreservesAnchoredItemTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid anchoredItem = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            controller = entManager.SpawnEntity("DuelCleanupController", coordinates);
+            anchoredItem = entManager.SpawnEntity("DuelTestIssuedItem", coordinates.Offset(new Vector2(1, 0)));
+
+            // Заякориваем вручную — тестовый прототип не делает этого при спавне.
+            entManager.System<SharedTransformSystem>().AnchorEntity(anchoredItem);
+            Assert.That(entManager.GetComponent<TransformComponent>(anchoredItem).Anchored, Is.True,
+                "Тестовый предмет должен быть заякорен");
+
+            var cleanEv = new SignalReceivedEvent("Trigger");
+            entManager.EventBus.RaiseLocalEvent(controller, ref cleanEv);
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(entManager.Deleted(anchoredItem), Is.False, "Заякоренный предмет не должен удаляться очисткой");
+        });
+    }
+
+    /// <summary>
+    /// Обувь без статов (нет ускорения/магнитов/анти-скольжения) считается косметикой: очистка
+    /// её не удаляет, а метку ArenaIssuedItem снимает, чтобы не трогать впредь.
+    /// </summary>
+    [Test]
+    public async Task CleanupPreservesStatlessFootwearTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid footwear = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            controller = entManager.SpawnEntity("DuelCleanupController", coordinates);
+            footwear = entManager.SpawnEntity("DuelTestFootwear", coordinates.Offset(new Vector2(1, 0)));
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(footwear), Is.True);
+
+            var cleanEv = new SignalReceivedEvent("Trigger");
+            entManager.EventBus.RaiseLocalEvent(controller, ref cleanEv);
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(entManager.Deleted(footwear), Is.False, "Косметическая обувь не должна удаляться очисткой");
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(footwear), Is.False,
+                "Метка арены должна быть снята с косметической обуви");
+        });
+    }
+
+    /// <summary>
+    /// Арена-ящик (SurplusBundle с markIssuedItems) убирается очисткой вместе с выданным
+    /// снаряжением, чтобы после боя на арене не оставалось пустых ящиков.
+    /// </summary>
+    [Test]
+    public async Task CleanupDeletesArenaCrateTest()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var entManager = server.ResolveDependency<IEntityManager>();
+        var mapSystem = server.System<SharedMapSystem>();
+
+        var testMap = await pair.CreateTestMap();
+
+        EntityUid controller = default;
+        EntityUid crate = default;
+
+        await server.WaitAssertion(() =>
+        {
+            ExpandGrid(mapSystem, testMap.Grid, testMap.Tile.Tile);
+
+            var tile = testMap.Tile;
+            var coordinates = new EntityCoordinates(tile.GridUid, tile.GridIndices.X, tile.GridIndices.Y);
+
+            controller = entManager.SpawnEntity("DuelCleanupController", coordinates);
+            crate = entManager.SpawnEntity("DuelTestArenaCrate", coordinates.Offset(new Vector2(1, 0)));
+            Assert.That(entManager.HasComponent<ArenaIssuedItemComponent>(crate), Is.False,
+                "Сам ящик метки ArenaIssued не носит — его убирает отдельный проход по SurplusBundle");
+
+            var cleanEv = new SignalReceivedEvent("Trigger");
+            entManager.EventBus.RaiseLocalEvent(controller, ref cleanEv);
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(entManager.Deleted(crate), Is.True, "Арена-ящик должен удаляться очисткой");
         });
     }
 }

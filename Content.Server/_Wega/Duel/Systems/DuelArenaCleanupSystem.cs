@@ -451,6 +451,54 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
         var originGrid = originXform.GridUid;
 
         // 1. Снаряжение из ящика + гильзы (все помечены ArenaIssuedItemComponent).
+        var (diagTotal, diagRange, diagExempt, diagDeleted) = CleanupIssuedItems(origin, originGrid, range);
+
+        Log.Info($"[duel-arena-cleanup] origin={ToPrettyString(originEntity)} grid={originGrid} " +
+            $"ArenaIssued: всего={diagTotal}, в зоне={diagRange}, исключено(exempt)={diagExempt}, удалено={diagDeleted}");
+
+        // 2. Лужи на полу (кровь, химия и т.п.).
+        CleanupPuddles(origin, originGrid, range);
+
+        // 3. Брёвна, оставшиеся после уничтожения деревьев на арене.
+        CleanupLogs(origin, originGrid, range);
+
+        // 4. Миньоны-помощники (усиление для проигравшего 3 раза подряд).
+        CleanupMinions(origin, originGrid, range);
+
+        // 5. Магические руны со свитка рун (блэнкетом по гриду арены).
+        CleanupMagicRunes(origin, originGrid, range);
+
+        // 6. Обломки стен (гирдеры после пролома стены за бой).
+        CleanupGirders(origin, originGrid, range);
+
+        // 7. Разбитые/перегоревшие лампочки и лампы.
+        CleanupBrokenBulbs(origin, originGrid, range);
+
+        // 8. Осколки стекла от разбитых за бой окон/стёкол.
+        CleanupGlassShards(origin, originGrid, range);
+
+        // Руны культа (BloodRune) и листы материалов от сломанных стен НЕ чистятся здесь
+        // блэнкетом: они помечаются ArenaIssuedItem при спавне во время активной дуэли
+        // (см. OnRuneStartup/OnMaterialStartup) и убираются общим проходом по меткам в п.1.
+        // Так принесённое игроком извне (его руны/материалы) не удаляется.
+
+        // 9. Сами арена-ящики (Full/Melee Arsenal — помечены markIssuedItems) — убираем вместе
+        // с выданным снаряжением, чтобы после боя на арене не оставалось пустых ящиков.
+        CleanupArenaCrates(origin, originGrid, range);
+
+        // 10. Останавливаем спавнер дуэльного аирдропа: после конца боя ящики снаряжения
+        // больше не падают автоматически (без повторного нажатия кнопки).
+        StopSupplyDropSpawners(origin, originGrid, range);
+    }
+
+    /// <summary>
+    /// Проход по всем сущностям с меткой «выдано ареной» (<see cref="ArenaIssuedItemComponent"/>):
+    /// снаряжение из ящика, гильзы и прочий боевой мусор. Возвращает диагностические счётчики
+    /// (всего помечено, в зоне, исключено exempt, удалено) для лога очистки.
+    /// </summary>
+    private (int Total, int InZone, int Exempt, int Deleted) CleanupIssuedItems(
+        MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         int diagTotal = 0, diagRange = 0, diagExempt = 0, diagDeleted = 0;
         var issuedQuery = EntityQueryEnumerator<ArenaIssuedItemComponent>();
         while (issuedQuery.MoveNext(out var itemUid, out _))
@@ -469,60 +517,87 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
                 continue;
             }
 
-            // Подстраховка: живое существо (боец) никогда не считается выданным снаряжением и не
-            // удаляется. Если метка как-то на него попала (например, со старого бага коробки) —
-            // снимаем её и пропускаем, чтобы очистка не убила игрока.
-            if (HasComp<MobStateComponent>(itemUid))
-            {
-                RemCompDeferred<ArenaIssuedItemComponent>(itemUid);
-                continue;
-            }
-
-            // Заякоренное не трогаем (стены, мебель карты) — КРОМЕ рун: руны размещаются на
-            // снапгриде заякоренными, и без этого исключения нарисованные за бой руны
-            // переживали бы очистку.
-            if (Transform(itemUid).Anchored
-                && !HasComp<MagicRuneComponent>(itemUid) && !HasComp<BloodRuneComponent>(itemUid))
+            if (ShouldPreserveIssuedItem(itemUid))
                 continue;
 
-            // Обувь без статов (нет ускорения/магнитов/анти-скольжения) — косметика, как
-            // собственные ботинки игрока. Не удаляем и снимаем тег, чтобы не трогать впредь.
-            if (IsStatlessFootwear(itemUid))
-            {
-                RemCompDeferred<ArenaIssuedItemComponent>(itemUid);
-                continue;
-            }
-
-            // Вколотый имплант: принудительно вынимаем, чтобы SharedSubdermalImplantSystem
-            // корректно снял дарованные действия/компоненты.
-            if (_container.TryGetContainingContainer((itemUid, null), out var container)
-                && container.ID == ImplanterComponent.ImplantSlotId)
-            {
-                _container.Remove(itemUid, container, reparent: false, force: true);
-            }
-
-            // МОД-контроллер: его развёрнутые части надеты в слоты брони игрока, а не вложены
-            // в контроллер — удаляем их явно, иначе шлем/нагрудник/перчатки/ботинки останутся
-            // на игроке после удаления самого МОД.
-            if (HasComp<ModularSuitComponent>(itemUid))
-            {
-                foreach (var part in _modSuit.GetEquippedParts(itemUid))
-                    QueueDel(part);
-            }
-
-            // Внутри выданного предмета может сидеть существо (например, соперник в
-            // коробке-невидимке StealthBox). Извлекаем мобов перед удалением, иначе QueueDel
-            // контейнера каскадно удалит тело соперника вместе с коробкой.
-            EjectMobsBeforeDelete(itemUid);
-
+            DeleteIssuedItem(itemUid);
             diagDeleted++;
-            QueueDel(itemUid);
         }
 
-        Log.Info($"[duel-arena-cleanup] origin={ToPrettyString(originEntity)} grid={originGrid} " +
-            $"ArenaIssued: всего={diagTotal}, в зоне={diagRange}, исключено(exempt)={diagExempt}, удалено={diagDeleted}");
+        return (diagTotal, diagRange, diagExempt, diagDeleted);
+    }
 
-        // 2. Лужи на полу (кровь, химия и т.п.).
+    /// <summary>
+    /// true, если помеченный аренной предмет надо оставить на месте: живое существо (подстраховка
+    /// от ошибочной метки — снимаем её), заякоренная сущность (стены/мебель карты, КРОМЕ рун) или
+    /// косметическая обувь без статов (тоже снимаем метку, чтобы не трогать впредь).
+    /// </summary>
+    private bool ShouldPreserveIssuedItem(EntityUid itemUid)
+    {
+        // Подстраховка: живое существо (боец) никогда не считается выданным снаряжением и не
+        // удаляется. Если метка как-то на него попала (например, со старого бага коробки) —
+        // снимаем её и пропускаем, чтобы очистка не убила игрока.
+        if (HasComp<MobStateComponent>(itemUid))
+        {
+            RemCompDeferred<ArenaIssuedItemComponent>(itemUid);
+            return true;
+        }
+
+        // Заякоренное не трогаем (стены, мебель карты) — КРОМЕ рун: руны размещаются на
+        // снапгриде заякоренными, и без этого исключения нарисованные за бой руны
+        // переживали бы очистку.
+        if (Transform(itemUid).Anchored
+            && !HasComp<MagicRuneComponent>(itemUid) && !HasComp<BloodRuneComponent>(itemUid))
+            return true;
+
+        // Обувь без статов (нет ускорения/магнитов/анти-скольжения) — косметика, как
+        // собственные ботинки игрока. Не удаляем и снимаем тег, чтобы не трогать впредь.
+        if (IsStatlessFootwear(itemUid))
+        {
+            RemCompDeferred<ArenaIssuedItemComponent>(itemUid);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Удаляет выданный аренной предмет со всеми сопутствующими эффектами: вынимает вколотый
+    /// имплант, доудаляет развёрнутые части МОД-скафандра и извлекает сидящих внутри мобов
+    /// (коробка-невидимка) перед каскадным удалением.
+    /// </summary>
+    private void DeleteIssuedItem(EntityUid itemUid)
+    {
+        // Вколотый имплант: принудительно вынимаем, чтобы SharedSubdermalImplantSystem
+        // корректно снял дарованные действия/компоненты.
+        if (_container.TryGetContainingContainer((itemUid, null), out var container)
+            && container.ID == ImplanterComponent.ImplantSlotId)
+        {
+            _container.Remove(itemUid, container, reparent: false, force: true);
+        }
+
+        // МОД-контроллер: его развёрнутые части надеты в слоты брони игрока, а не вложены
+        // в контроллер — удаляем их явно, иначе шлем/нагрудник/перчатки/ботинки останутся
+        // на игроке после удаления самого МОД.
+        if (HasComp<ModularSuitComponent>(itemUid))
+        {
+            foreach (var part in _modSuit.GetEquippedParts(itemUid))
+                QueueDel(part);
+        }
+
+        // Внутри выданного предмета может сидеть существо (например, соперник в
+        // коробке-невидимке StealthBox). Извлекаем мобов перед удалением, иначе QueueDel
+        // контейнера каскадно удалит тело соперника вместе с коробкой.
+        EjectMobsBeforeDelete(itemUid);
+
+        QueueDel(itemUid);
+    }
+
+    /// <summary>
+    /// Лужи на полу (кровь, химия и т.п.).
+    /// </summary>
+    private void CleanupPuddles(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var puddleQuery = EntityQueryEnumerator<PuddleComponent>();
         while (puddleQuery.MoveNext(out var puddleUid, out _))
         {
@@ -533,10 +608,15 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(puddleUid);
         }
+    }
 
-        // 3. Брёвна, оставшиеся после уничтожения деревьев на арене.
-        // LogComponent был удалён; брёвна теперь — обычные предметы с ToolRefinable
-        // (id Log / SteelLog), поэтому отбираем их по прототипу.
+    /// <summary>
+    /// Брёвна, оставшиеся после уничтожения деревьев на арене.
+    /// LogComponent был удалён; брёвна теперь — обычные предметы с ToolRefinable
+    /// (id Log / SteelLog), поэтому отбираем их по прототипу.
+    /// </summary>
+    private void CleanupLogs(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var logQuery = EntityQueryEnumerator<ToolRefinableComponent>();
         while (logQuery.MoveNext(out var logUid, out _))
         {
@@ -553,8 +633,13 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(logUid);
         }
+    }
 
-        // 4. Миньоны-помощники (усиление для проигравшего 3 раза подряд).
+    /// <summary>
+    /// Миньоны-помощники (усиление для проигравшего 3 раза подряд).
+    /// </summary>
+    private void CleanupMinions(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var minionQuery = EntityQueryEnumerator<ArenaLoserMinionComponent, TransformComponent>();
         while (minionQuery.MoveNext(out var minionUid, out _, out _))
         {
@@ -565,12 +650,17 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(minionUid);
         }
+    }
 
-        // 3b. Все магические руны со свитка рун (MagicRune) на гриде арены — удаляем блэнкетом,
-        // независимо от того, нарисованы они ДО начала дуэли или во время боя. Метку
-        // ArenaIssued получают только руны, заспавненные в активной дуэли (OnRuneStartup), поэтому
-        // заранее размещённые руны без этого прохода пережили бы очистку. InRange ограничивает
-        // удаление гридом арены, так что чужие руны вне дуэли не трогаются.
+    /// <summary>
+    /// Все магические руны со свитка рун (MagicRune) на гриде арены — удаляем блэнкетом,
+    /// независимо от того, нарисованы они ДО начала дуэли или во время боя. Метку
+    /// ArenaIssued получают только руны, заспавненные в активной дуэли (OnRuneStartup), поэтому
+    /// заранее размещённые руны без этого прохода пережили бы очистку. InRange ограничивает
+    /// удаление гридом арены, так что чужие руны вне дуэли не трогаются.
+    /// </summary>
+    private void CleanupMagicRunes(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var runeQuery = EntityQueryEnumerator<MagicRuneComponent>();
         while (runeQuery.MoveNext(out var runeUid, out _))
         {
@@ -581,10 +671,15 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(runeUid);
         }
+    }
 
-        // 3c. Обломки стен — гирдеры, оставшиеся после пролома стены за бой. Уникального компонента
-        // у них нет, поэтому фильтруем конструируемые сущности по id прототипа (любой «*Girder*»).
-        // Грид-скоуп (InRange) гарантирует, что чистится только сама арена.
+    /// <summary>
+    /// Обломки стен — гирдеры, оставшиеся после пролома стены за бой. Уникального компонента
+    /// у них нет, поэтому фильтруем конструируемые сущности по id прототипа (любой «*Girder*»).
+    /// Грид-скоуп (InRange) гарантирует, что чистится только сама арена.
+    /// </summary>
+    private void CleanupGirders(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var girderQuery = EntityQueryEnumerator<ConstructionComponent>();
         while (girderQuery.MoveNext(out var girderUid, out _))
         {
@@ -597,9 +692,14 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(girderUid);
         }
+    }
 
-        // 3d. Разбитые/перегоревшие лампочки и лампы. Целые (State Normal) НЕ трогаем, чтобы не
-        // гасить рабочее освещение арены — убираем только сломанные.
+    /// <summary>
+    /// Разбитые/перегоревшие лампочки и лампы. Целые (State Normal) НЕ трогаем, чтобы не
+    /// гасить рабочее освещение арены — убираем только сломанные.
+    /// </summary>
+    private void CleanupBrokenBulbs(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var bulbQuery = EntityQueryEnumerator<LightBulbComponent>();
         while (bulbQuery.MoveNext(out var bulbUid, out var bulb))
         {
@@ -612,8 +712,13 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(bulbUid);
         }
+    }
 
-        // 3e. Осколки стекла (ShardGlass*) от разбитых за бой окон/стёкол.
+    /// <summary>
+    /// Осколки стекла (ShardGlass*) от разбитых за бой окон/стёкол.
+    /// </summary>
+    private void CleanupGlassShards(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var shardQuery = EntityQueryEnumerator<SpaceGarbageComponent>();
         while (shardQuery.MoveNext(out var shardUid, out _))
         {
@@ -626,14 +731,14 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(shardUid);
         }
+    }
 
-        // Руны культа (BloodRune) и листы материалов от сломанных стен НЕ чистятся здесь
-        // блэнкетом: они помечаются ArenaIssuedItem при спавне во время активной дуэли
-        // (см. OnRuneStartup/OnMaterialStartup) и убираются общим проходом по меткам в п.1.
-        // Так принесённое игроком извне (его руны/материалы) не удаляется.
-
-        // 4. Сами арена-ящики (Full/Melee Arsenal — помечены markIssuedItems) — убираем вместе
-        // с выданным снаряжением, чтобы после боя на арене не оставалось пустых ящиков.
+    /// <summary>
+    /// Сами арена-ящики (Full/Melee Arsenal — помечены markIssuedItems) — убираем вместе
+    /// с выданным снаряжением, чтобы после боя на арене не оставалось пустых ящиков.
+    /// </summary>
+    private void CleanupArenaCrates(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var crateQuery = EntityQueryEnumerator<SurplusBundleComponent>();
         while (crateQuery.MoveNext(out var crateUid, out var bundle))
         {
@@ -646,9 +751,14 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
             QueueDel(crateUid);
         }
+    }
 
-        // 5. Останавливаем спавнер дуэльного аирдропа: после конца боя ящики снаряжения
-        // больше не падают автоматически (без повторного нажатия кнопки).
+    /// <summary>
+    /// Останавливаем спавнер дуэльного аирдропа: после конца боя ящики снаряжения
+    /// больше не падают автоматически (без повторного нажатия кнопки).
+    /// </summary>
+    private void StopSupplyDropSpawners(MapCoordinates origin, EntityUid? originGrid, float range)
+    {
         var spawnerQuery = EntityQueryEnumerator<SpawnerSignalControlComponent, TimedSpawnerComponent>();
         while (spawnerQuery.MoveNext(out var spawnerUid, out _, out var timed))
         {
@@ -678,16 +788,16 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
             && !HasComp<ClothingSlowOnDamageModifierComponent>(uid);
     }
 
-    /// <summary>
-    /// Цель в зоне арены. Арена — отдельный грид, поэтому при наличии грида у источника охватываем
-    /// весь его грид целиком (без ограничения радиусом) — это покрывает всю арену и не задевает
-    /// станцию. Если у источника нет грида (в космосе) — откатываемся на проверку по дистанции.
-    /// </summary>
     /// <summary>Id прототипа сущности (или null). Нужен для отбора сущностей без уникального
     /// компонента — гирдеров и осколков стекла — по их прототипу.</summary>
     private string? ProtoId(EntityUid uid)
         => MetaData(uid).EntityPrototype?.ID;
 
+    /// <summary>
+    /// Цель в зоне арены. Арена — отдельный грид, поэтому при наличии грида у источника охватываем
+    /// весь его грид целиком (без ограничения радиусом) — это покрывает всю арену и не задевает
+    /// станцию. Если у источника нет грида (в космосе) — откатываемся на проверку по дистанции.
+    /// </summary>
     private bool InRange(EntityUid target, MapCoordinates origin, EntityUid? originGrid, float range)
     {
         var targetXform = Transform(target);

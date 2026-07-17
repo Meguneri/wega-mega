@@ -210,53 +210,9 @@ public sealed partial class DuelArenaSystem : EntitySystem
         var query = EntityQueryEnumerator<DuelArenaComponent>();
         while (query.MoveNext(out var uid, out var comp))
         {
-            // Отложенное восстановление арены: запланировано в ConcludeDuel/ResetDuel, выполняем
-            // здесь — вне стека события смерти (MobStateChanged), где удаление/спавн сущностей могли
-            // конфликтовать с обработкой урона. Ждём PendingRestoreAt: смертельный удар мог быть от
-            // отложенной взрывчатки (граната/заряд), чей взрыв обрабатывается уже ПОСЛЕ конца дуэли —
-            // без задержки восстановление прошло бы по ещё целой арене, а разрушение осталось бы навсегда.
-            if (comp.PendingRestore && now >= comp.PendingRestoreAt)
-            {
-                comp.PendingRestore = false;
-                comp.PendingRestoreAt = null;
-                _restoreSystem.RestoreArena(uid, comp);
-
-                if (comp.Phase == DuelArenaPhase.Restoring)
-                    comp.Phase = DuelArenaPhase.Idle;
-
-                // Повторное исцеление бойцов после оседания взрывов — возвращает конечности,
-                // оторванные отложенной взрывчаткой уже после конца боя (см. PendingHealDuelists).
-                foreach (var duelist in comp.PendingHealDuelists)
-                {
-                    if (!Exists(duelist))
-                        continue;
-                    _rejuvenate.PerformRejuvenate(duelist);
-                    _movementSpeed.RefreshMovementSpeedModifiers(duelist);
-                }
-                comp.PendingHealDuelists.Clear();
-            }
-
-            // Истёк grace-период после боя — шлём на шлюзы баз сигнал закрытия.
-            // Дуэлянты уже успели вернуться по открытым шлюзам.
-            // (Восстановление стен НЕ привязано к этому таймеру — оно выполняется сразу при
-            // завершении боя в ConcludeDuel/ResetDuel, иначе при быстром старте нового боя
-            // grace отменяется и стены чинятся хаотично уже во время следующего раунда.)
-            if (comp.GateCloseAt != null && now >= comp.GateCloseAt)
-            {
-                comp.GateCloseAt = null;
-                _signalSystem.SendSignal(uid, comp.ResetPort, true);
-            }
-
-            // Авто-дроп снабжения во время активного боя: сбрасываем маяк в центр арены
-            // (он сам даёт колокол/свет и спавнит ящик), затем перепланируем по интервалу.
-            if (comp.IsActive && comp.SupplyDropProto != null
-                && comp.SupplyDropAt != null && now >= comp.SupplyDropAt)
-            {
-                Spawn(comp.SupplyDropProto.Value, Transform(uid).Coordinates);
-                comp.SupplyDropAt = comp.SupplyDropInterval > 0f
-                    ? now + TimeSpan.FromSeconds(comp.SupplyDropInterval)
-                    : null;
-            }
+            ProcessPendingRestore(uid, comp, now);
+            ProcessGateClose(uid, comp, now);
+            ProcessSupplyDrop(uid, comp, now);
 
             // Сканируем только вооружённые арены — чтобы вовремя снять взвод,
             // если дуэлянты разошлись живыми и победа в OnMobStateChanged не наступит.
@@ -266,6 +222,69 @@ public sealed partial class DuelArenaSystem : EntitySystem
             comp.NextScan = now + TimeSpan.FromSeconds(comp.ScanInterval);
             Scan(uid, comp);
         }
+    }
+
+    /// <summary>
+    /// Отложенное восстановление арены: запланировано в ConcludeDuel/ResetDuel, выполняем
+    /// здесь — вне стека события смерти (MobStateChanged), где удаление/спавн сущностей могли
+    /// конфликтовать с обработкой урона. Ждём PendingRestoreAt: смертельный удар мог быть от
+    /// отложенной взрывчатки (граната/заряд), чей взрыв обрабатывается уже ПОСЛЕ конца дуэли —
+    /// без задержки восстановление прошло бы по ещё целой арене, а разрушение осталось бы навсегда.
+    /// </summary>
+    private void ProcessPendingRestore(EntityUid uid, DuelArenaComponent comp, TimeSpan now)
+    {
+        if (!comp.PendingRestore || now < comp.PendingRestoreAt)
+            return;
+
+        comp.PendingRestore = false;
+        comp.PendingRestoreAt = null;
+        _restoreSystem.RestoreArena(uid, comp);
+
+        if (comp.Phase == DuelArenaPhase.Restoring)
+            comp.Phase = DuelArenaPhase.Idle;
+
+        // Повторное исцеление бойцов после оседания взрывов — возвращает конечности,
+        // оторванные отложенной взрывчаткой уже после конца боя (см. PendingHealDuelists).
+        foreach (var duelist in comp.PendingHealDuelists)
+        {
+            if (!Exists(duelist))
+                continue;
+            _rejuvenate.PerformRejuvenate(duelist);
+            _movementSpeed.RefreshMovementSpeedModifiers(duelist);
+        }
+        comp.PendingHealDuelists.Clear();
+    }
+
+    /// <summary>
+    /// Истёк grace-период после боя — шлём на шлюзы баз сигнал закрытия.
+    /// Дуэлянты уже успели вернуться по открытым шлюзам.
+    /// (Восстановление стен НЕ привязано к этому таймеру — оно выполняется сразу при
+    /// завершении боя в ConcludeDuel/ResetDuel, иначе при быстром старте нового боя
+    /// grace отменяется и стены чинятся хаотично уже во время следующего раунда.)
+    /// </summary>
+    private void ProcessGateClose(EntityUid uid, DuelArenaComponent comp, TimeSpan now)
+    {
+        if (comp.GateCloseAt == null || now < comp.GateCloseAt)
+            return;
+
+        comp.GateCloseAt = null;
+        _signalSystem.SendSignal(uid, comp.ResetPort, true);
+    }
+
+    /// <summary>
+    /// Авто-дроп снабжения во время активного боя: сбрасываем маяк в центр арены
+    /// (он сам даёт колокол/свет и спавнит ящик), затем перепланируем по интервалу.
+    /// </summary>
+    private void ProcessSupplyDrop(EntityUid uid, DuelArenaComponent comp, TimeSpan now)
+    {
+        if (!comp.IsActive || comp.SupplyDropProto == null
+            || comp.SupplyDropAt == null || now < comp.SupplyDropAt)
+            return;
+
+        Spawn(comp.SupplyDropProto.Value, Transform(uid).Coordinates);
+        comp.SupplyDropAt = comp.SupplyDropInterval > 0f
+            ? now + TimeSpan.FromSeconds(comp.SupplyDropInterval)
+            : null;
     }
 
     /// <summary>
@@ -414,6 +433,18 @@ public sealed partial class DuelArenaSystem : EntitySystem
         EnsureArsenalCrates(uid, comp);
 
         // Усиление для проигравшего 3 раза подряд: миньон-помощник.
+        SpawnLoserMinions(comp);
+
+        // Звук старта дуэли играет штатный DuelStartSoundEmitter на карте
+        // (EmitGlobalSoundOnSignal по сигналу DuelFight) — здесь дублировать не нужно.
+    }
+
+    /// <summary>
+    /// Спавнит миньона-помощника каждому бойцу с серией из 3+ поражений. Серии поражений
+    /// берутся из контроллера ротации, если арена в ротации, иначе из самой арены.
+    /// </summary>
+    private void SpawnLoserMinions(DuelArenaComponent comp)
+    {
         DuelRotationComponent? ctrl = null;
         var inRotation = comp.RotationController is { } ctrlUid
             && TryComp(ctrlUid, out ctrl);
@@ -435,9 +466,6 @@ public sealed partial class DuelArenaSystem : EntitySystem
                 Loc.GetString("duel-arena-loser-minion-spawned", ("name", SafeName(duelist))),
                 Color.Pink);
         }
-
-        // Звук старта дуэли играет штатный DuelStartSoundEmitter на карте
-        // (EmitGlobalSoundOnSignal по сигналу DuelFight) — здесь дублировать не нужно.
     }
 
     private void OnSignalReceived(EntityUid uid, DuelArenaComponent comp, ref SignalReceivedEvent args)

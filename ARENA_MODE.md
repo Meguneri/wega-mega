@@ -14,7 +14,8 @@
   - `DuelArenaRestoreSystem` — снапшот и восстановление стен, решёток, света.
   - `DuelReadySystem` — кнопки готовности для обеих баз.
   - `DuelRotationSystem` — предзагрузка нескольких арен и перемещение бойцов между раундами.
-  - `ArenaLoadoutSystem` — UI-выбор лодаута перед боем.
+  - `DuelArenaScoreSystem` — счёт побед/поражений и серии по `NetUserId`, табло в анонсе итога боя.
+  - `ArenaArsenalRemoteSystem` — пульт арсенала: UI-выбор тира арсенал-крейта, применяется ко всем аренам разом; сами крейты у спавн-маркеров каждый раунд спавнит `DuelArenaSystem` (EnsureArsenalCrates).
 
 ### Окружение и события
 - `ArenaStormSystem` — сужающаяся «безопасная зона» (battle-royale), наносит урон за пределами круга.
