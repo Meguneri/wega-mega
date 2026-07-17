@@ -1,123 +1,169 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Этот файл — руководство для Claude Code (claude.ai/code) при работе с репозиторием. `AGENTS.md` — зеркало этого файла для Codex: осмысленные правки вноси в оба файла.
 
-This is **wega-mega** — a fork of ss14-wega (Corvax → Space Station 14). C#/.NET on the RobustToolbox engine, YAML prototypes, Fluent (ftl) localization. `AGENTS.md` is the Codex mirror of this file — apply meaningful edits to both.
+**wega-mega** — форк [ss14-wega](https://github.com/corvax-team/ss14-wega) (Corvax → Space Station 14), русскоязычный сервер «Wega». C#/.NET на движке RobustToolbox, YAML-прототипы, локализация на Fluent (ftl). Основная рабочая ветка — `arena-mode-develop`. Документация и коммиты в репозитории — на русском; XML-доки в коде традиционно на английском.
 
-## Commands
+## Стек и конфигурация
+
+- **.NET SDK 10.0.100** (`global.json`, rollForward `latestFeature`), `LangVersion 14`, `Nullable enable` (`MSBuild/Content.props`).
+- Решение — `SpaceStation14.slnx` (XML-формат). Конфигурации: `Debug`, `DebugOpt`, `Release`, `Tools`. В `Release` включён `TreatWarningsAsErrors` (со списком исключений `WarningsNotAsErrors`).
+- Центральные версии пакетов — `Directory.Packages.props` (импортирует `RobustToolbox/Directory.Packages.props`): EF Core (Npgsql + Sqlite), NetCord, Veldrid, OpenTK, ImGui.NET, CsvHelper. Фиды NuGet — `nuget.config` (nuget.org + dotnet-eng).
+- `RUN_THIS.py` — инициализация сабмодулей и скачивание движка после клонирования.
+- `flake.nix` + `shell.nix` + `.envrc` (nix-direnv) — девшелл для Nix.
+- `run-*.sh` / `run-*.bat` в корне — обёртки над `dotnet build/run` для типовых сценариев (debug/release, client/server, tools).
+
+## Команды
 
 ```bash
-# Build (build output is localized Russian: "Ошибок: 0" = 0 errors)
+# Сборка (вывод локализован на русский: «Ошибок: 0» = 0 ошибок)
 dotnet build Content.Server/Content.Server.csproj -c Debug
 dotnet build Content.Client/Content.Client.csproj -c Debug
 
-# Run locally (server first, then client; client connects to localhost)
+# Локальный запуск (сначала сервер, потом клиент; клиент подключается к localhost)
 dotnet run --project Content.Server
 dotnet run --project Content.Client
 
-# Validate YAML prototypes (heavy: loads all content)
+# Валидация YAML-прототипов (тяжёлая: грузит весь контент)
 dotnet run --project Content.YAMLLinter
 
-# Tests
-dotnet test Content.Tests                               # unit
-dotnet test Content.IntegrationTests                    # integration (slow)
+# Тесты
+dotnet test Content.Tests                               # юнит
+dotnet test Content.IntegrationTests                    # интеграционные (медленно)
 dotnet test Content.Tests --filter "FullyQualifiedName~SomeTestName"
 ```
 
-- **RobustToolbox is a git submodule.** Engine changes must be committed *inside* `RobustToolbox/` and the submodule pointer bumped in the main repo, or they will be lost.
-- `DEPLOY.md` is gitignored on purpose (contains server infrastructure details) — never force-add it.
-- Deployment target is a VPS running from source; `server_config.toml` there is untracked and survives `git reset --hard`. CVar name `section.key` maps to TOML `[section]` + `key`; duplicate table headers are a TOML syntax error.
+- **RobustToolbox — git-сабмодуль.** Изменения движка коммиться *внутри* `RobustToolbox/` с последующим поднятием указателя сабмодуля в основном репо, иначе они потеряются. В `.gitmodules` стоит `ignore = dirty` — «грязное» состояние сабмодуля в `git status` скрыто намеренно.
+- Схема БД — EF Core миграции под оба провайдера в `Content.Server.Database/Migrations/{Postgres,Sqlite}`; добавление — через `Content.Server.Database/add-migration.sh`.
 
-## Architecture
+## Структура репозитория
 
-Standard SS14 three-assembly split:
+Классическое для SS14 разделение на три сборки:
 
-- **Content.Shared** — components, events, cvars shared by both sides. Networked events are `[Serializable, NetSerializable]` classes.
-- **Content.Server** — authoritative systems (`EntitySystem`), console commands (`[AdminCommand(AdminFlags.X)]` + `LocalizedEntityCommands`).
-- **Content.Client** — UI (XAML + code-behind, `[GenerateTypedNameReferences]`), client systems, overlays.
+- **Content.Shared** — компоненты, события, cvar'ы, общие для клиента и сервера. Сетевые события — `[Serializable, NetSerializable]` классы.
+- **Content.Server** — авторитетные системы (`EntitySystem`), консольные команды (`[AdminCommand(AdminFlags.X)]` + `LocalizedEntityCommands`).
+- **Content.Client** — UI (XAML + code-behind, `[GenerateTypedNameReferences]`), клиентские системы, оверлеи.
 
-**Fork discipline:** all fork-specific code/content lives in `_Wega` subdirectories: `Content.{Client,Server,Shared}/_Wega/`, `Resources/Prototypes/_Wega/`, `Resources/Textures/_Wega/`, `Resources/Locale/{ru-RU,en-US}/_wega/`. `Corvax/` and `*/Corvax/` dirs are upstream-Corvax content; the Corvax sponsors system is interface-only here (`Corvax/Content.Corvax.Interfaces.*`) — the implementation is a closed module and is absent, so sponsor-gated content is unreachable at runtime. Avoid editing upstream (non-`_Wega`) files unless the task demands it.
+Вспомогательные проекты: `Content.Server.Database` / `Content.Shared.Database` (EF Core, Postgres/SQLite), `Content.Tests`, `Content.IntegrationTests`, `Content.MapRenderer`, `Content.Packaging`, `Content.Replay`, `Content.Benchmarks`, `Content.YAMLLinter`, `Content.Tools`, `Content.PatreonParser`, `Content.Docfx`, `BuildChecker`, `Pow3r`, `Corvax/Content.Corvax.Interfaces.*`.
 
-### Client sandbox — builds pass, clients crash
+### Форк-дисциплина (`_Wega`)
 
-Client and Shared assemblies are IL-whitelist-checked at *startup* (`RobustToolbox/Robust.Shared/ContentPack/Sandbox.yml`). `dotnet build` will NOT catch violations; the client dies on launch with `Sandbox violation`. Known traps:
-- ImageSharp `Image.Load*` is forbidden client-side — decode PNGs via `IClyde.LoadTextureFromPNGStream`; only a few ImageSharp `Processing` methods are whitelisted.
-- Positional audio (`AudioSystem.PlayEntity`) asserts on stereo streams — server-side ffmpeg must produce **mono** (`-ac 1`) for entity-attached sounds.
+Весь код и контент форка живёт в подкаталогах `_Wega`: `Content.{Client,Server,Shared}/_Wega/`, `Resources/Prototypes/_Wega/`, `Resources/Textures/_Wega/`, `Resources/Locale/{ru-RU,en-US}/_wega/`, `Resources/Maps/_Wega/`. Каталоги `Corvax/` и `*/Corvax/` — апстрим-контент Corvax; система спонсоров здесь только интерфейсами (`Corvax/Content.Corvax.Interfaces.*`) — реализация закрыта и отсутствует, так что спонсорский контент в рантайме недостижим. Апстрим-файлы (вне `_Wega`) не трогай без необходимости.
 
-### Dependency injection (RA0049 / RA0051)
+Контент, портированный из других форков, лежит в префиксных каталогах `_Sunrise`, `_Starlight`, `_RMC14`, `_Lust` — лицензии и авторство исходных проектов сохраняются (см. `meta.json` и заголовки файлов), реестр — в `Resources/Prototypes/_Wega/EXTERNAL_CONTENT.md`.
 
-Types with `[Dependency]` fields must be `partial`, and `[Dependency]` fields must **not** be `readonly`.
+### Папка `dev/`
+
+Служебные файлы форка (не нужны игровой сборке): генераторы спрайтов/параллакса (`gen_adaptive_sprites.py`, `gen_rengoku_inhand.py`, `gen_urban_parallax.py` — запускать из корня репо, пишут в `Resources/Textures/`), запуск маппинга (`run_mapping.sh`, `MAPPING_README.txt`), сборка standalone-билда под Windows (`package_windows_standalone.sh` → `dist/`), референсы человеческой модельки, заметки по механикам (`TODO.md`, `RAID_MODE.md`, `DUEL_SUPPLY_DROP.md`). Часть генераторов спрайтов лежит и в `Tools/gen_*.py` — см. ниже.
+
+## Архитектура
+
+### Песочница клиента — сборка проходит, клиент падает
+
+Client и Shared сборки проверяются IL-вайтлистом при *старте* (`RobustToolbox/Robust.Shared/ContentPack/Sandbox.yml`). `dotnet build` нарушения НЕ ловит; клиент умирает на запуске с `Sandbox violation`. Известные грабли:
+
+- ImageSharp `Image.Load*` запрещён на клиенте — PNG декодировать через `IClyde.LoadTextureFromPNGStream`; вайтлистнуты лишь несколько методов ImageSharp `Processing`.
+- Позиционный звук (`AudioSystem.PlayEntity`) ассертит на стерео-потоках — серверный ffmpeg обязан выдавать **моно** (`-ac 1`) для звуков, привязанных к сущностям.
+
+### Внедрение зависимостей (RA0049 / RA0051)
+
+Типы с `[Dependency]`-полями должны быть `partial`, а `[Dependency]`-поля — **не** `readonly`.
 
 ```csharp
 public sealed partial class MySystem : EntitySystem
 {
-    [Dependency] private IGameTiming _timing = default!;   // no readonly
+    [Dependency] private IGameTiming _timing = default!;   // без readonly
 }
 ```
 
-Applies to `EntitySystem`s, `IConsoleCommand`s, `Overlay`s, and anything else using `[Dependency]`.
+Относится к `EntitySystem`, `IConsoleCommand`, `Overlay` и всему, где есть `[Dependency]`.
 
-### Prototypes, sprites, localization
+### Прототипы, спрайты, локализация
 
-- Entity names/descriptions come from `ent-<EntityId>` keys in ftl (with `.desc` attribute); do not put loc keys in the yml `name:` field for new entities. Tile prototypes *do* use loc keys in `name:`.
-- Every `_Wega` feature needs **both** `ru-RU` (primary) and `en-US` locale entries.
-- Sprites are RSI folders (`*.rsi/meta.json` + PNGs). Animation frames live in one sprite-sheet PNG per state, timing in `delays` (outer array = directions, inner = frames). IconSmooth walls = `full` + 8 states × 4 direction-quadrants — when adding walls, recolor an existing RSI's geometry rather than drawing states by hand. Floor tiles are 128×32 sheets = 4 variants (`variants: 4`).
-- Many `_Wega` sprites are generated by `Tools/gen_*.py` (Python + PIL): edit the generator and re-run it, don't hand-edit the PNGs. After any sprite work, show the user an upscaled preview montage.
-- A `.rsi` registers as one `RSIResource` — `xe:Tex`/`GetTexture` cannot load a bare PNG from inside an `.rsi`; standalone UI textures must live outside `.rsi` folders.
+- Имена/описания сущностей берутся из ключей `ent-<EntityId>` в ftl (с атрибутом `.desc`); для новых сущностей не пиши loc-ключи в поле `name:` yml-прототипа. Прототипы тайлов, наоборот, *используют* loc-ключи в `name:`.
+- Каждой фиче `_Wega` нужны **обе** локали: `ru-RU` (основная) и `en-US`.
+- Спрайты — RSI-папки (`*.rsi/meta.json` + PNG). Кадры анимации живут в одном спрайт-листе на стейт, тайминги — в `delays` (внешний массив = направления, внутренний = кадры). IconSmooth-стены = `full` + 8 стейтов × 4 направления-квадранта — добавляя стены, перекрашивай геометрию существующего RSI, а не рисуй стейты вручную. Напольные тайлы — листы 128×32 = 4 варианта (`variants: 4`).
+- Многие спрайты `_Wega` генерируются скриптами `Tools/gen_*.py` и `dev/gen_*.py` (Python + PIL): правь генератор и перезапускай его, PNG руками не редактируй. После любой работы со спрайтами покажи пользователю увеличенный превью-монтаж.
+- `.rsi` регистрируется как один `RSIResource` — `xe:Tex`/`GetTexture` не загрузит голый PNG изнутри `.rsi`; отдельные UI-текстуры должны лежать вне `.rsi`-папок.
 
-### Fork subsystems (pointers)
+## Подсистемы форка
 
-- **Arena/duel mode** — `Content.Server/_Wega/Duel/`; overview in `ARENA_MODE.md`. Score/streaks in `DuelArenaScoreSystem`, cleanup/restore/rotation are separate systems. Cyberpunk arena tiles/walls generated by `Tools/gen_arena_cyberpunk_pack2.py`.
-- **LLM-NPC (Ева)** — `Content.Server/_Wega/LlmNpc/`; полный README с архитектурой, cvar'ами, граблями и деплоем: `Content.Server/_Wega/LlmNpc/README.md`. NPC на OpenAI-совместимом API: слух/зрение, tool-calling (коктейли из реальных запасов бара, ходьба, вручение), файловая память с консолидацией. Ключ API — только в untracked server_config.toml.
-- **Media player + TV** — `Content.{Client,Server,Shared}/_Wega/MediaPlayer/`, `Content.Shared/_Wega/TvScreen/`. Server downloads via yt-dlp + ffmpeg (auto-provisioned into user data dir), broadcasts ogg/PNG-frame chunks as network events; admin-gated (`AdminFlags.Fun`). TV video = PNG frames on a dynamic sprite layer, mono positional audio per screen entity.
+- **Арена / дуэли** — `Content.Server/_Wega/Duel/`; обзор в `ARENA_MODE.md`. Счёт/серии — `DuelArenaScoreSystem`; уборка (`DuelArenaCleanupSystem`), восстановление (`DuelArenaRestoreSystem`), ротация (`DuelRotationSystem`), готовность (`DuelReadySystem`), арсенал-пульт (`ArenaArsenalRemoteSystem`), шторм (`ArenaStormSystem`) — отдельные системы. Киберпанк-тайлы/стены арены генерируются `Tools/gen_arena_cyberpunk_pack2.py`.
+- **Рейд (экстракшн, PvEvE)** — `Content.{Server,Shared}/_Wega/Raid/`; документация: `dev/RAID_MODE.md` и раздел в `README.md`. Тарковский кор-луп: личная база (`hideout.yml`, отдельный `MapId` на каждый `NetUserId`) → закупка в магазине за ТК → вход в рейд → лут с меткой `RaidLoot` → экстракт по таймеру; смерть/MIA = потеря найденного. Стэш, валюта и статистика персистентны в БД сервера (`RaidStashSystem`). С ареной-модом не пересекается: разные карты и контроллеры. Быстрый тест: `dotnet test Content.IntegrationTests --filter "FullyQualifiedName~_Wega.Raid.RaidControllerTest"`.
+- **LLM-NPC «Ева»** — `Content.Server/_Wega/LlmNpc/`; полный README с архитектурой, cvar'ами, граблями и деплоем: `Content.Server/_Wega/LlmNpc/README.md`. NPC на OpenAI-совместимом API: слух/зрение, tool-calling (коктейли из реальных запасов бара, ходьба, вручение), файловая память с консолидацией. Ключ API — только в untracked `server_config.toml` (cvar `llm_npc_api_key` — SERVERONLY+CONFIDENTIAL).
+- **Медиаплеер + ТВ** — `Content.{Client,Server,Shared}/_Wega/MediaPlayer/`, `Content.Shared/_Wega/TvScreen/`. Сервер качает через yt-dlp + ffmpeg (автоустановка в user data dir), рассылает ogg/PNG-кадры сетевыми событиями; доступ админский (`AdminFlags.Fun`). ТВ-видео = PNG-кадры на динамическом спрайт-слое, моно-позиционный звук на каждый экран.
 
-## External / ported content registry
+## Тестирование
 
-Whenever you port content from another SS14 repository into `_Wega`, record it in `Resources/Prototypes/_Wega/EXTERNAL_CONTENT.md`. Include at minimum:
+- `Content.Tests` — юнит-тесты; `Content.IntegrationTests` — интеграционные (пул сервер+клиент, медленные).
+- Тесты форка лежат в `Content.IntegrationTests/Tests/_Wega/`: арена (`Arena101x101Test`, `ArenaMapsLoadTest`, `ArenaPunisherTest`), дуэли (`Duel/`), рейд (`Raid/RaidControllerTest`), медиаплеер, оружие (`Weapons/Rengoku/`).
+- Фильтрация: `dotnet test Content.IntegrationTests --filter "FullyQualifiedName~_Wega.Raid.RaidControllerTest"`.
+- Перед коммитом минимум: сборка Server+Client и `Content.YAMLLinter`, если трогал прототипы.
 
-- source repository and license of the textures/assets;
-- the ported prototype IDs;
-- file paths for the `.yml` prototypes and their `.rsi` textures;
-- `ru-RU` localization entries (if the item has a name/description shown to players).
+## CI
 
-For detailed recommendations on safe repositories, licensing pitfalls, and the porting workflow, also keep `Resources/Prototypes/_Wega/ARENA_CONTENT.md` up to date.
+В `.github/workflows/` лежат воркфлоу, унаследованные от апстрима: `build-test-debug.yml` (сборка и тесты на ubuntu-latest с поднятием сабмодулей), `yaml-linter.yml`, `validate-rsis.yml`, `validate_mapfiles.yml`, `check-crlf.yml`, `test-packaging.yml`, `benchmarks.yml` и др. Их триггеры настроены на ветки `master`/`staging`/`stable`, так что на рабочей ветке `arena-mode-develop` они не запускаются — локальная проверка сборкой и тестами обязательна.
 
-## Arsenal pools
+## Деплой
 
-When you touch an arsenal pool, keep these in sync:
+- `DEPLOY.md` намеренно в `.gitignore` (русскоязычный runbook с инфраструктурными деталями приватного сервера) — никогда не форс-аддь его.
+- Деплой — VPS, запуск из исходников под systemd; `server_config.toml` там untracked и переживает `git reset --hard`. Имя cvar'а `section.key` маппится в TOML `[section]` + `key`; дублирующиеся заголовки таблиц — синтаксическая ошибка TOML.
+- Standalone-сборка клиента под Windows: `./dev/package_windows_standalone.sh`, результат в `dist/`.
 
-- **Full Arsenal** — `full_arsenal_pool.yml` ↔ `FULL_ARSENAL_PRICES.md` (name, entity id, TC cost per category).
-- **Melee Arsenal** — `melee_arsenal_pool.yml` ↔ `MELEE_ARSENAL_PRICES.md`. Any melee/shield/armor item added to Full Arsenal must also go in the Melee pool and both price lists.
-- **ru-RU** — every Full Arsenal item needs a Russian name and description: the listing keys (`full-arsenal-*-name` / `-desc`) and the entity (`ent-<EntityId>`). Ported weapons keep their model designation (e.g. `АС-12 «Минотавр»`) but still get a `ru-RU` entry so nothing falls back to English.
+## Реестр внешнего контента
 
-## RepoWise first
+Портируя контент из другого SS14-репозитория в `_Wega`, запиши его в `Resources/Prototypes/_Wega/EXTERNAL_CONTENT.md`. Минимум:
 
-RepoWise (the MCP server documented in `.claude/CLAUDE.md`) is the **primary source of truth** about this project. Use it before reading source.
+- репозиторий-источник и лицензия текстур/ассетов;
+- портированные ID прототипов;
+- пути к `.yml`-прототипам и `.rsi`-текстурам;
+- ru-RU локализация (если у предмета есть имя/описание для игроков).
 
-- Prefer RepoWise's served bytes (`get_context` skeletons, `get_symbol` bodies) over a raw `Read`, and avoid mass file reads / repo-wide `grep`/`find` when RepoWise already has the answer.
-- RepoWise has priority **but may be stale** — its index is pinned to a commit, so uncommitted or newer changes may not be reflected. When RepoWise contradicts the working tree, **trust the working tree.** Re-verify against it on any `stale_warning`, `bounds: approximate`, `confidence: low`, or when the file is uncommitted.
+Рекомендации по безопасным репозиториям, лицензионным граблям и процессу переноса — в `Resources/Prototypes/_Wega/ARENA_CONTENT.md`; его тоже держи актуальным.
 
-## Analysis workflow
+## Арсенальные пулы
 
-Before analysis:
+Трогая арсенальный пул, держи в синхроне:
 
-1. Use RepoWise to get the architecture and dependencies (`get_overview`, `get_answer`, `get_context`, `get_risk`, `get_why`).
-2. From what it returns, determine the **minimal set of files** needed for the task.
-3. Justify why each file in that set is needed. **If more than 5 files are required, explain why before reading them.**
+- **Full Arsenal** — `Resources/Prototypes/_Wega/Catalog/full_arsenal_pool.yml` ↔ `FULL_ARSENAL_PRICES.md` (название, entity id, цена в TC по категориям).
+- **Melee Arsenal** — `Resources/Prototypes/_Wega/Catalog/melee_arsenal_pool.yml` ↔ `MELEE_ARSENAL_PRICES.md`. Любой melee/щит/броня, добавленный в Full Arsenal, обязан попасть и в Melee-пул, и в оба прайс-листа.
+- **ru-RU** — каждому предмету Full Arsenal нужны русские имя и описание: ключи листинга (`full-arsenal-*-name` / `-desc`) и сущность (`ent-<EntityId>`). Портированное оружие сохраняет модель (напр. `АС-12 «Минотавр»`), но ru-RU запись всё равно нужна, чтобы ничего не отваливалось в английский.
 
-During analysis:
+## Стиль кода
 
-4. After each file, re-evaluate whether the next one is still needed.
-5. Stop as soon as the hypothesis is confirmed — do not keep reading.
-6. Never read files "just in case" / "for confidence".
-7. Every **High-severity** conclusion must be independently re-verified against the working tree (not just RepoWise).
+- `.editorconfig`: UTF-8, 4 пробела, финальный перевод строки, трим trailing whitespace, `max_line_length = 120`.
+- Воркфлоу `check-crlf.yml` следит за окончаниями строк; `validate-rsis.yml` — за корректностью RSI.
+- Комментарии: в новом коде форка инлайн-комментарии обычно на русском, XML-доки (`/// <summary>`) — на английском; придерживайся стиля окружающего файла.
+- Локаль коммитов/документов — русская; идентификаторы, прототип-ID и технические термины не переводи.
 
-## Parallel agents
+## RepoWise — первичный источник истины
 
-Do not spawn multiple agents automatically. Use parallel agents only when **all** of these hold:
+RepoWise (MCP-сервер `repowise-wega`, настроен в `.mcp.json`, индекс в `.repowise/`) — **основной источник истины** по этому проекту. Используй его до чтения исходников.
 
-- the subsystems are genuinely independent;
-- parallelism actually reduces wall-clock time;
-- the analysis volume is genuinely large.
+- Предпочитай байты, отданные RepoWise (`get_context` скелеты, `get_symbol` тела), сырому `Read`, и избегай массовых чтений файлов / grep по всему репо, если RepoWise уже знает ответ.
+- RepoWise в приоритете, **но может быть протухшим** — индекс прибит к коммиту, поэтому некоммиченные или более новые изменения могут не отражаться. Когда RepoWise противоречит рабочему дереву — **верь рабочему дереву.** Перепроверяй по нему при любом `stale_warning`, `bounds: approximate`, `confidence: low` или если файл не закоммичен.
 
-Otherwise work with a single agent. Optimise for solving the stated task with the **minimum** actions — do not chase maximal coverage for its own sake.
+## Порядок анализа
+
+До анализа:
+
+1. Получи от RepoWise архитектуру и зависимости (`get_overview`, `get_answer`, `get_context`, `get_risk`, `get_why`).
+2. По результатам определи **минимальный набор файлов** для задачи.
+3. Обоснуй, зачем нужен каждый файл из набора. **Если файлов больше 5 — объясни почему, прежде чем читать.**
+
+Во время анализа:
+
+4. После каждого файла пересматривай, нужен ли ещё следующий.
+5. Останавливайся сразу, как гипотеза подтвердилась, — не дочитывай.
+6. Никогда не читай файлы «на всякий случай» / «для уверенности».
+7. Каждый вывод **High-severity** независимо перепроверь по рабочему дереву (не только по RepoWise).
+
+## Параллельные агенты
+
+Не плоди агентов автоматически. Параллельные агенты — только когда выполняется всё сразу:
+
+- подсистемы действительно независимы;
+- параллельность реально сокращает wall-clock время;
+- объём анализа действительно велик.
+
+Иначе работай одним агентом. Оптимизируй под решение поставленной задачи с **минимумом** действий — не гонись за максимальным покрытием ради самого покрытия.
