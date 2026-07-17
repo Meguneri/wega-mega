@@ -1,0 +1,29 @@
+# Феликс — статистик арены БЕЗ нейросети (ArenaStatClerkSystem): кликни по нему рукой — он
+# стучит по анализатору (звук печати) и вручает распечатку твоей последней дуэли с графиками
+# (данные из ArenaFightLogSystem, те же, что у LLM-тренера Макса). Не разговаривает, кроме
+# пары дежурных фраз. Ноль запросов к API — ставить там, где трафик жалко или LLM выключен.
+- type: entity
+  parent: MobHuman
+  id: MobArenaStatClerk
+  suffix: Arena Stat Clerk
+  components:
+  - type: ArenaStatClerk
+  - type: NpcFactionMember
+    factions:
+    - NanoTrasen
+  - type: Loadout
+    prototypes:
+    - ArenaStatClerkGear
+
+# Конторский вид: чёрный костюм юриста, котелок, очки, белые перчатки, начищенные ботинки;
+# анализатор всегда в руке — его рабочий инструмент.
+- type: startingGear
+  id: ArenaStatClerkGear
+  equipment:
+    jumpsuit: ClothingUniformJumpsuitLawyerBlack
+    head: ClothingHeadHatBowlerHat
+    eyes: ClothingEyesGlasses
+    gloves: ClothingHandsGlovesColorWhite
+    shoes: ClothingShoesBootsLaceup
+  inhand:
+    - HandheldFightComputer

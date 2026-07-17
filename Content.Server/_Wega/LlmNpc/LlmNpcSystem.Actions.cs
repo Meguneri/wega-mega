@@ -238,7 +238,9 @@ public sealed partial class LlmNpcSystem
                           "По умолчанию — ТОЛЬКО последняя дуэль; scope=all (вся сессия) — лишь " +
                           "если прямо попросили полный разбор/динамику. Ответ строй СТРОГО по этим " +
                           "цифрам, называя их вслух; ничего не выдумывай. Если помечено «данных " +
-                          "мало» или дуэлей нет — так и скажи, не сочиняй советы.",
+                          "мало» или дуэлей нет — так и скажи, не сочиняй советы. " +
+                          "Анализатор заодно ПЕЧАТАЕТ подробную распечатку, и ты сама вручаешь её " +
+                          "запросившему — укажи его имя в recipient (кто спросил, из диалога).",
             parameters = new
             {
                 type = "object",
@@ -249,6 +251,12 @@ public sealed partial class LlmNpcSystem
                     {
                         type = "string",
                         description = "last (по умолчанию) — последний бой; all — все бои за сессию",
+                    },
+                    recipient = new
+                    {
+                        type = "string",
+                        description = "имя того, кто запросил данные — ему вручается распечатка " +
+                                      "(по умолчанию сам боец)",
                     },
                 },
                 required = new[] { "person" },
@@ -436,12 +444,30 @@ public sealed partial class LlmNpcSystem
                 InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
 
             // Сначала точное совпадение среди тех, кто рядом, затем поиск по всей летописи.
-            var report = FindPerson(uid, person!) is { } target
+            var subject = FindPerson(uid, person!);
+            var report = subject is { } target
                 ? _fightLog.GetReport(target, lastOnly) ?? _fightLog.GetReportByName(person!, lastOnly)
                 : _fightLog.GetReportByName(person!, lastOnly);
-            return report != null
-                ? $"[данные с твоего анализатора]\n{report}"
-                : $"Анализатор ничего не нашёл: боёв {person} в эту смену не видно — либо не дрался, либо дрался не здесь.";
+
+            if (report == null)
+                return $"Анализатор ничего не нашёл: боёв {person} в эту смену не видно — либо не дрался, либо дрался не здесь.";
+
+            // Печать: красивая распечатка (графики, цвета) вручается запросившему
+            // (только у NPC с гаджетом-анализатором).
+            var printed = "";
+            var paperText = subject is { } s
+                ? _fightLog.GetPaperReport(s, lastOnly) ?? _fightLog.GetPaperReportByName(person!, lastOnly)
+                : _fightLog.GetPaperReportByName(person!, lastOnly);
+            if (npcSelf is { GadgetProto: not null } && paperText != null)
+            {
+                var recipient = LlmBackend.Arg(argsJson, "recipient");
+                PrintFightReport(uid, npcSelf, paperText, person!,
+                    string.IsNullOrWhiteSpace(recipient) ? person : recipient);
+                printed = "\nАнализатор напечатал подробную распечатку с графиками — ты уже несёшь её " +
+                          "запросившему, give_item НЕ нужен; в say упомяни, что подробности в распечатке.";
+            }
+
+            return $"[данные с твоего анализатора]\n{report}{printed}";
         }));
 
         tools.Add(BodyTool("set_mood", SetMoodDecl, argsJson =>

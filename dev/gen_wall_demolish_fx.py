@@ -102,9 +102,15 @@ def ring(img, cx, cy, radius, color, alpha, thickness=1.4):
 
 
 def gen_hit_frames():
-    """Удар: яркая вспышка, ударная волна кольцом, сноп искр и обломков."""
+    """Удар: яркая вспышка, ударная волна кольцом, сноп искр и обломков.
+
+    Две фазы: панч (8 кадров x 0.06с) + оседание пыли и обломков
+    (10 кадров x 0.102с). Итого ровно 1.5с — пауза между ударами бота
+    (ArrestBotComponent.BreachCooldown), чтобы эффект жил весь цикл удара.
+    """
     rng = random.Random(1337)
     frames_n = 8
+    settle_n = 10
     cx, cy = SIZE / 2, SIZE / 2
 
     debris = [
@@ -161,7 +167,35 @@ def gen_hit_frames():
             soft_circle(img, cx, cy, 2.0, (255, 170, 60), 170)
 
         frames.append(img)
-    return frames, [0.06] * frames_n
+
+    # Фаза оседания: осевшие обломки тают, лёгкая дымка, пара тлеющих угольков.
+    settled = [(p.x, p.y, p.color, p.size) for p in debris if p.y > SIZE - 7]
+    embers = [(p.x, p.y) for p in rng.sample(sparks, 3)]
+    for s in range(settle_n):
+        img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+        fade = 1.0 - s / settle_n
+
+        # Дымка на месте удара, тает.
+        haze = int(45 * fade)
+        if haze > 0:
+            soft_circle(img, cx, cy - 1 - s * 0.4, 6.0 + s * 0.5, DUST_COLOR, haze)
+
+        for x, y, color, size in settled:
+            alpha = int(190 * fade)
+            for dy in range(size):
+                for dx in range(size):
+                    blend_px(img, x + dx, y + dy, color, alpha)
+
+        # Угольки перемигиваются и гаснут к концу.
+        for i, (ex, ey) in enumerate(embers):
+            if s > settle_n - 3:
+                continue
+            blink = 1.0 if (s + i) % 2 == 0 else 0.45
+            blend_px(img, ex, ey, (255, 150, 40), int(200 * fade * blink))
+
+        frames.append(img)
+
+    return frames, [0.06] * frames_n + [0.102] * settle_n
 
 
 def gen_collapse_frames():

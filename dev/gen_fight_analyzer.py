@@ -135,6 +135,35 @@ def recolor_inhand(src_img):
     return out
 
 
+INHAND_SCALE = 0.66  # компьютер в руке меньше, чем «во весь хват» у крю-монитора
+
+
+def shrink_cell(cell, factor=INHAND_SCALE):
+    """Уменьшает содержимое кадра 32x32 вокруг центра его непрозрачной области (позиция у руки сохраняется)."""
+    bbox = cell.getbbox()
+    if bbox is None:
+        return cell
+    x0, y0, x1, y1 = bbox
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    content = cell.crop(bbox)
+    nw = max(1, round(content.width * factor))
+    nh = max(1, round(content.height * factor))
+    content = content.resize((nw, nh), Image.NEAREST)
+    out = Image.new("RGBA", cell.size, (0, 0, 0, 0))
+    out.paste(content, (round(cx - nw / 2), round(cy - nh / 2)), content)
+    return out
+
+
+def shrink_inhand(sheet):
+    """Применяет shrink_cell к каждому из 4 кадров-направлений листа 64x64 (2x2)."""
+    out = Image.new("RGBA", sheet.size, (0, 0, 0, 0))
+    for row in range(2):
+        for col in range(2):
+            box = (col * 32, row * 32, col * 32 + 32, row * 32 + 32)
+            out.paste(shrink_cell(sheet.crop(box)), box[:2])
+    return out
+
+
 def main():
     os.makedirs(DST, exist_ok=True)
 
@@ -150,7 +179,7 @@ def main():
     # inhand — перекраска из крю-монитора
     for side in ("left", "right"):
         src = Image.open(os.path.join(SRC, f"scanner-inhand-{side}.png"))
-        recolor_inhand(src).save(os.path.join(DST, f"analyzer-inhand-{side}.png"))
+        shrink_inhand(recolor_inhand(src)).save(os.path.join(DST, f"analyzer-inhand-{side}.png"))
 
     meta = {
         "version": 1,

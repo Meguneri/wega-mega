@@ -296,10 +296,13 @@ public sealed partial class LlmNpcSystem : EntitySystem
     /// В такой разговор NPC не влезает: слышит и запоминает, но ответ не взводит. Упоминание её
     /// собственного имени в любой позиции — наоборот, прямое приглашение в разговор.
     /// </summary>
+    /// <summary>Первое слово имени сущности («Ева» из «Ева Мартель») — так к ней обращаются гости.</summary>
+    private string FirstName(EntityUid uid)
+        => MetaData(uid).EntityName.Split(' ', 2)[0];
+
     private bool AddressedToAnother(EntityUid uid, EntityUid source, string message)
     {
-        var myName = MetaData(uid).EntityName;
-        if (message.Contains(myName, StringComparison.OrdinalIgnoreCase))
+        if (message.Contains(FirstName(uid), StringComparison.OrdinalIgnoreCase))
             return false;
 
         var head = message.TrimStart().TrimStart('*');
@@ -375,9 +378,10 @@ public sealed partial class LlmNpcSystem : EntitySystem
 
             // Мьют (be_quiet): слышит и запоминает, но не отвечает. Прямое обращение по имени
             // («Ева, ...») снимает мьют — иначе её было бы не «разбудить» до конца таймера.
+            // Сверяем по ПЕРВОМУ слову имени: полное «Ева Мартель» гости не выговаривают.
             if (npc.MuteUntil is { } mute && _timing.RealTime < mute)
             {
-                if (!message.Contains(MetaData(uid).EntityName, StringComparison.OrdinalIgnoreCase))
+                if (!message.Contains(FirstName(uid), StringComparison.OrdinalIgnoreCase))
                     continue;
                 npc.MuteUntil = null;
             }
@@ -391,7 +395,7 @@ public sealed partial class LlmNpcSystem : EntitySystem
                 _sawmill.Debug($"{ToPrettyString(uid)} слышит «{line}» — адресовано другому, не встревает");
                 continue;
             }
-            if (emote && !message.Contains(MetaData(uid).EntityName, StringComparison.OrdinalIgnoreCase)
+            if (emote && !message.Contains(FirstName(uid), StringComparison.OrdinalIgnoreCase)
                 && _random.NextFloat() < 0.65f)
                 continue;
 
@@ -838,8 +842,11 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "\"say\" — реплика в характере на языке собеседника, ТОЛЬКО произносимые слова: никаких " +
             "ремарок в скобках, действий и описаний — им место в emote (или пустая строка, если уместно промолчать); " +
             "\"emote\" — физическое действие без звёздочек, ТОЛЬКО если оно реально добавляет сцене что-то " +
-            "(в БОЛЬШИНСТВЕ ответов оставляй ПУСТЫМ). Не повторяй одни и те же жесты — протирание стакана " +
-            "и поправление причёски уже всем надоели; " +
+            "(в БОЛЬШИНСТВЕ ответов оставляй ПУСТЫМ). ФОРМАТ: игра выводит его как «Твоё Имя + текст», " +
+            "поэтому начинай С ГЛАГОЛА в 3-м лице ед. числа («улыбается краем губ», «ставит стакан на " +
+            "стойку») — БЕЗ своего имени, без «я», без описаний других людей и предметов как подлежащего " +
+            "(«шейкер сверкает» — НЕЛЬЗЯ, «встряхивает шейкер» — можно). Не повторяй одни и те же жесты — " +
+            "протирание стакана и поправление причёски уже всем надоели; " +
             "\"remember\" — ТОЛЬКО ОДИН новый ДОЛГОВРЕМЕННЫЙ факт, которого ещё НЕТ в памяти выше: имя, " +
             "профессия, вкус, важное событие из жизни собеседника, обещание, услуга или обида. Критерий: " +
             "пригодится ли это через неделю? НЕ записывай сиюминутное (кто подошёл или ушёл, разовый заказ, " +

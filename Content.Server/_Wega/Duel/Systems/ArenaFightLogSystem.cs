@@ -311,11 +311,12 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     /// Текстовый отчёт о боях игрока (для промпта LLM). lastOnly — только последний бой
     /// (режим по умолчанию у тренера); false — все бои сессии. null = боёв не видели.
     /// </summary>
-    public string? GetReport(EntityUid player, bool lastOnly = true)
+    /// <summary>
+    /// Собирает значимые эпизоды игрока (общая логика GetReport/GetPaperReport): закрывает
+    /// протухший текущий, отсекает мусор (IsMeaningful), при lastOnly оставляет последний.
+    /// </summary>
+    private List<FightEpisode> CollectEpisodes(PlayerLog log, bool lastOnly)
     {
-        if (!_logs.TryGetValue(player, out var log))
-            return null;
-
         // Залежавшийся текущий эпизод закрываем, чтобы он попал в отчёт.
         if (log.Current is { } current && _timing.RealTime - current.LastEvent > EpisodeGap)
             CloseEpisode(log, "бой затих — разошлись");
@@ -326,11 +327,20 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
         if (log.Current is { } active)
             episodes.Add(active);
         episodes = episodes.Where(e => e.IsMeaningful).ToList();
-        if (episodes.Count == 0)
+
+        if (lastOnly && episodes.Count > 1)
+            episodes.RemoveRange(0, episodes.Count - 1);
+        return episodes;
+    }
+
+    public string? GetReport(EntityUid player, bool lastOnly = true)
+    {
+        if (!_logs.TryGetValue(player, out var log))
             return null;
 
-        if (lastOnly)
-            episodes.RemoveRange(0, episodes.Count - 1);
+        var episodes = CollectEpisodes(log, lastOnly);
+        if (episodes.Count == 0)
+            return null;
 
         var now = _timing.RealTime;
         var sb = new System.Text.StringBuilder();
@@ -372,6 +382,13 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
 
     /// <summary>Отчёт по имени (игрок может быть уже не рядом): точное имя, затем вхождение.</summary>
     public string? GetReportByName(string name, bool lastOnly = true)
+        => FindByName(name) is { } p ? GetReport(p, lastOnly) : null;
+
+    /// <summary>Красивая бумажная версия отчёта по имени (для распечатки анализатора).</summary>
+    public string? GetPaperReportByName(string name, bool lastOnly = true)
+        => FindByName(name) is { } p ? GetPaperReport(p, lastOnly) : null;
+
+    private EntityUid? FindByName(string name)
     {
         var needle = name.Trim().ToLowerInvariant();
         if (needle.Length == 0)
@@ -382,12 +399,142 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
         {
             var logName = log.Name.ToLowerInvariant();
             if (logName == needle)
-                return GetReport(uid, lastOnly);
+                return uid;
             if (partial == null && (logName.Contains(needle) || needle.Contains(logName)))
                 partial = uid;
         }
-        return partial is { } p ? GetReport(p, lastOnly) : null;
+        return partial;
     }
+
+    /// <summary>
+    /// «Красивая» версия отчёта для бумажной распечатки: заголовки, цвета, псевдографические
+    /// бар-чарты урона и точности (моноширинный блок). Игроку в руки — читабельно и наглядно.
+    /// </summary>
+    public string? GetPaperReport(EntityUid player, bool lastOnly = true)
+    {
+        if (!_logs.TryGetValue(player, out var log))
+            return null;
+
+        var episodes = CollectEpisodes(log, lastOnly);
+        if (episodes.Count == 0)
+            return null;
+
+        var now = _timing.RealTime;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[head=2]АНАЛИЗ БОЯ[/head]");
+        sb.AppendLine($"[bold]Боец:[/bold] {log.Name}");
+        sb.AppendLine("[color=gray]────────────────────────────[/color]");
+
+        var index = 0;
+        foreach (var ep in episodes)
+        {
+            index++;
+            var ago = (int)(now - ep.LastEvent).TotalMinutes;
+            var duration = Math.Max((int)(ep.LastEvent - ep.Start).TotalSeconds, 1);
+            var kind = ep.IsDuel ? "дуэль на арене" : "стычка";
+
+            if (episodes.Count > 1)
+                sb.AppendLine($"[head=3]Бой {index}[/head]");
+            sb.AppendLine($"[bullet][bold]Формат:[/bold] {kind}, {(ago < 1 ? "только что" : $"{ago} мин назад")}, ~{duration} c");
+            if (ep.Opponents.Count > 0)
+                sb.AppendLine($"[bullet][bold]Противник:[/bold] {string.Join(", ", ep.Opponents.Take(3))}");
+
+            // Исход — цветом: победа зелёная, поражение красное.
+            var outcome = ep.Outcome ?? "бой ещё идёт";
+            var outcomeColor = outcome.Contains("ПОБЕДА") ? "#3fbf5a"
+                : outcome.Contains("ПОРАЖЕНИЕ") ? "#d94040" : "#c9a227";
+            sb.AppendLine($"[bullet][bold]Исход:[/bold] [color={outcomeColor}]{outcome}[/color]");
+            sb.AppendLine();
+
+            // График урона: два бара в общем масштабе.
+            var dealt = ep.DamageDealt.Values.Sum();
+            var taken = ep.DamageTaken.Values.Sum();
+            var damageMax = Math.Max(dealt, taken);
+            sb.AppendLine("[bold]УРОН[/bold]");
+            sb.AppendLine("[mono]");
+            sb.AppendLine($"нанёс   {Bar(dealt, damageMax)} {dealt,4:0}");
+            sb.AppendLine($"получил {Bar(taken, damageMax)} {taken,4:0}");
+            sb.AppendLine("[/mono]");
+            if (ep.DamageDealt.Count > 0)
+                sb.AppendLine($"[color=#3fbf5a]отдал:[/color] {TopDamage(ep.DamageDealt)}");
+            if (ep.DamageTaken.Count > 0)
+                sb.AppendLine($"[color=#d94040]принял:[/color] {TopDamage(ep.DamageTaken)}");
+            sb.AppendLine();
+
+            // Точность: бар на каждое оружие + стрельба.
+            if (ep.Swings.Count > 0 || ep.ShotsFired > 0)
+            {
+                sb.AppendLine("[bold]ТОЧНОСТЬ[/bold]");
+                sb.AppendLine("[mono]");
+                foreach (var (weapon, swings) in ep.Swings)
+                {
+                    var hits = ep.Hits.GetValueOrDefault(weapon);
+                    sb.AppendLine($"{Fit(weapon, 10)} {Bar(hits, swings)} {hits}/{swings} ({Percent(hits, swings)})");
+                }
+                if (ep.ShotsFired > 0)
+                    sb.AppendLine($"{Fit("стрельба", 10)} {Bar(ep.ShotsHit, ep.ShotsFired)} {ep.ShotsHit}/{ep.ShotsFired} ({Percent(ep.ShotsHit, ep.ShotsFired)})");
+                sb.AppendLine("[/mono]");
+            }
+
+            sb.AppendLine("[color=gray]────────────────────────────[/color]");
+        }
+
+        sb.AppendLine("[italic]Сформировано портативным боевым анализатором.[/italic]");
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Сухая голосовая выжимка последней дуэли — одна фраза с ключевыми цифрами
+    /// («Нанёс 85, получил 120, точность мили 35%. Поражение.»). Для статистика без LLM.
+    /// </summary>
+    public string? GetVoiceSummary(EntityUid player)
+    {
+        if (!_logs.TryGetValue(player, out var log))
+            return null;
+
+        var episodes = CollectEpisodes(log, lastOnly: true);
+        if (episodes.Count == 0)
+            return null;
+        var ep = episodes[^1];
+
+        var parts = new List<string>
+        {
+            $"нанёс {ep.DamageDealt.Values.Sum():0}, получил {ep.DamageTaken.Values.Sum():0}",
+        };
+
+        var swings = ep.Swings.Values.Sum();
+        var hits = ep.Hits.Values.Sum();
+        if (swings >= 3)
+            parts.Add($"точность мили {Percent(hits, swings)}");
+        if (ep.ShotsFired >= 3)
+            parts.Add($"стрельба {Percent(ep.ShotsHit, ep.ShotsFired)}");
+
+        var outcome = ep.Outcome ?? "";
+        var verdict = outcome.Contains("ПОБЕДА") ? "Победа."
+            : outcome.Contains("ПОРАЖЕНИЕ") ? "Поражение."
+            : "Без исхода.";
+
+        var duration = Math.Max((int)(ep.LastEvent - ep.Start).TotalSeconds, 1);
+        return $"Бой {duration} секунд: {string.Join(", ", parts)}. {verdict}";
+    }
+
+    /// <summary>Псевдографический бар: █ — заполнено, ░ — пусто.</summary>
+    private static string Bar(double value, double max, int width = 12)
+    {
+        if (max <= 0)
+            return new string('░', width);
+        var filled = (int)Math.Round(width * Math.Clamp(value / max, 0, 1));
+        return new string('█', filled) + new string('░', width - filled);
+    }
+
+    /// <summary>Топ-3 типа урона: «Slash 60, Blunt 25».</summary>
+    private static string TopDamage(Dictionary<string, double> damage)
+        => string.Join(", ", damage.OrderByDescending(kv => kv.Value).Take(3)
+            .Select(kv => $"{kv.Key} {kv.Value:0}"));
+
+    /// <summary>Подгоняет имя под ширину моноколонки (обрезка с многоточием / паддинг).</summary>
+    private static string Fit(string name, int width)
+        => name.Length > width ? name[..(width - 1)] + "…" : name.PadRight(width);
 
     private static string FormatDamage(Dictionary<string, double> damage)
     {

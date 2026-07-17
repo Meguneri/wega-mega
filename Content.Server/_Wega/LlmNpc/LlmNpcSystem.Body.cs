@@ -27,6 +27,8 @@ public sealed partial class LlmNpcSystem
     [Dependency] private Robust.Server.Audio.AudioSystem _audio = default!;
     [Dependency] private Content.Shared.Inventory.InventorySystem _inventory = default!;
     [Dependency] private Content.Shared.Storage.EntitySystems.SharedStorageSystem _storage = default!;
+    [Dependency] private Content.Shared.Paper.PaperSystem _paper = default!;
+    [Dependency] private MetaDataSystem _metaData = default!;
 
     /// <summary>Радиус, в котором NPC ищет человека/предмет по имени (шире слуха: «отнеси за стол»).</summary>
     private const float FindRange = 12f;
@@ -606,6 +608,32 @@ public sealed partial class LlmNpcSystem
         npc.HeldGadget = gadget;
         npc.StowGadgetAt = null; // таймер уборки взводится после ответа (ApplyReply)
         return MetaData(gadget).EntityName;
+    }
+
+    /// <summary>
+    /// «Печать» с анализатора: спавнит бумагу-распечатку с полным отчётом и вручает её
+    /// запросившему (GiveItem-поручение). Не нашли адресата/заняты руки — распечатка остаётся
+    /// у NPC/падает рядом, забрать можно самому.
+    /// </summary>
+    private void PrintFightReport(EntityUid uid, LlmNpcComponent npc, string paperText, string subject,
+        string? recipientName)
+    {
+        var paper = Spawn("Paper", Transform(uid).Coordinates);
+        _metaData.SetEntityName(paper, $"распечатка боя: {subject}");
+        // Текст уже свёрстан ArenaFightLogSystem.GetPaperReport: заголовки, цвета, бар-чарты.
+        _paper.SetContent(paper, paperText);
+
+        // Эмоут рендерится как «Имя + текст» — начинаем с глагола 3-го лица.
+        _chat.TrySendInGameICMessage(uid, "выдёргивает из жужжащего анализатора свежую распечатку",
+            InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
+
+        // В свободную руку (вторая занята анализатором) — и понесли заказчику.
+        if (!_hands.TryPickupAnyHand(uid, paper, checkActionBlocker: false))
+            return; // руки заняты — лист остался лежать, гость возьмёт сам
+
+        var target = !string.IsNullOrWhiteSpace(recipientName) ? FindPerson(uid, recipientName!) : null;
+        if (target is { } t)
+            BeginErrand(uid, npc, LlmErrand.GiveItem, t, paper);
     }
 
     /// <summary>Убирает гаджет из руки обратно в сумку (не влез/сумки нет — остаётся в руке).</summary>

@@ -9,14 +9,16 @@
   - /Audio/_Wega/Duel/breach/metal_blunt_tap.ogg
   - /Audio/_Wega/Duel/breach/aluminium_can_place.ogg
 
-# Удар по преграде: вспышка, ударная волна, сноп искр и обломков.
-# Анимация генерируется dev/gen_wall_demolish_fx.py (8 кадров x 0.06с).
+# Удар по преграде: вспышка, ударная волна, сноп искр и обломков, оседающая пыль.
+# Анимация генерируется dev/gen_wall_demolish_fx.py; длится 1.5с — ровно пауза
+# между ударами бота (BreachCooldown). Деспавн чуть РАНЬШЕ конца анимации,
+# иначе она успевает зациклиться и мелькает первый кадр.
 - type: entity
   id: EffectArrestBotBreachHit
   categories: [ HideSpawnMenu ]
   components:
   - type: TimedDespawn
-    lifetime: 0.48
+    lifetime: 1.45
   - type: Sprite
     drawdepth: Effects
     noRot: true
@@ -28,13 +30,14 @@
     tags:
     - HideContextMenu
 
-# Обрушение преграды: столб пыли и осыпающаяся крошка (14 кадров x 0.09с).
+# Обрушение преграды: столб пыли и осыпающаяся крошка (14 кадров x 0.09с = 1.26с).
+# Деспавн чуть раньше конца анимации — см. комментарий выше.
 - type: entity
   id: EffectArrestBotWallCollapse
   categories: [ HideSpawnMenu ]
   components:
   - type: TimedDespawn
-    lifetime: 1.26
+    lifetime: 1.2
   - type: Sprite
     drawdepth: Effects
     noRot: true
