@@ -11,6 +11,9 @@ using Content.Shared.Chat;
 using Content.Shared.CombatMode;
 using Content.Shared.Cuffs;
 using Content.Shared.Cuffs.Components;
+using Content.Shared.Damage;
+using Content.Shared.Damage.Systems;
+using Content.Shared.Physics;
 using Content.Shared.Hands;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Humanoid;
@@ -64,6 +67,9 @@ public sealed partial class ArrestBotSystem : EntitySystem
     [Dependency] private ItemToggleSystem _toggle = default!;
     [Dependency] private ChatSystem _chatSystem = default!;
     [Dependency] private IRobustRandom _random = default!;
+    [Dependency] private DamageableSystem _damageable = default!;
+    [Dependency] private Robust.Shared.Physics.Systems.SharedPhysicsSystem _physics = default!;
+    [Dependency] private PathfindingSystem _pathfinding = default!;
 
     private static readonly string[] DetainLines =
     {
@@ -171,6 +177,8 @@ public sealed partial class ArrestBotSystem : EntitySystem
         StopPulling(bot);
         comp.FailedStripSlots.Clear();
         comp.Spotted = false;
+        comp.BreachTarget = null;
+        comp.BestGoalDistance = float.MaxValue;
 
         // Включаем всё оружие с переключателем (например, стан-дубинку).
         foreach (var held in _hands.EnumerateHeld(bot))
@@ -212,6 +220,14 @@ public sealed partial class ArrestBotSystem : EntitySystem
     private void UpdatePursuing(EntityUid uid, ArrestBotComponent bot, TimeSpan now)
     {
         if (bot.Target is not { } target)
+            return;
+
+        // Сближение с целью — прогресс: продлеваем таймаут, чтобы дорога через полстанции
+        // (хоть 100 тайлов) не отменяла приказ. Отсчёт заново идёт только когда бот застрял.
+        RefreshProgress(uid, bot, target, now);
+
+        // Маршрута нет (запертая зона, стены) — выламываем преграду на линии к цели.
+        if (UpdateBreach(uid, bot, target, now))
             return;
 
         // Как только цель попала в поле зрения — объявляем о преследовании.
@@ -291,6 +307,12 @@ public sealed partial class ArrestBotSystem : EntitySystem
         // Убедимся, что конвоир тащит цель.
         if (!IsPulling(uid, target))
             TryStartPull(uid, target);
+
+        RefreshProgress(uid, bot, issuer, now);
+
+        // Обратная дорога тоже может оказаться запертой — проламываемся и с добычей.
+        if (UpdateBreach(uid, bot, issuer, now))
+            return;
 
         MoveToTarget(uid, bot, issuer);
 
@@ -710,9 +732,10 @@ public sealed partial class ArrestBotSystem : EntitySystem
 
         var steering = _steering.Register(uid, coords);
 
-        // Конвоир может открывать двери (Access) и бампать их. Без этих флагов
-        // pathfinding считает шлюзы непроходимыми и не строит маршрут через станцию.
-        steering.Flags = PathFlags.Interact | PathFlags.Prying;
+        // Конвоир может открывать двери и бампать их; Access — строить маршрут через шлюзы
+        // с доступом (у него AllAccess, DoorSystem пустит); Prying — вскрывать запертые.
+        // Без этих флагов pathfinding считает шлюзы непроходимыми.
+        steering.Flags = PathFlags.Interact | PathFlags.Access | PathFlags.Prying;
 
         // Register не сбрасывает залипший NoPath — форсируем повторный поиск пути.
         steering.Status = SteeringStatus.Moving;
@@ -726,6 +749,236 @@ public sealed partial class ArrestBotSystem : EntitySystem
         var posA = _transform.GetMapCoordinates(a);
         var posB = _transform.GetMapCoordinates(b);
         return posA.MapId == posB.MapId && (posA.Position - posB.Position).Length() <= range;
+    }
+
+    /// <summary>
+    /// Пока бот сближается с целью — продлевает таймаут: приказ не должен отменяться из-за
+    /// длинной дороги. Отсчёт таймаута реально тикает только когда прогресса нет (застрял).
+    /// </summary>
+    private void RefreshProgress(EntityUid uid, ArrestBotComponent bot, EntityUid goal, TimeSpan now)
+    {
+        var posA = _transform.GetMapCoordinates(uid);
+        var posB = _transform.GetMapCoordinates(goal);
+        if (posA.MapId != posB.MapId)
+            return;
+
+        var dist = (posA.Position - posB.Position).Length();
+        if (dist < bot.BestGoalDistance - 1.5f)
+        {
+            bot.BestGoalDistance = dist;
+            bot.TimeoutEndAt = now + TimeSpan.FromSeconds(bot.Timeout);
+        }
+    }
+
+    /// <summary>
+    /// Режим пролома: маршрута к цели нет (запертая зона, стены). Пасфайндер ищет ближайшую
+    /// к цели ДОСТИЖИМУЮ точку (кольца сэмплов вокруг цели), бот штатно доходит туда и уже
+    /// оттуда пробивает минимальную преграду между собой и целью; затем маршрут строится
+    /// заново (если зона всё ещё заперта — цикл повторяется, каждый раз ближе). Так он
+    /// обходит бункер и вскрывает его в правильном месте, а не долбит стены по прямой.
+    /// true = бот занят проломом, обычное преследование пропустить.
+    /// </summary>
+    private bool UpdateBreach(EntityUid uid, ArrestBotComponent bot, EntityUid goal, TimeSpan now)
+    {
+        // Пролом ещё не начат — начинаем, только если стиринг честно упёрся (NoPath).
+        if (bot.BreachTarget == null)
+        {
+            if (bot.BreachStaging == null)
+            {
+                if (bot.BreachPlanning)
+                    return true; // ждём результат подбора точки взлома
+
+                if (!TryComp<NPCSteeringComponent>(uid, out var steering)
+                    || steering.Status != SteeringStatus.NoPath)
+                    return false;
+
+                // Асинхронно ищем точку взлома; пока ищем — стоим (пути всё равно нет).
+                bot.BreachPlanning = true;
+                _ = PlanBreachAsync(uid, goal);
+                return true;
+            }
+
+            var staging = bot.BreachStaging.Value;
+            if (!staging.IsValid(EntityManager))
+            {
+                bot.BreachStaging = null;
+                return false;
+            }
+
+            // Сначала штатно доходим до точки взлома (туда путь есть по построению).
+            var stagingPos = _transform.ToMapCoordinates(staging);
+            var botPos = _transform.GetMapCoordinates(uid);
+            if (botPos.MapId != stagingPos.MapId)
+            {
+                bot.BreachStaging = null;
+                return false;
+            }
+            if ((botPos.Position - stagingPos.Position).Length() > 1.5f)
+            {
+                if (now < bot.NextBreach)
+                    return true;
+                bot.NextBreach = now + TimeSpan.FromSeconds(bot.BreachCooldown);
+
+                var steering = _steering.Register(uid, staging);
+                steering.Flags = PathFlags.Interact | PathFlags.Access | PathFlags.Prying;
+                steering.Range = 1.2f;
+                steering.Status = SteeringStatus.Moving;
+                steering.FailedPathCount = 0;
+                return true;
+            }
+
+            // На месте: минимальная преграда между точкой взлома и целью.
+            if (FindBlockingStructure(uid, goal) is not { } wall)
+            {
+                // Преграды нет (цель ушла/дверь открыли) — обычное преследование.
+                bot.BreachStaging = null;
+                bot.LastGoal = null;
+                return false;
+            }
+
+            bot.BreachTarget = wall;
+            bot.LastGoal = null; // после пролома маршрут строим заново
+            Speak(uid, Loc.GetString("arrest-bot-say-breach"));
+        }
+
+        var obstacle = bot.BreachTarget.Value;
+        if (!Exists(obstacle) || TerminatingOrDeleted(obstacle))
+        {
+            // Преграда рухнула — облако пыли и грохот на её месте.
+            if (bot.BreachTargetCoords is { } collapseCoords && collapseCoords.IsValid(EntityManager))
+            {
+                Spawn(bot.BreachCollapseEffect, collapseCoords);
+                _audio.PlayPvs(bot.BreachCollapseSound, collapseCoords);
+            }
+            bot.BreachTargetCoords = null;
+
+            // Обычное преследование продолжится следующим тиком.
+            // Если зона заперта глубже (вторая стена) — цикл начнётся заново, уже ближе.
+            bot.BreachTarget = null;
+            bot.BreachStaging = null;
+            return false;
+        }
+
+        // Пролом — это прогресс: пока крушим, таймаут не тикает.
+        bot.TimeoutEndAt = now + TimeSpan.FromSeconds(bot.Timeout);
+
+        if (now < bot.NextBreach)
+            return true;
+        bot.NextBreach = now + TimeSpan.FromSeconds(bot.BreachCooldown);
+
+        // Далеко от преграды — подходим вплотную (до тайла перед ней путь есть).
+        var wallPos = _transform.GetMapCoordinates(obstacle);
+        var myPos = _transform.GetMapCoordinates(uid);
+        if (wallPos.MapId != myPos.MapId)
+        {
+            bot.BreachTarget = null;
+            return false;
+        }
+        if ((wallPos.Position - myPos.Position).Length() > 1.8f)
+        {
+            var steering = _steering.Register(uid, Transform(obstacle).Coordinates);
+            steering.Flags = PathFlags.Interact | PathFlags.Access | PathFlags.Prying;
+            steering.Range = 1.2f;
+            steering.Status = SteeringStatus.Moving;
+            steering.FailedPathCount = 0;
+            return true;
+        }
+
+        // Удар: структурный урон — стены/двери рушатся по своим порогам разрушения.
+        // Координаты запоминаем ДО удара: после сноса сущности их уже не достать.
+        var obstacleCoords = Transform(obstacle).Coordinates;
+        bot.BreachTargetCoords = obstacleCoords;
+
+        var damage = new DamageSpecifier();
+        damage.DamageDict.Add("Structural", bot.BreachDamage);
+        damage.DamageDict.Add("Blunt", 5);
+        _damageable.TryChangeDamage(obstacle, damage, ignoreResistances: true, origin: uid);
+        _audio.PlayPvs(bot.BreachSound, obstacle);
+        Spawn(bot.BreachHitEffect, obstacleCoords);
+        return true;
+    }
+
+    /// <summary>
+    /// Подбирает точку взлома: сэмплирует кольца вокруг цели (от ближних к дальним, 8 направлений)
+    /// и первым достижимым по пасфайндеру кандидатом объявляет точку взлома. Асинхронно — поиск
+    /// пути не блокирует тик; ничего достижимого нет — ломимся с текущего места (лучше, чем стоять).
+    /// </summary>
+    private async System.Threading.Tasks.Task PlanBreachAsync(EntityUid uid, EntityUid goal)
+    {
+        Robust.Shared.Map.EntityCoordinates? best = null;
+        try
+        {
+            if (Exists(uid) && Exists(goal))
+            {
+                var start = Transform(uid).Coordinates;
+                var goalCoords = Transform(goal).Coordinates;
+
+                foreach (var radius in new[] { 2f, 4f, 7f, 10f, 14f, 18f })
+                {
+                    for (var i = 0; i < 8; i++)
+                    {
+                        var angle = MathF.Tau * i / 8f;
+                        var candidate = goalCoords.Offset(new System.Numerics.Vector2(
+                            MathF.Cos(angle) * radius, MathF.Sin(angle) * radius));
+
+                        var result = await _pathfinding.GetPath(uid, start, candidate, 0.9f,
+                            System.Threading.CancellationToken.None,
+                            PathFlags.Interact | PathFlags.Access | PathFlags.Prying);
+                        if (result.Result != PathResult.Path)
+                            continue;
+
+                        best = candidate;
+                        break;
+                    }
+                    if (best != null)
+                        break;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Пасфайндер мог не ответить (карта выгружена и т.п.) — сработает фолбэк ниже.
+        }
+        finally
+        {
+            if (TryComp<ArrestBotComponent>(uid, out var bot) && bot.BreachPlanning)
+            {
+                bot.BreachPlanning = false;
+                bot.BreachStaging = best ?? (Exists(uid) ? Transform(uid).Coordinates : null);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Первая разрушаемая закреплённая преграда (стена, запертая дверь) на прямой от бота к цели.
+    /// </summary>
+    private EntityUid? FindBlockingStructure(EntityUid uid, EntityUid goal)
+    {
+        var from = _transform.GetMapCoordinates(uid);
+        var to = _transform.GetMapCoordinates(goal);
+        if (from.MapId != to.MapId)
+            return null;
+
+        var dir = to.Position - from.Position;
+        var length = dir.Length();
+        if (length < 0.5f)
+            return null;
+
+        var ray = new Robust.Shared.Physics.CollisionRay(from.Position, dir / length,
+            (int)CollisionGroup.Impassable);
+        foreach (var hit in _physics.IntersectRay(from.MapId, ray, length, uid, returnOnFirstHit: false))
+        {
+            var ent = hit.HitEntity;
+            if (ent == goal)
+                continue;
+            if (!Transform(ent).Anchored)
+                continue;
+            if (!HasComp<Content.Shared.Damage.Components.DamageableComponent>(ent))
+                continue;
+            return ent;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -781,6 +1034,8 @@ public sealed partial class ArrestBotSystem : EntitySystem
         bot.FailedStripSlots.Clear();
         bot.Spotted = false;
         bot.LastGoal = null;
+        bot.BreachTarget = null;
+        bot.BestGoalDistance = float.MaxValue;
 
         if (announceKey != null)
             _chat.DispatchServerAnnouncement(Loc.GetString(announceKey), Color.Gray);

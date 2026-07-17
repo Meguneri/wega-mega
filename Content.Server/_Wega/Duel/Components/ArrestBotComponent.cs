@@ -128,4 +128,62 @@ public sealed partial class ArrestBotComponent : Component
     /// </summary>
     [ViewVariables]
     public HashSet<string> FailedStripSlots = new();
+
+    // --- пролом (маршрута нет — крушим преграду на линии к цели) ---
+
+    /// <summary>Преграда (стена/дверь), которую арестатор сейчас выламывает. null = не ломает.</summary>
+    [ViewVariables]
+    public EntityUid? BreachTarget;
+
+    /// <summary>
+    /// Точка взлома: ближайшая к цели ДОСТИЖИМАЯ точка (ищется пасфайндером по кольцам вокруг
+    /// цели). Бот сначала штатно доходит сюда и только отсюда пробивает минимальную преграду —
+    /// а не долбит стену по прямой через полстанции.
+    /// </summary>
+    [ViewVariables]
+    public EntityCoordinates? BreachStaging;
+
+    /// <summary>Идёт асинхронный подбор точки взлома — второй не запускаем.</summary>
+    [ViewVariables]
+    public bool BreachPlanning;
+
+    /// <summary>Время следующего удара по преграде.</summary>
+    [ViewVariables]
+    public TimeSpan NextBreach;
+
+    /// <summary>Структурный урон одного удара по преграде.</summary>
+    [DataField]
+    public float BreachDamage = 60f;
+
+    /// <summary>Пауза между ударами по преграде, сек.</summary>
+    [DataField]
+    public float BreachCooldown = 1.5f;
+
+    /// <summary>Звук удара по преграде.</summary>
+    [DataField]
+    public SoundSpecifier BreachSound = new SoundCollectionSpecifier("ArrestBotBreachHit");
+
+    /// <summary>Звук обрушения преграды.</summary>
+    [DataField]
+    public SoundSpecifier BreachCollapseSound =
+        new SoundPathSpecifier("/Audio/_Wega/Duel/breach/stone_push_long.ogg");
+
+    /// <summary>Эффект, спавнящийся на преграде при каждом ударе.</summary>
+    [DataField]
+    public EntProtoId BreachHitEffect = "EffectArrestBotBreachHit";
+
+    /// <summary>Эффект на месте рухнувшей преграды.</summary>
+    [DataField]
+    public EntProtoId BreachCollapseEffect = "EffectArrestBotWallCollapse";
+
+    /// <summary>Последние координаты выламываемой преграды — для эффекта обрушения.</summary>
+    [ViewVariables]
+    public EntityCoordinates? BreachTargetCoords;
+
+    /// <summary>
+    /// Лучшая (минимальная) дистанция до цели за погоню: пока бот сближается, таймаут
+    /// продлевается — дорога через полстанции не должна отменять приказ.
+    /// </summary>
+    [ViewVariables]
+    public float BestGoalDistance = float.MaxValue;
 }

@@ -68,6 +68,7 @@ public sealed partial class LlmNpcSystem : EntitySystem
         SubscribeLocalEvent<EntitySpokeEvent>(OnSpoke);
         SubscribeLocalEvent<Content.Server._Wega.Chat.EntityEmotedEvent>(OnEmoted);
         SubscribeLocalEvent<Content.Server._Wega.Chat.StationAnnouncedEvent>(OnAnnounced);
+        SubscribeLocalEvent<Content.Shared.Throwing.ThrownEvent>(OnThrown);
         SubscribeLocalEvent<LlmNpcComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Mobs.MobStateChangedEvent>(OnMobStateChanged);
         SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Damage.Systems.DamageChangedEvent>(OnDamaged);
@@ -99,8 +100,8 @@ public sealed partial class LlmNpcSystem : EntitySystem
             return;
 
         var profile = HumanoidCharacterProfile.RandomWithSpecies(humanoid.Species)
-            .WithSex(Sex.Female)
-            .WithGender(Gender.Female);
+            .WithSex(ent.Comp.Sex)
+            .WithGender(ent.Comp.Sex == Sex.Male ? Gender.Male : Gender.Female);
 
         _visualBody.ApplyProfileTo(ent.Owner, profile);
         _humanoidProfile.ApplyProfileTo(ent.Owner, profile);
@@ -198,6 +199,44 @@ public sealed partial class LlmNpcSystem : EntitySystem
             : $"почувствовала боль (урон {total})");
         if (ent.Comp.MuteUntil == null)
             ent.Comp.ReplyAt = now + TimeSpan.FromSeconds(1.2);
+    }
+
+    /// <summary>
+    /// Кто-то швырнул предмет: NPC рядом это видит — заметка в контекст, изредка реплика.
+    /// Заодно швырнувший становится «вероятным владельцем» предмета (для понимания краж).
+    /// </summary>
+    private void OnThrown(ref Content.Shared.Throwing.ThrownEvent args)
+    {
+        if (args.User is not { } thrower || HasComp<LlmNpcComponent>(thrower)
+            || !HasComp<Content.Shared.Mobs.Components.MobStateComponent>(thrower))
+            return;
+
+        var map = Transform(thrower).MapID;
+        var pos = _transform.GetWorldPosition(thrower);
+        var now = _timing.RealTime;
+        var itemName = MetaData(args.Thrown).EntityName;
+
+        var query = EntityQueryEnumerator<LlmNpcComponent>();
+        while (query.MoveNext(out var uid, out var npc))
+        {
+            if (Transform(uid).MapID != map || _mobState.IsIncapacitated(uid))
+                continue;
+            if ((_transform.GetWorldPosition(uid) - pos).Length() > npc.HearingRange)
+                continue;
+
+            // Швырнул — значит, вещь его: пригодится, если её потом «приберёт» кто-то другой.
+            if (npc.LooseItemOwner.Count < 40)
+                npc.LooseItemOwner[args.Thrown] = thrower;
+
+            // В потасовке летит много всего — не отмечать каждый болт.
+            if (now < npc.NextThrowNote)
+                continue;
+            npc.NextThrowNote = now + TimeSpan.FromSeconds(8);
+
+            NoteOwnAction(uid, npc, $"видит: {MetaData(thrower).EntityName} швыряет {itemName}");
+            if (npc.MuteUntil == null && _random.NextFloat() < 0.4f)
+                npc.ReplyAt = now + TimeSpan.FromSeconds(1.5);
+        }
     }
 
     /// <summary>Каждый NPC в радиусе слышит реплику; она кладётся в контекст и взводит таймер ответа.</summary>
@@ -454,6 +493,11 @@ public sealed partial class LlmNpcSystem : EntitySystem
         _appearance.SetData(uid, Content.Shared.Chat.TypingIndicator.TypingIndicatorVisuals.State,
             Content.Shared.Chat.TypingIndicator.TypingIndicatorState.None);
 
+        // Гаджет (портативный компьютер) доставался для поиска — раздумье кончилось,
+        // пора убрать его в сумку (даже если ответ не пришёл из-за ошибки API).
+        if (npc is { HeldGadget: not null })
+            npc.StowGadgetAt = _timing.RealTime + TimeSpan.FromSeconds(2.5);
+
         if (reply == null)
             return;
 
@@ -531,10 +575,17 @@ public sealed partial class LlmNpcSystem : EntitySystem
             var memory = await _memory.ReadAsync(memoryFile);
 
             var result = await _backend.CompleteTextAsync(endpoint, apiKey, model,
-                "Ты приводишь в порядок память барменши-NPC. Перепиши заметки в компактные досье: " +
-                "секция на каждого человека (имя, кто он, вкусы, привычки, важные истории) и секция " +
-                "«События станции». Сохрани ВСЕ уникальные факты, объедини дубли, выброси мусор и " +
-                "случайные реплики. Пиши кратко, маркированными строками. Ответ — ТОЛЬКО новый текст памяти.",
+                "Ты приводишь в порядок память барменши-NPC Евы. Перепиши заметки в компактные досье. " +
+                "ОСТАВЛЯЙ только то, что пригодится в БУДУЩИХ разговорах: кто человек (имя, роль/работа), " +
+                "вкусы и любимые напитки, привычки и границы, отношения между людьми, важные истории из " +
+                "их жизни, оказанные услуги, обиды и угрозы (кого опасаться и почему). " +
+                "ВЫБРАСЫВАЙ сиюминутное и бытовое: кто когда подошёл/ушёл/сел, разовые заказы, пересказ " +
+                "сцен реплика-за-репликой, дежурные фразы, дубли. Интимные и непристойные подробности " +
+                "не храни — максимум одна сдержанная строка о характере отношений между людьми. " +
+                "Формат: секция на человека (первая строка «Имя — кто он», затем 3-7 маркированных строк), " +
+                "в конце секция «Мои заметки» — практические выводы от первого лица Евы (как МНЕ с кем " +
+                "себя вести). Секцию-досье о самой Еве НЕ заводи. Весь текст — не длиннее 60 строк. " +
+                "Ответ — ТОЛЬКО новый текст памяти.",
                 memory, _sawmill);
 
             if (!string.IsNullOrWhiteSpace(result))
@@ -741,7 +792,13 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "Про внешность людей: описания рядом стоящих (одежда, вид, детали) используй как живой " +
             "наблюдатель — изредка ввернуть уместный комментарий или комплимент, особенно при первой " +
             "встрече или заметной перемене. НЕ зацикливайся на внешности и не поминай одну и ту же " +
-            "деталь дважды.");
+            "деталь дважды. То, что у людей в руках, — фоновая деталь: упомяни ОДИН раз и только " +
+            "действительно примечательное (оружие, кровь, подарок, странная вещь); обычные предметы " +
+            "не комментируй вовсе. " +
+            "Происшествия рядом (швырнули предмет, разбили стакан, кто-то прибрал чужую вещь) — " +
+            "реагируй по ситуации и в характере: колкость, вопрос, просьба не свинячить в баре; " +
+            "на кражу можешь прямо указать или съязвить. Мелочь, не стоящая слов, — проигнорируй " +
+            "(пустой say).");
         sb.AppendLine();
         sb.AppendLine(
             "ЛУКАВСТВО: ты живой человек, а не протокол — МОЖЕШЬ хитрить, недоговаривать, дразнить, " +
@@ -783,9 +840,11 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "\"emote\" — физическое действие без звёздочек, ТОЛЬКО если оно реально добавляет сцене что-то " +
             "(в БОЛЬШИНСТВЕ ответов оставляй ПУСТЫМ). Не повторяй одни и те же жесты — протирание стакана " +
             "и поправление причёски уже всем надоели; " +
-            "\"remember\" — ТОЛЬКО ОДИН новый факт, которого ещё НЕТ в твоей памяти выше (имя, вкус, что-то, " +
-            "что собеседник рассказал о себе), короткой фразой. НЕ пересказывай и не повторяй уже запомненное — " +
-            "если ничего нового не узнала, оставь пустую строку. " +
+            "\"remember\" — ТОЛЬКО ОДИН новый ДОЛГОВРЕМЕННЫЙ факт, которого ещё НЕТ в памяти выше: имя, " +
+            "профессия, вкус, важное событие из жизни собеседника, обещание, услуга или обида. Критерий: " +
+            "пригодится ли это через неделю? НЕ записывай сиюминутное (кто подошёл или ушёл, разовый заказ, " +
+            "дежурные фразы, жесты) и не пересказывай уже запомненное. Чаще всего правильный ответ — " +
+            "пустая строка. " +
             "Не выходи из роли, не описывай себя как ИИ, не пиши ничего вне JSON.");
         return sb.ToString();
     }

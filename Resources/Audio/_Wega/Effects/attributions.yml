@@ -7,3 +7,9 @@
   license: "CC0-1.0"
   copyright: "-"
   source: "https://zvukogram.com/category/zvuki-mehanizma/"
+
+# Звук печати на КПК LLM-тренера арены (инструмент fight_stats).
+- files: ["keyboard_typing.ogg"]
+  license: "Custom"
+  copyright: "'400 Sounds Pack' (keyboard_typing.wav), бесплатный пак с itch.io. Точный слаг автора не зафиксирован — уточнить перед публичным релизом. Converted to mono OGG for wega-mega."
+  source: "https://itch.io/"

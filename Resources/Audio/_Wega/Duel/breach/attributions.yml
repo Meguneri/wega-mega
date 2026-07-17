@@ -1,0 +1,9 @@
+# Звуки пролома стен арест-ботом. Источник — бесплатный пак Chequered Ink с itch.io
+# (та же лицензия, что и у звуков в каталоге выше: любое использование вкл. коммерческое,
+# атрибуция не требуется, нельзя перепродавать неизменённые ассеты). Файлы сконвертированы
+# в моно OGG (позиционный звук требует моно).
+
+- files: ["metal_blunt_tap.ogg", "aluminium_can_place.ogg", "stone_push_long.ogg"]
+  license: "Custom"
+  copyright: "Chequered Ink — '400 Sounds Pack' (Materials: metal_blunt_tap, aluminium_can_place, stone_push_long). Free for any use incl. commercial, no attribution required, no resale of unaltered assets. Converted to mono OGG for wega-mega."
+  source: "https://ci.itch.io/400-sounds-pack"

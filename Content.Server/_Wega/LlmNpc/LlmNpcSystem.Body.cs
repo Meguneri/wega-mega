@@ -23,6 +23,10 @@ public sealed partial class LlmNpcSystem
     [Dependency] private Content.Shared.StatusEffectNew.StatusEffectsSystem _status = default!;
     [Dependency] private Content.Shared.Damage.Systems.DamageableSystem _damageable = default!;
     [Dependency] private Content.Shared.Weapons.Melee.SharedMeleeWeaponSystem _melee = default!;
+    [Dependency] private Content.Server._Wega.Duel.Systems.ArenaFightLogSystem _fightLog = default!;
+    [Dependency] private Robust.Server.Audio.AudioSystem _audio = default!;
+    [Dependency] private Content.Shared.Inventory.InventorySystem _inventory = default!;
+    [Dependency] private Content.Shared.Storage.EntitySystems.SharedStorageSystem _storage = default!;
 
     /// <summary>Радиус, в котором NPC ищет человека/предмет по имени (шире слуха: «отнеси за стол»).</summary>
     private const float FindRange = 12f;
@@ -72,6 +76,11 @@ public sealed partial class LlmNpcSystem
             }
 
             UpdateRegen(uid, npc, now);
+            UpdatePresence(uid, npc, now);
+
+            // Пора убрать гаджет (портативный компьютер) обратно в сумку.
+            if (npc.StowGadgetAt is { } stowAt && now >= stowAt)
+                StowGadget(uid, npc);
 
             if (npc.Errand == LlmErrand.None)
             {
@@ -322,6 +331,307 @@ public sealed partial class LlmNpcSystem
         npc.ErrandTimeout = now + TimeSpan.FromSeconds(8);
         EnsureComp<ActiveNPCComponent>(uid);
         RegisterSteering(uid, target).Range = ArriveRange - 0.2f;
+    }
+
+    /// <summary>
+    /// Следит, кто пришёл и кто ушёл: заметки «Иван ушёл» / «Иван вернулся после отлучки» идут
+    /// в контекст — иначе гость мог отойти на полчаса, а для модели диалог продолжался, будто он
+    /// никуда не девался. Заодно замечает чаевые, оставленные у стойки. Скан раз в ~5 секунд.
+    /// </summary>
+    private void UpdatePresence(EntityUid uid, LlmNpcComponent npc, TimeSpan now)
+    {
+        if (now < npc.NextPresenceScan)
+            return;
+        npc.NextPresenceScan = now + TimeSpan.FromSeconds(5);
+
+        var map = Transform(uid).MapID;
+        var origin = _transform.GetWorldPosition(uid);
+
+        // Кто сейчас в зоне бара (только настоящие игроки — NPC и звери не «гости»).
+        var inRange = new HashSet<EntityUid>();
+        var query = EntityQueryEnumerator<Robust.Shared.Player.ActorComponent, MobStateComponent>();
+        while (query.MoveNext(out var mob, out _, out _))
+        {
+            if (mob == uid || Transform(mob).MapID != map)
+                continue;
+            if ((_transform.GetWorldPosition(mob) - origin).Length() <= npc.HearingRange + 2f)
+                inRange.Add(mob);
+        }
+
+        foreach (var mob in inRange)
+        {
+            if (!npc.PresenceArrivedAt.ContainsKey(mob))
+            {
+                // Вернулся после заметной отлучки — отметить (первое приветствие делает UpdateGaze).
+                if (npc.PresenceLastNear.TryGetValue(mob, out var last)
+                    && now - last > TimeSpan.FromMinutes(3))
+                {
+                    NoteOwnAction(uid, npc, $"видит: {MetaData(mob).EntityName} вернулся к бару " +
+                        $"после отлучки (~{(int)(now - last).TotalMinutes} мин)");
+                }
+                npc.PresenceArrivedAt[mob] = now;
+            }
+            npc.PresenceLastNear[mob] = now;
+        }
+
+        // Ушедшие: пропал из зоны и не мелькал ≥ 12 сек — не «шагнул за дверь и обратно».
+        foreach (var (mob, arrived) in npc.PresenceArrivedAt.ToList())
+        {
+            if (inRange.Contains(mob))
+                continue;
+            if (!Exists(mob) || TerminatingOrDeleted(mob))
+            {
+                npc.PresenceArrivedAt.Remove(mob);
+                npc.PresenceLastNear.Remove(mob);
+                continue;
+            }
+
+            var lastNear = npc.PresenceLastNear.TryGetValue(mob, out var l) ? l : arrived;
+            if (now - lastNear < TimeSpan.FromSeconds(12))
+                continue;
+
+            npc.PresenceArrivedAt.Remove(mob);
+            // Прохожих не отмечаем — только тех, кто реально побыл у бара.
+            if (lastNear - arrived >= TimeSpan.FromSeconds(45))
+                NoteOwnAction(uid, npc, $"замечает: {MetaData(mob).EntityName} ушёл от бара");
+        }
+
+        UpdateTips(uid, npc, now);
+        UpdateLooseItems(uid, npc, now);
+    }
+
+    /// <summary>
+    /// Следит за вещами у бара: звон разбитого стекла (появились осколки), бесхозные предметы
+    /// с «вероятным владельцем» (кто стоял вплотную, когда вещь появилась) и кражи — отслеживаемый
+    /// предмет оказался в инвентаре ДРУГОГО человека. Всё уходит заметками в контекст.
+    /// </summary>
+    private void UpdateLooseItems(EntityUid uid, LlmNpcComponent npc, TimeSpan now)
+    {
+        var map = Transform(uid).MapID;
+        var origin = _transform.GetWorldPosition(uid);
+
+        var items = EntityQueryEnumerator<ItemComponent>();
+        while (items.MoveNext(out var item, out _))
+        {
+            var xform = Transform(item);
+            if (xform.MapID != map)
+                continue;
+            var pos = _transform.GetWorldPosition(xform);
+            if ((pos - origin).Length() > 6f)
+                continue;
+
+            // Осколки: разбили стакан/бутылку неподалёку — звон слышно, даже спиной.
+            var protoId = MetaData(item).EntityPrototype?.ID;
+            if (protoId != null && protoId.StartsWith("Shard", StringComparison.Ordinal)
+                && npc.NotedShards.Add(item))
+            {
+                NoteOwnAction(uid, npc, "слышит звон — рядом разбилось стекло, на полу осколки");
+                if (npc.MuteUntil == null && _random.NextFloat() < 0.5f)
+                    npc.ReplyAt = now + TimeSpan.FromSeconds(1.5);
+                continue;
+            }
+
+            // Бесхозная вещь: запоминаем вероятного владельца — игрока вплотную к ней (≤ 2 тайла).
+            // Сама Ева владельцем не станет: у неё нет ActorComponent, а ищем только игроков.
+            if (_container.IsEntityInContainer(item) || npc.LooseItemOwner.ContainsKey(item)
+                || npc.LooseItemOwner.Count >= 40)
+                continue;
+
+            EntityUid? owner = null;
+            var ownerDist = 2f;
+            var mobs = EntityQueryEnumerator<Robust.Shared.Player.ActorComponent, MobStateComponent>();
+            while (mobs.MoveNext(out var mob, out _, out _))
+            {
+                if (Transform(mob).MapID != map)
+                    continue;
+                var d = (_transform.GetWorldPosition(mob) - pos).Length();
+                if (d < ownerDist)
+                {
+                    owner = mob;
+                    ownerDist = d;
+                }
+            }
+            if (owner is { } o)
+                npc.LooseItemOwner[item] = o;
+        }
+
+        // Кражи: отслеживаемая вещь оказалась в чьём-то инвентаре/сумке.
+        foreach (var (item, owner) in npc.LooseItemOwner.ToList())
+        {
+            if (!Exists(item) || TerminatingOrDeleted(item))
+            {
+                npc.LooseItemOwner.Remove(item);
+                continue;
+            }
+
+            if (!_container.IsEntityInContainer(item))
+            {
+                // Всё ещё лежит; укатилась далеко от бара — перестаём следить.
+                if (Transform(item).MapID != map
+                    || (_transform.GetWorldPosition(item) - origin).Length() > 10f)
+                    npc.LooseItemOwner.Remove(item);
+                continue;
+            }
+
+            npc.LooseItemOwner.Remove(item);
+            var holder = FindRootMob(item);
+            // Хозяин забрал своё, взяла она сама или взявшего не видно — не событие.
+            if (holder is not { } who || who == owner || who == uid || !Exists(owner))
+                continue;
+            if (!HasComp<Robust.Shared.Player.ActorComponent>(who))
+                continue;
+            if ((_transform.GetWorldPosition(who) - origin).Length() > npc.HearingRange + 2f)
+                continue;
+
+            NoteOwnAction(uid, npc, $"видит: {MetaData(who).EntityName} прибрал к рукам " +
+                $"{MetaData(item).EntityName}, хотя вещь оставил {MetaData(owner).EntityName} — похоже, взял ЧУЖОЕ");
+            if (npc.MuteUntil == null && _random.NextFloat() < 0.6f)
+                npc.ReplyAt = now + TimeSpan.FromSeconds(1.5);
+            _sawmill.Info($"{ToPrettyString(uid)}: {ToPrettyString(who)} взял чужое ({MetaData(item).EntityName})");
+        }
+    }
+
+    /// <summary>Поднимается по цепочке контейнеров до живого существа (в чьих руках/сумке предмет).</summary>
+    private EntityUid? FindRootMob(EntityUid item)
+    {
+        var current = item;
+        for (var i = 0; i < 6; i++)
+        {
+            if (!_container.TryGetContainingContainer((current, null, null), out var container))
+                return null;
+            current = container.Owner;
+            if (HasComp<MobStateComponent>(current))
+                return current;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Чаевые: пачка кредитов, появившаяся на стойке рядом, — повод поблагодарить. Каждая пачка
+    /// отмечается один раз; щедрость дарителя модель сама занесёт в отношение/память.
+    /// </summary>
+    private void UpdateTips(EntityUid uid, LlmNpcComponent npc, TimeSpan now)
+    {
+        var map = Transform(uid).MapID;
+        var origin = _transform.GetWorldPosition(uid);
+
+        var query = EntityQueryEnumerator<
+            Content.Shared.Cargo.Components.CashComponent,
+            Content.Shared.Stacks.StackComponent>();
+        while (query.MoveNext(out var cash, out _, out var stack))
+        {
+            if (npc.NotedTips.Contains(cash))
+                continue;
+            var xform = Transform(cash);
+            if (xform.MapID != map || _container.IsEntityInContainer(cash))
+                continue;
+            var cashPos = _transform.GetWorldPosition(xform);
+            if ((cashPos - origin).Length() > 3f)
+                continue;
+
+            npc.NotedTips.Add(cash);
+
+            // Кто оставил: ближайший к деньгам игрок в паре шагов (может быть и никого).
+            EntityUid? giver = null;
+            var giverDist = 2.5f;
+            var mobs = EntityQueryEnumerator<Robust.Shared.Player.ActorComponent, MobStateComponent>();
+            while (mobs.MoveNext(out var mob, out _, out _))
+            {
+                if (mob == uid || Transform(mob).MapID != map)
+                    continue;
+                var d = (_transform.GetWorldPosition(mob) - cashPos).Length();
+                if (d < giverDist)
+                {
+                    giver = mob;
+                    giverDist = d;
+                }
+            }
+
+            var from = giver is { } g ? $", похоже, от {MetaData(g).EntityName}" : "";
+            NoteOwnAction(uid, npc, $"замечает на стойке чаевые — {stack.Count} кредитов{from}. " +
+                "Приятно! Поблагодари в своём стиле (и можешь подобрать их pick_up)");
+            if (npc.MuteUntil == null && !_mobState.IsIncapacitated(uid))
+                npc.ReplyAt = now + TimeSpan.FromSeconds(1.5);
+            _sawmill.Info($"{ToPrettyString(uid)} заметила чаевые: {stack.Count} кр.{from}");
+            break; // одной пачки за скан достаточно — не тараторить
+        }
+    }
+
+    /// <summary>
+    /// Ищет гаджет NPC (<see cref="LlmNpcComponent.GadgetProto"/>): сначала в руках,
+    /// затем в сумке на спине. null = гаджета нет (потерян/украден/не задан).
+    /// </summary>
+    private EntityUid? FindGadget(EntityUid uid, LlmNpcComponent npc)
+    {
+        if (string.IsNullOrEmpty(npc.GadgetProto))
+            return null;
+
+        bool Match(EntityUid e) => MetaData(e).EntityPrototype?.ID == npc.GadgetProto;
+
+        foreach (var held in _hands.EnumerateHeld((uid, null)))
+        {
+            if (Match(held))
+                return held;
+        }
+
+        if (_inventory.TryGetSlotEntity(uid, "back", out var bag)
+            && TryComp<Content.Shared.Storage.StorageComponent>(bag, out var storage))
+        {
+            foreach (var item in storage.StoredItems.Keys)
+            {
+                if (Match(item))
+                    return item;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Достаёт гаджет в руку (из сумки, если он там) и помечает «в работе» — уберётся после
+    /// выдачи ответа. Возвращает имя гаджета для эмоута; null = достать нечего.
+    /// </summary>
+    private string? TakeOutGadget(EntityUid uid, LlmNpcComponent npc)
+    {
+        if (FindGadget(uid, npc) is not { } gadget)
+            return null;
+
+        if (!_hands.EnumerateHeld((uid, null)).Contains(gadget))
+        {
+            _container.TryRemoveFromContainer(gadget);
+            if (!_hands.TryPickupAnyHand(uid, gadget, checkActionBlocker: false))
+                return null; // руки заняты — обойдёмся без предмета
+        }
+
+        npc.HeldGadget = gadget;
+        npc.StowGadgetAt = null; // таймер уборки взводится после ответа (ApplyReply)
+        return MetaData(gadget).EntityName;
+    }
+
+    /// <summary>Убирает гаджет из руки обратно в сумку (не влез/сумки нет — остаётся в руке).</summary>
+    private void StowGadget(EntityUid uid, LlmNpcComponent npc)
+    {
+        npc.StowGadgetAt = null;
+        if (npc.HeldGadget is not { } gadget)
+            return;
+        npc.HeldGadget = null;
+
+        if (!Exists(gadget) || TerminatingOrDeleted(gadget)
+            || !_hands.EnumerateHeld((uid, null)).Contains(gadget))
+            return;
+
+        if (!_inventory.TryGetSlotEntity(uid, "back", out var bag)
+            || !HasComp<Content.Shared.Storage.StorageComponent>(bag))
+            return;
+
+        _hands.TryDrop((uid, null), gadget, checkActionBlocker: false);
+        if (_storage.Insert(bag.Value, gadget, out _, user: uid))
+        {
+            _chat.TrySendInGameICMessage(uid, $"убирает {MetaData(gadget).EntityName} обратно в сумку",
+                InGameICChatType.Emote, ChatTransmitRange.Normal);
+        }
+        else
+            _hands.TryPickupAnyHand(uid, gadget, checkActionBlocker: false);
     }
 
     /// <summary>Паника: бежим от обидчика — точка в противоположную сторону, ~9 тайлов.</summary>
@@ -690,6 +1000,18 @@ public sealed partial class LlmNpcSystem
                     if (_status.HasStatusEffect(mob, Content.Shared.Drunk.SharedDrunkSystem.Drunk))
                         marks.Add("навеселе");
                     break;
+            }
+
+            // Что у гостя в руках: окровавленный топор и букет цветов — очень разные поводы
+            // для реплики. Видно только вблизи, как в жизни.
+            if (dist <= 5f && HasComp<Content.Shared.Hands.Components.HandsComponent>(mob))
+            {
+                var carrying = _hands.EnumerateHeld((mob, null))
+                    .Select(h => MetaData(h).EntityName)
+                    .Take(2)
+                    .ToList();
+                if (carrying.Count > 0)
+                    marks.Add($"в руках: {string.Join(", ", carrying)}");
             }
 
             // Отношение к человеку на эту смену (set_attitude) — модель видит его каждый ход.

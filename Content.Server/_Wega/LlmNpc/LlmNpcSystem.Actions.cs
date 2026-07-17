@@ -224,6 +224,42 @@ public sealed partial class LlmNpcSystem
         },
     };
 
+    private static readonly object FightStatsDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "fight_stats",
+            description = "Достаёшь свой портативный анализатор и ищешь боевую статистику человека: " +
+                          "урон, точность мили и стрельбы, противники, исходы. Анализатор пишет " +
+                          "ТОЛЬКО настоящие дуэли на арене и серьёзные схватки (случайный урон от " +
+                          "окружения/разгермы не в счёт). Вызывай, когда просят разобрать бой, " +
+                          "объяснить поражение («что я делаю не так?») или сравнить бойцов. " +
+                          "По умолчанию — ТОЛЬКО последняя дуэль; scope=all (вся сессия) — лишь " +
+                          "если прямо попросили полный разбор/динамику. Ответ строй СТРОГО по этим " +
+                          "цифрам, называя их вслух; ничего не выдумывай. Если помечено «данных " +
+                          "мало» или дуэлей нет — так и скажи, не сочиняй советы.",
+            parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    person = new { type = "string", description = "имя бойца" },
+                    scope = new
+                    {
+                        type = "string",
+                        description = "last (по умолчанию) — последний бой; all — все бои за сессию",
+                    },
+                },
+                required = new[] { "person" },
+            },
+        },
+    };
+
+    /// <summary>Печать на КПК: играет, когда NPC ищет боевую статистику (fight_stats).</summary>
+    private static readonly Robust.Shared.Audio.SoundPathSpecifier FightStatsSound =
+        new("/Audio/_Wega/Effects/keyboard_typing.ogg");
+
     private static readonly object SetMoodDecl = new
     {
         type = "function",
@@ -380,6 +416,33 @@ public sealed partial class LlmNpcSystem
         }));
 
         tools.Add(BodyTool("stop", StopDecl, _ => StartStop(uid)));
+
+        tools.Add(BodyTool("fight_stats", FightStatsDecl, argsJson =>
+        {
+            var person = LlmBackend.Arg(argsJson, "person");
+            if (string.IsNullOrWhiteSpace(person))
+                return "Не указано, чьи бои смотреть.";
+            var lastOnly = LlmBackend.Arg(argsJson, "scope")?.Trim().ToLowerInvariant() != "all";
+
+            // Антураж: реально достаёт из сумки портативный компьютер, стучит по клавишам —
+            // ответ придёт «после поиска», а после ответа компьютер вернётся в сумку.
+            var gadgetName = TryComp<LlmNpcComponent>(uid, out var npcSelf)
+                ? TakeOutGadget(uid, npcSelf)
+                : null;
+            _audio.PlayPvs(FightStatsSound, uid);
+            _chat.TrySendInGameICMessage(uid, gadgetName != null
+                    ? $"достаёт из сумки {gadgetName} и быстро стучит по клавишам"
+                    : "быстро стучит по клавишам КПК",
+                InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
+
+            // Сначала точное совпадение среди тех, кто рядом, затем поиск по всей летописи.
+            var report = FindPerson(uid, person!) is { } target
+                ? _fightLog.GetReport(target, lastOnly) ?? _fightLog.GetReportByName(person!, lastOnly)
+                : _fightLog.GetReportByName(person!, lastOnly);
+            return report != null
+                ? $"[данные с твоего анализатора]\n{report}"
+                : $"Анализатор ничего не нашёл: боёв {person} в эту смену не видно — либо не дрался, либо дрался не здесь.";
+        }));
 
         tools.Add(BodyTool("set_mood", SetMoodDecl, argsJson =>
         {

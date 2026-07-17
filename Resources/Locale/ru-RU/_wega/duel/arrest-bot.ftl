@@ -26,6 +26,7 @@ arrest-remote-status-cuffed = в наручниках
 
 # Реплики конвоира
 arrest-bot-say-spotted = Цель { $target } обнаружена. Начинаю задержание.
+arrest-bot-say-breach = Прохода нет. Применяю силовой пролом.
 arrest-bot-say-detain-1 = Не сопротивляйся, { $target }. Так будет проще.
 arrest-bot-say-detain-2 = Задержание санкционировано. Лежать.
 arrest-bot-say-detain-3 = Ты никуда не пойдёшь, { $target }.

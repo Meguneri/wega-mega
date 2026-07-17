@@ -30,11 +30,15 @@ public sealed partial class LlmNpcComponent : Component
     public float HearingRange = 6f;
 
     /// <summary>
-    /// Задать женскую внешность на спавне (случайный профиль вида, форсированный в женский пол).
+    /// Задать внешность на спавне (случайный профиль вида, форсированный в пол <see cref="Sex"/>).
     /// false — оставить внешность как в прототипе.
     /// </summary>
     [DataField]
     public bool ForceFemale = true;
+
+    /// <summary>Пол генерируемой внешности (когда <see cref="ForceFemale"/> включён).</summary>
+    [DataField]
+    public Content.Shared.Humanoid.Sex Sex = Content.Shared.Humanoid.Sex.Female;
 
     /// <summary>
     /// Причёска, надеваемая на спавне (id marking-прототипа волос). Случайный профиль вида волос не
@@ -133,6 +137,56 @@ public sealed partial class LlmNpcComponent : Component
     /// </summary>
     [ViewVariables]
     public TimeSpan? MuteUntil;
+
+    // --- гаджет (портативный компьютер тренера в сумке) ---
+
+    /// <summary>
+    /// Прототип гаджета, который NPC реально достаёт из сумки при поиске данных (fight_stats),
+    /// стучит по клавишам и после ответа убирает обратно. Пусто = без гаджета (эмоут без предмета).
+    /// </summary>
+    [DataField]
+    public string? GadgetProto;
+
+    /// <summary>Гаджет сейчас в руке (достала для поиска). null = убран.</summary>
+    [ViewVariables]
+    public EntityUid? HeldGadget;
+
+    /// <summary>Когда убрать гаджет обратно в сумку (ставится после выдачи ответа).</summary>
+    [ViewVariables]
+    public TimeSpan? StowGadgetAt;
+
+    // --- присутствие гостей и чаевые ---
+
+    /// <summary>Когда человека последний раз видели в зоне бара (для «вернулся после отлучки»).</summary>
+    [ViewVariables]
+    public readonly Dictionary<EntityUid, TimeSpan> PresenceLastNear = new();
+
+    /// <summary>Кто сейчас «у бара» и с какого момента. Пропал из зоны — заметка «ушёл».</summary>
+    [ViewVariables]
+    public readonly Dictionary<EntityUid, TimeSpan> PresenceArrivedAt = new();
+
+    /// <summary>Следующий скан присутствия/чаевых (троттлинг, раз в ~5 сек).</summary>
+    [ViewVariables]
+    public TimeSpan NextPresenceScan;
+
+    /// <summary>Пачки кредитов, уже замеченные как чаевые — второй раз не благодарим.</summary>
+    [ViewVariables]
+    public readonly HashSet<EntityUid> NotedTips = new();
+
+    /// <summary>Осколки (разбитая посуда/стекло), уже отмеченные — на каждый звенит один раз.</summary>
+    [ViewVariables]
+    public readonly HashSet<EntityUid> NotedShards = new();
+
+    /// <summary>Троттлинг заметок о швырянии предметов (при потасовке летит много всего).</summary>
+    [ViewVariables]
+    public TimeSpan NextThrowNote;
+
+    /// <summary>
+    /// Бесхозные предметы у бара → вероятный владелец (кто стоял вплотную/бросил). Если предмет
+    /// потом оказывается в инвентаре другого — она понимает, что взяли ЧУЖОЕ.
+    /// </summary>
+    [ViewVariables]
+    public readonly Dictionary<EntityUid, EntityUid> LooseItemOwner = new();
 
     // --- настроение и отношения (живое состояние, не вечное) ---
 
