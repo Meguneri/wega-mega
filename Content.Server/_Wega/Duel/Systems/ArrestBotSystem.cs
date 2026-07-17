@@ -884,6 +884,10 @@ public sealed partial class ArrestBotSystem : EntitySystem
             return true;
         }
 
+        // На месте: стоим смирно и крушим — снимаем стиринг, чтобы бот не топтался
+        // и не бегал туда-сюда, упираясь в саму преграду.
+        _steering.Unregister(uid);
+
         // Удар: структурный урон — стены/двери рушатся по своим порогам разрушения.
         // Координаты запоминаем ДО удара: после сноса сущности их уже не достать.
         var obstacleCoords = Transform(obstacle).Coordinates;
@@ -964,8 +968,10 @@ public sealed partial class ArrestBotSystem : EntitySystem
         if (length < 0.5f)
             return null;
 
+        // Маска — как у движения бота (MobMask), а не голый Impassable: иначе луч не видит
+        // преграды без бита Impassable (каркас после снесённой стены — GlassAirlockLayer).
         var ray = new Robust.Shared.Physics.CollisionRay(from.Position, dir / length,
-            (int)CollisionGroup.Impassable);
+            (int)CollisionGroup.MobMask);
         foreach (var hit in _physics.IntersectRay(from.MapId, ray, length, uid, returnOnFirstHit: false))
         {
             var ent = hit.HitEntity;
