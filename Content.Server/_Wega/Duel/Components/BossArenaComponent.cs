@@ -67,9 +67,58 @@ public sealed partial class BossArenaComponent : Component, IDuelScoreStore
 
     /// <summary>
     /// Максимальная длительность боя (в секундах). 0 — не ограничена.
+    /// По истечении босс впадает в ярость (энрейдж), а бой продолжается до вайпа.
     /// </summary>
     [DataField]
     public float MaxFightDuration = 0f;
+
+    // ── Скейлинг по числу участников ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Базовый множитель ХП босса: итоговый = <see cref="HealthScaleBase"/> +
+    /// <see cref="HealthScalePerParticipant"/> × число участников. При связке 0.75 + 0.25N
+    /// одиночный боец получает базового босса (×1.0), двое — ×1.25, четверо — ×1.75.
+    /// </summary>
+    [DataField]
+    public float HealthScaleBase = 0.75f;
+
+    /// <summary>Множитель ХП босса за каждого участника (см. <see cref="HealthScaleBase"/>).</summary>
+    [DataField]
+    public float HealthScalePerParticipant = 0.25f;
+
+    /// <summary>
+    /// Бонус к урону босса за каждого участника СВЕРХ первого: итоговый множитель =
+    /// 1 + <see cref="DamageScalePerParticipant"/> × (N − 1). Двое — ×1.1, четверо — ×1.3.
+    /// </summary>
+    [DataField]
+    public float DamageScalePerParticipant = 0.1f;
+
+    // ── Анти-кайт ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Дистанция (в тайлах), дальше которой ВСЕ живые участники считаются «кайтящими»:
+    /// если это держится дольше <see cref="AntiKiteGraceSeconds"/>, босс начинает регенерировать.
+    /// </summary>
+    [DataField]
+    public float AntiKiteRange = 12f;
+
+    /// <summary>Сколько секунд непрерывного кайта до включения регенерации босса.</summary>
+    [DataField]
+    public float AntiKiteGraceSeconds = 10f;
+
+    /// <summary>Скорость регенерации босса (ХП/сек) при активном анти-кайте. 0 — отключено.</summary>
+    [DataField]
+    public float AntiKiteRegenPerSecond = 20f;
+
+    // ── Энрейдж ──────────────────────────────────────────────────────────────────
+
+    /// <summary>Множитель скорости босса в ярости (поверх фазовых).</summary>
+    [DataField]
+    public float EnrageSpeedMultiplier = 2f;
+
+    /// <summary>Множитель урона босса в ярости (поверх фазовых).</summary>
+    [DataField]
+    public float EnrageDamageMultiplier = 2f;
 
     /// <summary>
     /// Прототип босса, который спавнится в центре арены.
@@ -150,6 +199,24 @@ public sealed partial class BossArenaComponent : Component, IDuelScoreStore
     /// </summary>
     [ViewVariables]
     public EntityUid? Boss;
+
+    /// <summary>
+    /// Босс в ярости (энрейдж по истечении <see cref="MaxFightDuration"/>): множители
+    /// <see cref="EnrageSpeedMultiplier"/>/<see cref="EnrageDamageMultiplier"/> поверх фазовых.
+    /// </summary>
+    [ViewVariables]
+    public bool Enraged;
+
+    /// <summary>
+    /// С какого момента все живые участники непрерывно дальше <see cref="AntiKiteRange"/> от босса.
+    /// null — кто-то из живых в зоне досягаемости.
+    /// </summary>
+    [ViewVariables]
+    public TimeSpan? OutOfRangeSince;
+
+    /// <summary>Анонс анти-кайт регенерации уже показывался в текущем эпизоде кайта.</summary>
+    [ViewVariables]
+    public bool AntiKiteAnnounced;
 
     /// <summary>
     /// Текущая фаза босса (0 — начальная).

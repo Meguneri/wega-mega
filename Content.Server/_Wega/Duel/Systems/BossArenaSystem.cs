@@ -1,23 +1,31 @@
 using Content.Server._Wega.Duel.Components;
 using Content.Server.Chat.Managers;
 using Content.Server.DeviceLinking.Systems;
+using Content.Shared._Wega.Duel;
 using Content.Shared.Damage;
+using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.DeviceLinking.Events;
 using Content.Shared.Humanoid;
+using Content.Shared.Item;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
 using Content.Shared.Mind;
 using Content.Shared.Movement.Components;
 using Content.Shared.Movement.Systems;
+using Content.Shared.Popups;
 using Content.Shared.Weapons.Melee;
+using Content.Shared.Weapons.Ranged.Events;
+using Content.Shared.Weapons.Ranged.Systems;
 using Robust.Server.Audio;
 using Robust.Shared.Audio;
+using Content.Shared.FixedPoint;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Localization;
 using Robust.Shared.Map;
 using Robust.Shared.Network;
+using Robust.Shared.Player;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
 using System.Linq;
@@ -42,6 +50,8 @@ public sealed partial class BossArenaSystem : EntitySystem
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private SharedMindSystem _mind = default!;
     [Dependency] private DuelArenaScoreSystem _score = default!;
+    [Dependency] private MobThresholdSystem _mobThresholds = default!;
+    [Dependency] private SharedPopupSystem _popup = default!;
 
     public override void Initialize()
     {
@@ -50,6 +60,13 @@ public sealed partial class BossArenaSystem : EntitySystem
         SubscribeLocalEvent<BossArenaComponent, SignalReceivedEvent>(OnSignalReceived);
         SubscribeLocalEvent<MobStateChangedEvent>(OnMobStateChanged);
         SubscribeLocalEvent<BossArenaBossComponent, DamageChangedEvent>(OnBossDamageChanged);
+
+        // Привязка «боссовского» огнестрела: поднять/выстрелить может только сам босс.
+        SubscribeLocalEvent<BossArenaBoundGunComponent, ShotAttemptedEvent>(OnBoundGunShot);
+        SubscribeLocalEvent<BossArenaBoundGunComponent, GettingPickedUpAttemptEvent>(OnBoundGunPickup);
+
+        // Учёт очередей босса: 3–5 выстрелов из огнестрела, затем кулдаун (см. BossArenaVolleyComponent).
+        SubscribeLocalEvent<BossArenaBoundGunComponent, GunShotEvent>(OnBoundGunShotFired);
     }
 
     private void OnInit(EntityUid uid, BossArenaComponent comp, ComponentInit args)
@@ -79,12 +96,13 @@ public sealed partial class BossArenaSystem : EntitySystem
                 _signalSystem.SendSignal(uid, comp.ResetPort, true);
             }
 
-            // Таймер боя: если истёк и босс ещё жив — поражение.
-            if (comp.IsActive && comp.FightEndAt is { } fightEnd && now >= fightEnd)
-            {
-                ConcludeArena(uid, comp, success: false);
-                continue;
-            }
+            // Таймер боя истёк — босс впадает в ярость (энрейдж), а бой идёт до вайпа любой стороны.
+            if (comp.IsActive && !comp.Enraged && comp.FightEndAt is { } fightEnd && now >= fightEnd)
+                EnrageBoss(uid, comp);
+
+            // Анти-кайт работает каждый тик (регенерация идёт по frameTime).
+            if (comp.IsActive)
+                UpdateAntiKite(uid, comp, now, frameTime);
 
             // Сканируем активную арену, чтобы засечь поражение.
             if (!comp.IsActive || now < comp.NextScan)
@@ -93,16 +111,183 @@ public sealed partial class BossArenaSystem : EntitySystem
             comp.NextScan = now + TimeSpan.FromSeconds(comp.ScanInterval);
             Scan(uid, comp);
             UpdateMinions(uid, comp, now);
+
+            // Периодическое обновление HUD-полоски ХП у участников (мгновенные — на старте,
+            // смене фазы, энрейдже и завершении).
+            SendHudState(comp, true);
         }
     }
 
     private void Scan(EntityUid uid, BossArenaComponent comp)
     {
-        // Все участники мертвы/исчезли — поражение.
-        if (comp.Participants.All(p => !Exists(p) || _mobState.IsDead(p)))
+        // Все участники мертвы/исчезли/покинули грид арены — поражение.
+        var trackerGrid = Transform(uid).GridUid;
+        if (comp.Participants.All(p => !Exists(p) || _mobState.IsDead(p) || Transform(p).GridUid != trackerGrid))
         {
             ConcludeArena(uid, comp, success: false);
             return;
+        }
+    }
+
+    /// <summary>
+    /// Энрейдж: по истечении таймера боя босс впадает в ярость — фазовые множители скорости и урона
+    /// умножаются на <see cref="BossArenaComponent.EnrageSpeedMultiplier"/> /
+    /// <see cref="BossArenaComponent.EnrageDamageMultiplier"/> (см. ApplyPhaseBuffs). Поражение
+    /// участников возможно теперь только их гибелью — затянувшийся бой становится смертельно опасным,
+    /// а не обрывается антиклимаксом.
+    /// </summary>
+    private void EnrageBoss(EntityUid uid, BossArenaComponent comp)
+    {
+        comp.Enraged = true;
+        comp.FightEndAt = null;
+
+        if (comp.Boss is { } boss && Exists(boss) && TryComp<BossArenaBossComponent>(boss, out var bossComp))
+            ApplyPhaseBuffs(boss, bossComp);
+
+        _chatManager.DispatchServerAnnouncement(Loc.GetString("boss-arena-enraged"), Color.OrangeRed);
+
+        if (comp.PhaseSound != null)
+            _audio.PlayPvs(comp.PhaseSound, uid);
+
+        SendHudState(comp, true);
+    }
+
+    /// <summary>
+    /// Анти-кайт: если ВСЕ живые участники держатся дальше <see cref="BossArenaComponent.AntiKiteRange"/>
+    /// тайлов от босса дольше <see cref="BossArenaComponent.AntiKiteGraceSeconds"/> секунд подряд,
+    /// босс начинает регенерировать — расстрелять его с безопасной дистанции не выйдет, бой требует
+    /// сближения. Возврат хотя бы одного живого участника в зону сбрасывает таймер и анонс.
+    /// </summary>
+    private void UpdateAntiKite(EntityUid uid, BossArenaComponent comp, TimeSpan now, float frameTime)
+    {
+        if (comp.AntiKiteRegenPerSecond <= 0f)
+            return;
+
+        if (comp.Boss is not { } boss || !Exists(boss) || _mobState.IsDead(boss))
+            return;
+
+        var bossPos = _transform.GetWorldPosition(boss);
+        var nearest = float.MaxValue;
+        foreach (var p in comp.Participants)
+        {
+            if (!Exists(p) || !_mobState.IsAlive(p))
+                continue;
+
+            var dist = (_transform.GetWorldPosition(p) - bossPos).Length();
+            if (dist < nearest)
+                nearest = dist;
+        }
+
+        if (nearest <= comp.AntiKiteRange)
+        {
+            comp.OutOfRangeSince = null;
+            comp.AntiKiteAnnounced = false;
+            return;
+        }
+
+        // Живых в зоне нет (или все далеко): гибель всех разрулит Scan, а здесь копим кайт-таймер.
+        comp.OutOfRangeSince ??= now;
+        if (now - comp.OutOfRangeSince.Value < TimeSpan.FromSeconds(comp.AntiKiteGraceSeconds))
+            return;
+
+        if (!comp.AntiKiteAnnounced)
+        {
+            comp.AntiKiteAnnounced = true;
+            _chatManager.DispatchServerAnnouncement(Loc.GetString("boss-arena-antikite-regen"), Color.OrangeRed);
+        }
+
+        RegenerateBoss(boss, comp.AntiKiteRegenPerSecond * frameTime);
+    }
+
+    /// <summary>
+    /// Лечит босса на <paramref name="amount"/>, распределяя лечение пропорционально текущим типам
+    /// урона, чтобы не «стирать» один конкретный тип и не лечить отсутствующий.
+    /// </summary>
+    private void RegenerateBoss(EntityUid boss, float amount)
+    {
+        if (amount <= 0f || !TryComp<DamageableComponent>(boss, out var damageable))
+            return;
+
+        // Чтение расклада урона напрямую: анализатор доступа (RA0002) закрывает Damage для чужих
+        // систем, но публичного среза «сколько какого типа» DamageableSystem не даёт, а лечить
+        // пропорционально иначе нечем. Только чтение, запись — честным TryChangeDamage ниже.
+#pragma warning disable RA0002
+        var total = (float) damageable.Damage.GetTotal();
+        if (total <= 0f)
+            return;
+
+        var heal = new DamageSpecifier();
+        foreach (var (type, value) in damageable.Damage.DamageDict)
+        {
+            if (value <= 0)
+                continue;
+            heal.DamageDict[type] = FixedPoint2.New(-amount * ((float) value / total));
+        }
+#pragma warning restore RA0002
+
+        _damageable.TryChangeDamage(boss, heal, true);
+    }
+
+    /// <summary>
+    /// Привязка «боссовского» огнестрела (<see cref="BossArenaBoundGunComponent"/>): выстрелить из
+    /// него может только сам босс (сущность с <see cref="BossArenaBossComponent"/>).
+    /// </summary>
+    private void OnBoundGunShot(EntityUid uid, BossArenaBoundGunComponent comp, ref ShotAttemptedEvent args)
+    {
+        if (HasComp<BossArenaBossComponent>(args.User))
+            return;
+
+        args.Cancel();
+        _popup.PopupEntity(Loc.GetString("boss-arena-bound-gun-denied"), args.User, args.User);
+    }
+
+    /// <summary>Поднять привязанный огнестрел может тоже только босс — для остальных отмена с попапом.</summary>
+    private void OnBoundGunPickup(EntityUid uid, BossArenaBoundGunComponent comp, ref GettingPickedUpAttemptEvent args)
+    {
+        if (HasComp<BossArenaBossComponent>(args.User))
+            return;
+
+        args.Cancel();
+        _popup.PopupEntity(Loc.GetString("boss-arena-bound-gun-denied"), args.User, args.User);
+    }
+
+    /// <summary>
+    /// Отсчёт очереди «Карателя»: первый выстрел открывает очередь из 3–5 выстрелов
+    /// (<see cref="BossArenaVolleyComponent"/>), последний — включает кулдаун, и HTN уводит босса
+    /// в ближний бой до следующей очереди. Так огнестрел остаётся разовой атакой, а не постоянным.
+    /// </summary>
+    private void OnBoundGunShotFired(EntityUid uid, BossArenaBoundGunComponent comp, ref GunShotEvent args)
+    {
+        if (!TryComp<BossArenaVolleyComponent>(args.User, out var volley))
+            return;
+
+        if (volley.ShotsRemaining <= 0)
+            volley.ShotsRemaining = _random.Next(volley.VolleyShotsMin, volley.VolleyShotsMax + 1);
+
+        volley.ShotsRemaining--;
+        if (volley.ShotsRemaining <= 0)
+            volley.NextVolleyAt = _timing.CurTime + TimeSpan.FromSeconds(volley.VolleyCooldown);
+    }
+
+    /// <summary>
+    /// Шлёт участникам состояние HUD-полоски ХП босса (только тем, у кого есть игровая сессия —
+    /// NPC-участники пропускаются). При active=false полоска скрывается, поля не важны.
+    /// </summary>
+    private void SendHudState(BossArenaComponent comp, bool active)
+    {
+        var ev = new BossArenaHudEvent { Active = active };
+        if (active && comp.Boss is { } boss && Exists(boss))
+        {
+            ev.BossName = MetaData(boss).EntityName;
+            ev.HealthRatio = GetHealthRatio(boss);
+            ev.Phase = comp.Phase;
+            ev.Enraged = comp.Enraged;
+        }
+
+        foreach (var p in comp.Participants)
+        {
+            if (TryComp<ActorComponent>(p, out var actor))
+                RaiseNetworkEvent(ev, actor.PlayerSession);
         }
     }
 
@@ -212,6 +397,9 @@ public sealed partial class BossArenaSystem : EntitySystem
         comp.GateCloseAt = null;
         comp.Minions.Clear();
         comp.NextMinionSpawnAt = null;
+        comp.Enraged = false;
+        comp.OutOfRangeSince = null;
+        comp.AntiKiteAnnounced = false;
 
         var trackerXform = Transform(uid);
         var trackerCoords = trackerXform.Coordinates;
@@ -252,6 +440,7 @@ public sealed partial class BossArenaSystem : EntitySystem
             {
                 bossComp.Arena = uid;
                 CaptureBaseStats(comp.Boss.Value, bossComp);
+                ApplyParticipantScaling(comp, comp.Boss.Value, bossComp);
             }
         }
 
@@ -262,6 +451,8 @@ public sealed partial class BossArenaSystem : EntitySystem
 
         if (comp.StartSound != null && comp.Boss != null)
             _audio.PlayPvs(comp.StartSound, comp.Boss.Value);
+
+        SendHudState(comp, true);
     }
 
     private void ResetArena(EntityUid uid, BossArenaComponent comp)
@@ -319,6 +510,8 @@ public sealed partial class BossArenaSystem : EntitySystem
 
         if (comp.Arena != null && arena.PhaseSound != null)
             _audio.PlayPvs(arena.PhaseSound, comp.Arena.Value);
+
+        SendHudState(arena, true);
     }
 
     /// <summary>
@@ -404,8 +597,15 @@ public sealed partial class BossArenaSystem : EntitySystem
         }
 
         comp.Boss = null;
+
+        // Скрываем HUD-полоску ХП у участников — бой окончен.
+        SendHudState(comp, false);
+
         comp.Participants.Clear();
         comp.Phase = 0;
+        comp.Enraged = false;
+        comp.OutOfRangeSince = null;
+        comp.AntiKiteAnnounced = false;
 
         foreach (var minion in comp.Minions)
         {
@@ -475,6 +675,43 @@ public sealed partial class BossArenaSystem : EntitySystem
         }
     }
 
+    /// <summary>
+    /// Масштабирует босса под число участников текущего боя: пороги ХП умножаются на
+    /// <see cref="BossArenaComponent.HealthScaleBase"/> + <see cref="BossArenaComponent.HealthScalePerParticipant"/> × N,
+    /// базовый урон природного оружия — на 1 + <see cref="BossArenaComponent.DamageScalePerParticipant"/> × (N − 1).
+    /// Одиночный боец получает базового босса; каждый дополнительный делает его толще и злее.
+    /// Вызывается из StartArena сразу после <see cref="CaptureBaseStats"/>, чтобы дальше
+    /// фазовые множители и энрейдж работали уже поверх отмасштабированной базы.
+    /// </summary>
+    private void ApplyParticipantScaling(BossArenaComponent comp, EntityUid boss, BossArenaBossComponent bossComp)
+    {
+        var count = comp.Participants.Count;
+
+        var healthFactor = comp.HealthScaleBase + comp.HealthScalePerParticipant * count;
+        if (healthFactor > 0f && Math.Abs(healthFactor - 1f) > 0.001f)
+        {
+            foreach (var state in new[] { MobState.PreCritical, MobState.Critical, MobState.Dead })
+            {
+                if (_mobThresholds.TryGetThresholdForState(boss, state, out var threshold))
+                    _mobThresholds.SetMobStateThreshold(boss, threshold.Value * healthFactor, state);
+            }
+        }
+
+        var damageFactor = 1f + comp.DamageScalePerParticipant * (count - 1);
+        if (bossComp.BaseMeleeDamage == null || damageFactor <= 0f || Math.Abs(damageFactor - 1f) <= 0.001f)
+            return;
+
+        var scaled = new DamageSpecifier();
+        foreach (var (type, amount) in bossComp.BaseMeleeDamage.DamageDict)
+        {
+            scaled.DamageDict[type] = amount * damageFactor;
+        }
+        bossComp.BaseMeleeDamage = scaled;
+
+        // Применяем сразу, чтобы MeleeWeapon босса отражал отмасштабированную базу (фаза 0, без энрейджа).
+        ApplyPhaseBuffs(boss, bossComp);
+    }
+
     private void ApplyPhaseBuffs(EntityUid uid, BossArenaBossComponent comp)
     {
         var phase = comp.CurrentPhase;
@@ -484,6 +721,15 @@ public sealed partial class BossArenaSystem : EntitySystem
         var damageMultiplier = phase < comp.PhaseDamageMultipliers.Count
             ? comp.PhaseDamageMultipliers[phase]
             : 1f;
+
+        // Энрейдж: множители ярости поверх фазовых — сохраняются и при последующих сменах фаз.
+        if (comp.Arena is { } arenaUid
+            && TryComp<BossArenaComponent>(arenaUid, out var arena)
+            && arena.Enraged)
+        {
+            speedMultiplier *= arena.EnrageSpeedMultiplier;
+            damageMultiplier *= arena.EnrageDamageMultiplier;
+        }
 
         if (TryComp<MovementSpeedModifierComponent>(uid, out _))
         {

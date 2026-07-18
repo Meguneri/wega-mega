@@ -1,8 +1,11 @@
-# Босс босс-арены — бронированный ближнобойный босс.
-# Бьёт СОБСТВЕННЫМ (природным) MeleeWeapon, который усиливается по фазам
-# (см. BossArenaBossComponent/ApplyPhaseBuffs — множители применяются к компоненту MeleeWeapon
-# самого босса). Поэтому оружие в руки НЕ даём: иначе фаза-множители урона не работали бы.
-# Гир BossArenaGear — только броня и обмундирование (защита + узнаваемый вид, чтобы босс не был голым).
+# Босс босс-арены — бронированный босс ближнего И дальнего боя.
+# Ближний бой — СОБСТВЕННОЕ (природное) MeleeWeapon, которое усиливается по фазам и от числа
+# участников (см. BossArenaBossComponent/ApplyPhaseBuffs и BossArenaSystem/ApplyParticipantScaling —
+# множители применяются к компоненту MeleeWeapon самого босса). Поэтому оружие ближнего боя в руки
+# НЕ даём: иначе фаза-множители урона не работали бы.
+# Дальний бой — привязанный пулемёт «Каратель» (WeaponBossArenaKara): только босс может поднять и
+# стрелять из него; HTN (BossArenaCompound) выбирает атаку по дистанции до цели. Запасные короба
+# в сумке, перезарядка — RaidSkavAutoReload. Урон пуль фазами НЕ скейлится (и не должен).
 - type: startingGear
   id: BossArenaGear
   equipment:
@@ -12,6 +15,13 @@
     mask: ClothingMaskGas
     gloves: ClothingHandsGlovesCombat
     shoes: ClothingShoesBootsCombat
+    back: ClothingBackpackDuffel
+  inhand:
+    - WeaponBossArenaKara
+  storage:
+    back:
+    - MagazineLightRifleBox
+    - MagazineLightRifleBox
 
 - type: entity
   parent: MobHuman
@@ -52,8 +62,17 @@
     - 1.0
     - 1.2
     - 1.5
-  # RaidBossCompound: удерживает точку (без блуждания) и вступает в бой по видимости.
-  # Дальний бой — при наличии ствола в руке, иначе ближний. У босса ствола нет → сразу ближний.
+  # BossArenaCompound: охраняет точку (без блуждания) и выбирает атаку по дистанции до цели:
+  # рядом — природный MeleeWeapon (скейлится по фазам), далеко — привязанный пулемёт.
   - type: HTN
     rootTask:
-      task: RaidBossCompound
+      task: BossArenaCompound
+  # Меткость босса: заметно лучше диких, но не лазерная — под огнём остаётся шанс уворачиваться.
+  - type: RaidSkavAccuracy
+    accuracyDegrees: 10
+    shootDelay: 0.25
+    rotationSpeedDegrees: 90
+  # Перезаряжается из запасных коробов в сумке.
+  - type: RaidSkavAutoReload
+  # Огнестрел — очередями по 3–5 выстрелов с кулдауном, а не постоянно (см. BossArenaCompound).
+  - type: BossArenaVolley

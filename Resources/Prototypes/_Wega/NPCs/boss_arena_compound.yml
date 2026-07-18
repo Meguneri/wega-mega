@@ -1,0 +1,28 @@
+# Поведение арена-босса (BossArenaSystem): выбор атаки по ДИСТАНЦИИ до цели.
+#   • цель рядом (≤ 4 тайлов) — ближний бой: природный MeleeWeapon босса, скейлится по фазам;
+#   • цель далеко — огнестрел «Каратель» (дослать затвор → взять двумя руками → стрелять,
+#     перезарядка из запасных коробов через RaidSkavAutoReload);
+#   • патроны кончились / ствол потерян — снова ближний бой.
+# Как и RaidBossCompound — БЕЗ ветки блуждания: без цели босс стоит и охраняет точку.
+- type: htnCompound
+  id: BossArenaCompound
+  branches:
+    # Цель рядом — ближний бой (урон и скорость растут по фазам босса).
+    - preconditions:
+        - !type:TargetDistancePrecondition
+          targetKey: Target
+          maxDistance: 4
+      tasks:
+        - !type:HTNCompoundTask
+          task: MeleeCombatCompound
+    # Цель далеко — дальний бой с привязанным огнестрелом, ТОЛЬКО очередями по 3–5 выстрелов
+    # (BossVolleyReadyPrecondition): между очередями босс дерётся в ближнем бою.
+    - preconditions:
+        - !type:BossVolleyReadyPrecondition
+      tasks:
+        - !type:HTNCompoundTask
+          task: RaidSkavRangedCompound
+    # Стрелять нечем (патроны кончились) — ближний бой на любой дистанции.
+    - tasks:
+        - !type:HTNCompoundTask
+          task: MeleeCombatCompound
