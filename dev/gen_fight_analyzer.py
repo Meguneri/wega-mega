@@ -135,32 +135,45 @@ def recolor_inhand(src_img):
     return out
 
 
-INHAND_SCALE = 0.66  # компьютер в руке меньше, чем «во весь хват» у крю-монитора
+MINI_HEIGHT_FRONT = 12  # высота приборчика в руке (вид спереди), px
+MINI_HEIGHT_SIDE = 10   # вид сбоку — чуть меньше и уже (псевдоперспектива)
+HIDDEN_AREA = 20        # непрозрачных px меньше порога = предмет скрыт телом (вид N) — не трогаем
 
 
-def shrink_cell(cell, factor=INHAND_SCALE):
-    """Уменьшает содержимое кадра 32x32 вокруг центра его непрозрачной области (позиция у руки сохраняется)."""
-    bbox = cell.getbbox()
-    if bbox is None:
-        return cell
-    x0, y0, x1, y1 = bbox
-    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-    content = cell.crop(bbox)
-    nw = max(1, round(content.width * factor))
-    nh = max(1, round(content.height * factor))
-    content = content.resize((nw, nh), Image.NEAREST)
-    out = Image.new("RGBA", cell.size, (0, 0, 0, 0))
-    out.paste(content, (round(cx - nw / 2), round(cy - nh / 2)), content)
-    return out
+def mini_icon(height, width_factor=1.0):
+    """Уменьшенная копия иконки прибора: тот же корпус/экран/клавиши, что игрок видит на земле."""
+    icon = base_frame(0)
+    content = icon.crop(icon.getbbox())
+    w = max(2, round(content.width * height / content.height * width_factor))
+    return content.resize((w, height), Image.NEAREST)
 
 
-def shrink_inhand(sheet):
-    """Применяет shrink_cell к каждому из 4 кадров-направлений листа 64x64 (2x2)."""
+def inhand_from_icon(sheet):
+    """
+    Кадры в руке: маленькая копия НАШЕЙ иконки, посаженная в позицию руки. Позиция берётся из
+    центра непрозрачной области перекрашенного кадра крю-монитора (там прибор лежит у руки),
+    но сама картинка — родная: в руке и на земле предмет выглядит одинаково.
+    """
     out = Image.new("RGBA", sheet.size, (0, 0, 0, 0))
-    for row in range(2):
-        for col in range(2):
-            box = (col * 32, row * 32, col * 32 + 32, row * 32 + 32)
-            out.paste(shrink_cell(sheet.crop(box)), box[:2])
+    for idx in range(4):  # порядок направлений в RSI: S, N, E, W
+        col, row = idx % 2, idx // 2
+        box = (col * 32, row * 32, col * 32 + 32, row * 32 + 32)
+        cell = sheet.crop(box)
+        bbox = cell.getbbox()
+        opaque = sum(1 for p in cell.getdata() if p[3] > 0) if bbox else 0
+
+        if bbox is None or opaque < HIDDEN_AREA:
+            # Вид со спины: предмет почти скрыт телом — оставляем исходные пиксели-краешки.
+            out.paste(cell, box[:2])
+            continue
+
+        cx = (bbox[0] + bbox[2]) / 2
+        cy = (bbox[1] + bbox[3]) / 2
+        side = idx >= 2  # E/W
+        mini = mini_icon(MINI_HEIGHT_SIDE if side else MINI_HEIGHT_FRONT, 0.7 if side else 1.0)
+        cell_out = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+        cell_out.paste(mini, (round(cx - mini.width / 2), round(cy - mini.height / 2)), mini)
+        out.paste(cell_out, box[:2])
     return out
 
 
@@ -179,7 +192,7 @@ def main():
     # inhand — перекраска из крю-монитора
     for side in ("left", "right"):
         src = Image.open(os.path.join(SRC, f"scanner-inhand-{side}.png"))
-        shrink_inhand(recolor_inhand(src)).save(os.path.join(DST, f"analyzer-inhand-{side}.png"))
+        inhand_from_icon(recolor_inhand(src)).save(os.path.join(DST, f"analyzer-inhand-{side}.png"))
 
     meta = {
         "version": 1,

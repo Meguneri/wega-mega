@@ -46,7 +46,8 @@ public sealed class LlmBackend
     /// разобранный ответ или null при любой ошибке — вызывающий тогда просто молчит.
     /// </summary>
     public async Task<LlmReply?> AskAsync(string endpoint, string apiKey, string model,
-        string system, string context, ISawmill sawmill, IReadOnlyList<LlmTool>? tools)
+        string system, string context, ISawmill sawmill, IReadOnlyList<LlmTool>? tools,
+        Action<int, int, int>? onUsage = null)
     {
         var messages = new List<object>
         {
@@ -105,6 +106,7 @@ public sealed class LlmBackend
             try
             {
                 using var doc = JsonDocument.Parse(raw);
+                ReportUsage(doc.RootElement, onUsage);
                 // Clone — чтобы элемент пережил dispose документа и его можно было переслать обратно.
                 message = doc.RootElement.GetProperty("choices")[0].GetProperty("message").Clone();
             }
@@ -227,7 +229,7 @@ public sealed class LlmBackend
     /// Используется служебными задачами (консолидация памяти), не диалогом.
     /// </summary>
     public async Task<string?> CompleteTextAsync(string endpoint, string apiKey, string model,
-        string system, string user, ISawmill sawmill)
+        string system, string user, ISawmill sawmill, Action<int, int, int>? onUsage = null)
     {
         var reasoning = model.StartsWith("gpt-5") || model.StartsWith("o1") || model.StartsWith("o3")
             || model.StartsWith("o4") || model.Contains("/gpt-5") || model.Contains("/o1") || model.Contains("/o3");
@@ -248,6 +250,7 @@ public sealed class LlmBackend
         try
         {
             using var doc = JsonDocument.Parse(raw);
+            ReportUsage(doc.RootElement, onUsage);
             return doc.RootElement.GetProperty("choices")[0].GetProperty("message")
                 .GetProperty("content").GetString();
         }
@@ -301,6 +304,33 @@ public sealed class LlmBackend
 
         return null;
     }
+
+    /// <summary>
+    /// Точный расход из блока usage ответа: prompt_tokens / completion_tokens и кэшированная часть
+    /// промпта (prompt_tokens_details.cached_tokens — биллится дешевле). Это те же числа, по которым
+    /// провайдер выставляет счёт; наш локальный подсчёт был бы лишь оценкой.
+    /// </summary>
+    private static void ReportUsage(JsonElement root, Action<int, int, int>? onUsage)
+    {
+        if (onUsage == null || !root.TryGetProperty("usage", out var usage)
+            || usage.ValueKind != JsonValueKind.Object)
+            return;
+
+        var prompt = ReadInt(usage, "prompt_tokens");
+        var completion = ReadInt(usage, "completion_tokens");
+        var cached = 0;
+        if (usage.TryGetProperty("prompt_tokens_details", out var details)
+            && details.ValueKind == JsonValueKind.Object)
+            cached = ReadInt(details, "cached_tokens");
+
+        onUsage(prompt, cached, completion);
+    }
+
+    private static int ReadInt(JsonElement obj, string key)
+        => obj.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number
+            && v.TryGetInt32(out var value)
+            ? value
+            : 0;
 
     /// <summary>Достаёт имя функции и строку аргументов (JSON) из tool-вызова.</summary>
     private static (string? name, string? args) ReadCall(JsonElement toolCall)

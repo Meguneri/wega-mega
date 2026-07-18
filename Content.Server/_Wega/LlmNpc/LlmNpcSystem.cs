@@ -69,6 +69,14 @@ public sealed partial class LlmNpcSystem : EntitySystem
         SubscribeLocalEvent<Content.Server._Wega.Chat.EntityEmotedEvent>(OnEmoted);
         SubscribeLocalEvent<Content.Server._Wega.Chat.StationAnnouncedEvent>(OnAnnounced);
         SubscribeLocalEvent<Content.Shared.Throwing.ThrownEvent>(OnThrown);
+        // Счётчик расхода API: раундовый сбрасывается по рестарту, общий срез сохраняется на диск.
+        _usagePath = System.IO.Path.Combine(_resource.UserData.RootDir ?? ".", "llm_npc", "usage.json");
+        UsageTracker.Load(_usagePath);
+        SubscribeLocalEvent<Content.Shared.GameTicking.RoundRestartCleanupEvent>(_ =>
+        {
+            UsageTracker.Reset();
+            UsageTracker.Save(_usagePath);
+        });
         SubscribeLocalEvent<LlmNpcComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Mobs.MobStateChangedEvent>(OnMobStateChanged);
         SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Damage.Systems.DamageChangedEvent>(OnDamaged);
@@ -415,9 +423,12 @@ public sealed partial class LlmNpcSystem : EntitySystem
         if (!_cfg.GetCVar(WegaCVars.LlmNpcEnabled))
             return;
 
-        var apiKey = _cfg.GetCVar(WegaCVars.LlmNpcApiKey);
-        if (string.IsNullOrWhiteSpace(apiKey))
-            return;
+        // Фоновое сохранение общего среза расхода (не чаще раза в минуту и только при изменениях).
+        if (UsageTracker.Dirty && _timing.RealTime >= _nextUsageSave)
+        {
+            _nextUsageSave = _timing.RealTime + TimeSpan.FromMinutes(1);
+            UsageTracker.Save(_usagePath);
+        }
 
         var now = _timing.RealTime;
         var query = EntityQueryEnumerator<LlmNpcComponent>();
@@ -426,11 +437,35 @@ public sealed partial class LlmNpcSystem : EntitySystem
             if (npc.Thinking || npc.ReplyAt is not { } at || now < at)
                 continue;
 
+            // Ключ пер-NPC (apiKeyCvar в прототипе) либо глобальный; без ключа NPC просто молчит.
+            var apiKey = ResolveApiKey(npc);
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                npc.ReplyAt = null;
+                continue;
+            }
+
             // В крите/мёртвая/не может говорить (нет головы и т.п.) — мозг не работает:
             // никакого облачка и запросов к API.
             if (_mobState.IsIncapacitated(uid) || !_actionBlocker.CanSpeak(uid))
             {
                 npc.ReplyAt = null;
+                continue;
+            }
+
+            // Бюджет раунда: долларовый потолок достигнут — одна прощальная реплика и тишина.
+            var budget = _cfg.GetCVar(WegaCVars.LlmNpcBudgetUsd);
+            if (budget > 0 && _usage.TotalCostUsd(CurrentPrices()) >= budget)
+            {
+                npc.ReplyAt = null;
+                if (!npc.BudgetExcused)
+                {
+                    npc.BudgetExcused = true;
+                    _sawmill.Warning($"бюджет раунда ${budget:0.##} исчерпан — {ToPrettyString(uid)} умолкает");
+                    _chat.TrySendInGameICMessage(uid,
+                        "Так, всё, наговорились — голова гудит. Дайте до конца смены помолчать.",
+                        InGameICChatType.Speak, ChatTransmitRange.Normal);
+                }
                 continue;
             }
 
@@ -450,16 +485,55 @@ public sealed partial class LlmNpcSystem : EntitySystem
             var personality = npc.Personality;
             var memoryFile = npc.MemoryFile;
             var mood = npc.Mood;
-            var endpoint = _cfg.GetCVar(WegaCVars.LlmNpcEndpoint);
-            var model = _cfg.GetCVar(WegaCVars.LlmNpcModel);
+            var npcName = MetaData(uid).EntityName;
+            var endpoint = npc.EndpointOverride ?? _cfg.GetCVar(WegaCVars.LlmNpcEndpoint);
+            var model = npc.ModelOverride ?? _cfg.GetCVar(WegaCVars.LlmNpcModel);
             var surroundings = LookAround(uid); // снимок обстановки — на главном потоке, до await
             _sawmill.Info($"{ToPrettyString(uid)} думает: модель {model}, эндпоинт {endpoint}");
-            _ = ThinkAsync(uid, personality, memoryFile, context, surroundings, mood, endpoint, apiKey, model);
+            _ = ThinkAsync(uid, personality, memoryFile, context, surroundings, mood, endpoint, apiKey, model,
+                npcName);
         }
     }
 
+    /// <summary>Ключ API для конкретного NPC: именованный cvar из прототипа или глобальный.</summary>
+    private string ResolveApiKey(LlmNpcComponent npc)
+    {
+        if (!string.IsNullOrWhiteSpace(npc.ApiKeyCvar))
+        {
+            try
+            {
+                var value = _cfg.GetCVar<string>(npc.ApiKeyCvar!);
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+            catch (Exception e)
+            {
+                _sawmill.Warning($"apiKeyCvar «{npc.ApiKeyCvar}» не читается ({e.Message}) — беру глобальный ключ");
+            }
+        }
+        return _cfg.GetCVar(WegaCVars.LlmNpcApiKey);
+    }
+
+    /// <summary>Актуальная прайс-таблица моделей из cvar'а.</summary>
+    private Dictionary<string, (double In, double Out, double Cached)> CurrentPrices()
+        => LlmNpcUsage.ParsePrices(_cfg.GetCVar(WegaCVars.LlmNpcPrices));
+
+    /// <summary>Счётчик расхода API (точные usage-числа из ответов провайдера): раунд + общий срез.</summary>
+    public readonly LlmNpcUsage UsageTracker = new();
+    private LlmNpcUsage _usage => UsageTracker;
+
+    /// <summary>Путь к usage.json (общий срез, переживает рестарты).</summary>
+    private string _usagePath = "";
+
+    /// <summary>Следующее фоновое сохранение общего среза (троттлинг раз в минуту).</summary>
+    private TimeSpan _nextUsageSave;
+
+    /// <summary>Отчёт о расходе за раунд — для команды llmnpc_usage.</summary>
+    public string UsageReport()
+        => UsageTracker.Report(CurrentPrices(), _cfg.GetCVar(WegaCVars.LlmNpcBudgetUsd));
+
     private async Task ThinkAsync(EntityUid uid, string personality, string memoryFile, string context,
-        string surroundings, string? mood, string endpoint, string apiKey, string model)
+        string surroundings, string? mood, string endpoint, string apiKey, string model, string npcName)
     {
         try
         {
@@ -469,8 +543,22 @@ public sealed partial class LlmNpcSystem : EntitySystem
             var catalog = canMakeDrinks ? _drinks.Catalog() : string.Empty;
             var system = BuildSystemPrompt(personality, memory, catalog, style, surroundings, mood);
 
+            // Точный расход из usage-блоков ответов (в tool-цикле их несколько за раздумье).
+            var keySuffix = apiKey.Length >= 4 ? apiKey[^4..] : apiKey;
+            int thinkPrompt = 0, thinkCached = 0, thinkCompletion = 0;
+            void OnUsage(int prompt, int cached, int completion)
+            {
+                UsageTracker.Record(npcName, keySuffix, model, prompt, cached, completion);
+                thinkPrompt += prompt;
+                thinkCached += cached;
+                thinkCompletion += completion;
+            }
+
             var tools = BuildTools(uid, canMakeDrinks);
-            var reply = await _backend.AskAsync(endpoint, apiKey, model, system, context, _sawmill, tools);
+            var reply = await _backend.AskAsync(endpoint, apiKey, model, system, context, _sawmill, tools, OnUsage);
+
+            _sawmill.Info($"расход раздумья {npcName}: {thinkPrompt} промпт ({thinkCached} кэш) / " +
+                $"{thinkCompletion} ответ; за раунд ≈ ${UsageTracker.TotalCostUsd(CurrentPrices()):0.####}");
 
             if (reply != null)
                 _sawmill.Info($"ответ: say=«{reply.Say}» emote=«{reply.Emote}»");
@@ -578,6 +666,10 @@ public sealed partial class LlmNpcSystem : EntitySystem
             var model = _cfg.GetCVar(WegaCVars.LlmNpcModel);
             var memory = await _memory.ReadAsync(memoryFile);
 
+            var keySuffix = apiKey.Length >= 4 ? apiKey[^4..] : apiKey;
+            void OnUsage(int prompt, int cached, int completion)
+                => UsageTracker.Record($"консолидация {memoryFile}", keySuffix, model, prompt, cached, completion);
+
             var result = await _backend.CompleteTextAsync(endpoint, apiKey, model,
                 "Ты приводишь в порядок память барменши-NPC Евы. Перепиши заметки в компактные досье. " +
                 "ОСТАВЛЯЙ только то, что пригодится в БУДУЩИХ разговорах: кто человек (имя, роль/работа), " +
@@ -590,7 +682,7 @@ public sealed partial class LlmNpcSystem : EntitySystem
                 "в конце секция «Мои заметки» — практические выводы от первого лица Евы (как МНЕ с кем " +
                 "себя вести). Секцию-досье о самой Еве НЕ заводи. Весь текст — не длиннее 60 строк. " +
                 "Ответ — ТОЛЬКО новый текст памяти.",
-                memory, _sawmill);
+                memory, _sawmill, OnUsage);
 
             if (!string.IsNullOrWhiteSpace(result))
             {

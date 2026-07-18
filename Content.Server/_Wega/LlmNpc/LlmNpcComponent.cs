@@ -55,6 +55,28 @@ public sealed partial class LlmNpcComponent : Component
     [DataField]
     public int ContextLines = 20;
 
+    // --- пер-NPC переопределения API (иначе — глобальные cvar'ы wega.llm_npc_*) ---
+
+    /// <summary>Модель только для этого NPC (напр. "openai/gpt-5-mini"). null = глобальная.</summary>
+    [DataField]
+    public string? ModelOverride;
+
+    /// <summary>Эндпоинт только для этого NPC. null = глобальный.</summary>
+    [DataField]
+    public string? EndpointOverride;
+
+    /// <summary>
+    /// Имя cvar'а с API-ключом для этого NPC (напр. "wega.llm_npc_api_key2" — второй провайдер).
+    /// Сам ключ в прототип класть НЕЛЬЗЯ (репозиторий публичный) — только имя cvar'а.
+    /// null/пусто или cvar пуст = глобальный ключ.
+    /// </summary>
+    [DataField]
+    public string? ApiKeyCvar;
+
+    /// <summary>Уже извинилась за молчание при исчерпании бюджета раунда (одноразовая реплика).</summary>
+    [ViewVariables]
+    public bool BudgetExcused;
+
     // --- рантайм-состояние (не сохраняется) ---
 
     /// <summary>Кольцо последних услышанных реплик/эмоутов, "Имя: текст".</summary>

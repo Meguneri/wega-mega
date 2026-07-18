@@ -209,4 +209,28 @@ public sealed partial class WegaCVars
     /// </summary>
     public static readonly CVarDef<bool> LlmNpcMakeDrinks =
         CVarDef.Create("wega.llm_npc_make_drinks", true, CVar.SERVERONLY);
+
+    /// <summary>
+    /// Второй API-ключ (для NPC с apiKeyCvar: "wega.llm_npc_api_key2" в прототипе — например,
+    /// Макс на другом провайдере). Задаётся только в server_config.toml.
+    /// </summary>
+    public static readonly CVarDef<string> LlmNpcApiKey2 =
+        CVarDef.Create("wega.llm_npc_api_key2", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
+
+    /// <summary>
+    /// Прайс моделей для подсчёта стоимости: "модель=вход/выход[/кэш-вход];..." в долларах за 1М
+    /// токенов. Кэш-цена не указана — берётся половина входной. Модель вне списка — токены
+    /// считаются, стоимость показывается как «?».
+    /// </summary>
+    public static readonly CVarDef<string> LlmNpcPrices =
+        CVarDef.Create("wega.llm_npc_prices",
+            "anthropic/claude-haiku-4.5=1.00/5.00/0.10;openai/gpt-4o-mini=0.15/0.60;openai/gpt-5-mini=0.25/2.00/0.025",
+            CVar.SERVERONLY);
+
+    /// <summary>
+    /// Потолок расходов на API за раунд, в долларах (по прайсу llm_npc_prices). Достигли — NPC
+    /// один раз извиняются («заболталась») и молчат до конца раунда. 0 = без лимита.
+    /// </summary>
+    public static readonly CVarDef<float> LlmNpcBudgetUsd =
+        CVarDef.Create("wega.llm_npc_budget_usd", 0f, CVar.SERVERONLY);
 }
