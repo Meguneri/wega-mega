@@ -1,0 +1,62 @@
+# Комплект арена-босса «чемпион арены» (BossArenaGear): уникальная броня/шлем/комбинезон в гамме
+# «Карателя» (тёмная сталь + кримсон), чтобы босс не выглядел как скаучат — раньше на нём был
+# дословно тот же bulletproof/security-комплект, что и у скавов.
+# Спрайты брони и шлема — перекраска стоковой геометрии генератором Tools/gen_boss_arena_gear.py.
+# Комбинезон — стоковый color.rsi с тинтом (спрайт не нужен).
+
+- type: entity
+  parent: ClothingOuterArmorBulletproof
+  id: ClothingOuterArmorBossArena
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Armor/boss_arena.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Armor/boss_arena.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        # Дальний бой держит, но вблизи заметно уязвимее: «подойти в милли между очередями»
+        # — осознанный риск с наградой, а не только обязаловка анти-кайта.
+        Blunt: 1.1
+        Slash: 1.0
+        Piercing: 0.5
+        Heat: 0.8
+  - type: ExplosionResistance
+    damageCoefficient: 0.7
+
+- type: entity
+  parent: ClothingHeadHelmetBasic
+  id: ClothingHeadHelmetBossArena
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Head/Helmets/boss_arena.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Head/Helmets/boss_arena.rsi
+
+- type: entity
+  parent: ClothingUniformJumpsuitColorDarkGreen
+  id: ClothingUniformJumpsuitBossArena
+  components:
+  - type: Sprite
+    sprite: Clothing/Uniforms/Jumpsuit/color.rsi
+    layers:
+    - state: icon
+      color: "#7d1119"
+    - state: trinkets-icon
+  - type: Item
+    inhandVisuals:
+      left:
+      - state: inhand-left
+        color: "#7d1119"
+      - state: trinkets-inhand-left
+      right:
+      - state: inhand-right
+        color: "#7d1119"
+      - state: trinkets-inhand-right
+  - type: Clothing
+    sprite: Clothing/Uniforms/Jumpsuit/color.rsi
+    clothingVisuals:
+      jumpsuit:
+      - state: equipped-INNERCLOTHING
+        color: "#7d1119"
+      - state: trinkets-equipped-INNERCLOTHING
