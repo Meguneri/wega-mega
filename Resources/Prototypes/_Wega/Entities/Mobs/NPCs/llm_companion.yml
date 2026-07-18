@@ -137,6 +137,14 @@
     state: analyzer
   - type: StaticPrice
     price: 120
+  # Используемый предмет: UI со списком дуэлей сессии, сводкой и печатью (FightAnalyzerSystem).
+  - type: FightAnalyzer
+  - type: ActivatableUI
+    key: enum.FightAnalyzerUiKey.Key
+  - type: UserInterface
+    interfaces:
+      enum.FightAnalyzerUiKey.Key:
+        type: FightAnalyzerBoundUserInterface
 
 - type: startingGear
   id: LlmCompanionGear

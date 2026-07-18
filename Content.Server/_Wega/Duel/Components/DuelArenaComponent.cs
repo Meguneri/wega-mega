@@ -141,6 +141,14 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     public DuelArenaPhase Phase;
 
     /// <summary>
+    /// Номер текущей (или последней) дуэли на этой арене — сквозной по серверу за раунд
+    /// (выдаёт DuelArenaSystem). Звучит в объявлениях старта/финала, в летописи боёв
+    /// (ArenaFightLogSystem), у Феликса/Макса и в распечатках. 0 = дуэлей ещё не было.
+    /// </summary>
+    [ViewVariables]
+    public int DuelNumber;
+
+    /// <summary>
     /// Дуэль «вооружена»: в зоне есть минимум двое бойцов (поддерживается 3+) и ждём исхода.
     /// Оставлено как вычисляемое свойство для систем эффектов арены.
     /// </summary>

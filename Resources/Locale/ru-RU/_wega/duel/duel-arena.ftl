@@ -8,7 +8,7 @@ spawner-signal-control-disabled = Сброс снаряжения останов
 duel-arena-not-started-no-fighters = Дуэль не началась: в зоне нет бойцов.
 duel-arena-not-started-need-two = Дуэль не началась: нужно минимум 2 бойца.
 
-duel-arena-started = Дуэль началась! { $fighters }
+duel-arena-started = Дуэль №{ $number } началась! { $fighters }
 
 duel-arena-scores-reset = Счёт дуэльной арены обнулён.
 
@@ -16,7 +16,7 @@ duel-arena-cleaned = Арена очищена: выданное снаряже�
 
 duel-arena-losers-fallback = противники
 
-duel-arena-concluded-winner = Дуэль завершена! Победитель: { $winner }{ $streak ->
+duel-arena-concluded-winner = Дуэль №{ $number } завершена! Победитель: { $winner }{ $streak ->
         [0] { "" }
         [1] { "" }
        *[other] { " " }(побед подряд: { $streak })
@@ -25,7 +25,7 @@ duel-arena-concluded-winner = Дуэль завершена! Победител�
        *[other] потеряли сознание
     }. Снаряжение убрано.
 
-duel-arena-concluded-draw = Ничья! { $fighters } потеряли сознание. Снаряжение убрано.
+duel-arena-concluded-draw = Дуэль №{ $number } — ничья! { $fighters } потеряли сознание. Снаряжение убрано.
 
 # Общий накопленный счёт арены, дописывается к итогу боя
 duel-arena-scoreboard = Общий счёт: { $scores }

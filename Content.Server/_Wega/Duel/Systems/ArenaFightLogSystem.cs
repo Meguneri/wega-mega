@@ -7,6 +7,7 @@ using Content.Shared.Weapons.Melee;
 using Content.Shared.Weapons.Melee.Events;
 using Content.Shared.Weapons.Ranged.Components;
 using Content.Shared.Weapons.Ranged.Systems;
+using Robust.Shared.Network;
 using Robust.Shared.Player;
 using Robust.Shared.Timing;
 
@@ -25,7 +26,9 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     private static readonly TimeSpan EpisodeGap = TimeSpan.FromSeconds(25);
     private const int MaxHistory = 5;
 
-    private readonly Dictionary<EntityUid, PlayerLog> _logs = new();
+    // КЛЮЧ — NetUserId игрока, не EntityUid: после смерти в дуэли игрок получает НОВОЕ тело,
+    // и летопись по старому uid терялась («Записей нет» сразу после честной дуэли).
+    private readonly Dictionary<NetUserId, PlayerLog> _logs = new();
 
     /// <summary>Один бой глазами одного игрока.</summary>
     public sealed class FightEpisode
@@ -44,6 +47,9 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
 
         /// <summary>Бой шёл на гриде арены (настоящая дуэль), а не случайная стычка на станции.</summary>
         public bool IsDuel;
+
+        /// <summary>Сквозной номер дуэли (DuelArenaComponent.DuelNumber). 0 = неизвестен/стычка.</summary>
+        public int DuelNumber;
 
         /// <summary>Суммарный обмен уроном — мера «настоящести» боя (мусор отсекается по нему).</summary>
         public double TotalExchange => DamageDealt.Values.Sum() + DamageTaken.Values.Sum();
@@ -89,21 +95,37 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     private bool IsPlayer(EntityUid uid)
         => HasComp<ActorComponent>(uid) && HasComp<MobStateComponent>(uid);
 
-    /// <summary>
-    /// Стоит ли моб сейчас на гриде арены (= в настоящей дуэли). Арена — отдельный грид сущности
-    /// с DuelArenaComponent; сравниваем грид моба с гридами всех активных арен.
-    /// </summary>
-    private bool IsInDuel(EntityUid mob)
+    /// <summary>NetUserId игрока за мобом (false = не игрок/нет сессии).</summary>
+    private bool TryUser(EntityUid mob, out NetUserId user)
     {
+        if (TryComp<ActorComponent>(mob, out var actor) && HasComp<MobStateComponent>(mob))
+        {
+            user = actor.PlayerSession.UserId;
+            return true;
+        }
+        user = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Стоит ли моб сейчас на гриде арены (= в настоящей дуэли) и номер этой дуэли.
+    /// Арена — отдельный грид сущности с DuelArenaComponent; сравниваем гриды.
+    /// </summary>
+    private bool TryGetDuel(EntityUid mob, out int duelNumber)
+    {
+        duelNumber = 0;
         var grid = Transform(mob).GridUid;
         if (grid == null)
             return false;
 
         var arenas = EntityQueryEnumerator<Content.Server._Wega.Duel.Components.DuelArenaComponent>();
-        while (arenas.MoveNext(out var arena, out _))
+        while (arenas.MoveNext(out var arena, out var comp))
         {
             if (Transform(arena).GridUid == grid)
+            {
+                duelNumber = comp.DuelNumber;
                 return true;
+            }
         }
         return false;
     }
@@ -114,7 +136,7 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     /// </summary>
     private FightEpisode? CurrentEp(EntityUid player)
     {
-        if (!_logs.TryGetValue(player, out var log))
+        if (!TryUser(player, out var user) || !_logs.TryGetValue(user, out var log))
             return null;
         log.Name = MetaData(player).EntityName;
 
@@ -132,10 +154,14 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     /// </summary>
     private FightEpisode StartEp(EntityUid player)
     {
-        if (!_logs.TryGetValue(player, out var log))
+        // Вызывающие проверяют IsPlayer, так что TryUser здесь не падает; на всякий случай —
+        // фолбэк на «нулевого» пользователя, чтобы не уронить обработчик события.
+        TryUser(player, out var user);
+
+        if (!_logs.TryGetValue(user, out var log))
         {
             log = new PlayerLog();
-            _logs[player] = log;
+            _logs[user] = log;
         }
         log.Name = MetaData(player).EntityName;
 
@@ -145,10 +171,17 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
             CloseEpisode(log, "бой затих — разошлись");
             ep = new FightEpisode { Start = now };
             log.Current = ep;
+            Log.Debug($"fight_log: новый эпизод {log.Name}");
         }
 
-        if (IsInDuel(player))
+        if (TryGetDuel(player, out var duelNumber))
+        {
+            if (!ep.IsDuel)
+                Log.Debug($"fight_log: эпизод {log.Name} помечен как дуэль №{duelNumber}");
             ep.IsDuel = true;
+            if (duelNumber > 0)
+                ep.DuelNumber = duelNumber;
+        }
         ep.LastEvent = now;
         return ep;
     }
@@ -186,7 +219,7 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
         // Попадание по мобу — настоящий бой (начинаем эпизод). Промах в воздух/стену считаем
         // (как мазок в бою), только если бой уже идёт или ты в дуэли — иначе тычки по лутеру
         // и ящикам не порождают «бой» и не портят статистику.
-        var ep = hitMob || IsInDuel(args.User) ? StartEp(args.User) : CurrentEp(args.User);
+        var ep = hitMob || TryGetDuel(args.User, out _) ? StartEp(args.User) : CurrentEp(args.User);
         if (ep == null)
             return;
 
@@ -209,7 +242,7 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
             return;
         // Выстрел сам по себе бой не заводит (можно палить в тир/стену): считаем, только если
         // бой уже идёт или стрелок в дуэли. Первое попадание по мобу заведёт эпизод отдельно.
-        var ep = IsInDuel(args.User) ? StartEp(args.User) : CurrentEp(args.User);
+        var ep = TryGetDuel(args.User, out _) ? StartEp(args.User) : CurrentEp(args.User);
         if (ep != null)
             ep.ShotsFired += Math.Max(1, args.Ammo.Count);
     }
@@ -288,20 +321,23 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
         var mob = args.Target;
 
         // Пал сам — закрываем эпизод поражением.
-        if (_logs.TryGetValue(mob, out var log) && log.Current is { } ep)
+        if (TryUser(mob, out var victimUser) && _logs.TryGetValue(victimUser, out var log)
+            && log.Current is { } ep)
         {
             ep.Outcome = args.NewMobState == MobState.Dead
                 ? $"ПОРАЖЕНИЕ — погиб{(ep.LastAttacker != null ? $", добил {ep.LastAttacker}" : "")}"
                 : $"ПОРАЖЕНИЕ — упал без сознания{(ep.LastAttacker != null ? $", от рук {ep.LastAttacker}" : "")}";
             CloseEpisode(log, ep.Outcome);
+            Log.Debug($"fight_log: {log.Name} — эпизод закрыт: {ep.Outcome}");
         }
 
         // Сразил противника — закрываем эпизод победителя.
-        if (args.Origin is { } winner && winner != mob && IsPlayer(winner)
-            && _logs.TryGetValue(winner, out var winnerLog) && winnerLog.Current is { } winnerEp)
+        if (args.Origin is { } winner && winner != mob && TryUser(winner, out var winnerUser)
+            && _logs.TryGetValue(winnerUser, out var winnerLog) && winnerLog.Current is { } winnerEp)
         {
             winnerEp.Outcome = $"ПОБЕДА — сразил {MetaData(mob).EntityName}";
             CloseEpisode(winnerLog, winnerEp.Outcome);
+            Log.Debug($"fight_log: {winnerLog.Name} — эпизод закрыт: {winnerEp.Outcome}");
         }
     }
 
@@ -334,10 +370,12 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     }
 
     public string? GetReport(EntityUid player, bool lastOnly = true)
-    {
-        if (!_logs.TryGetValue(player, out var log))
-            return null;
+        => TryUser(player, out var user) && _logs.TryGetValue(user, out var log)
+            ? BuildReport(log, lastOnly)
+            : null;
 
+    private string? BuildReport(PlayerLog log, bool lastOnly)
+    {
         var episodes = CollectEpisodes(log, lastOnly);
         if (episodes.Count == 0)
             return null;
@@ -353,7 +391,9 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
             index++;
             var ago = (int)(now - ep.LastEvent).TotalMinutes;
             var duration = (int)(ep.LastEvent - ep.Start).TotalSeconds;
-            var kind = ep.IsDuel ? "дуэль на арене" : "стычка";
+            var kind = ep.IsDuel
+                ? ep.DuelNumber > 0 ? $"дуэль №{ep.DuelNumber} на арене" : "дуэль на арене"
+                : "стычка";
             sb.Append($"Бой {index} ({kind}, {(ago < 1 ? "только что" : $"{ago} мин назад")}, длился ~{Math.Max(duration, 1)} c)");
             if (ep.Opponents.Count > 0)
                 sb.Append($", противник: {string.Join(", ", ep.Opponents.Take(3))}");
@@ -382,26 +422,26 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
 
     /// <summary>Отчёт по имени (игрок может быть уже не рядом): точное имя, затем вхождение.</summary>
     public string? GetReportByName(string name, bool lastOnly = true)
-        => FindByName(name) is { } p ? GetReport(p, lastOnly) : null;
+        => FindByName(name) is { } log ? BuildReport(log, lastOnly) : null;
 
     /// <summary>Красивая бумажная версия отчёта по имени (для распечатки анализатора).</summary>
     public string? GetPaperReportByName(string name, bool lastOnly = true)
-        => FindByName(name) is { } p ? GetPaperReport(p, lastOnly) : null;
+        => FindByName(name) is { } log ? BuildPaperReport(log, lastOnly) : null;
 
-    private EntityUid? FindByName(string name)
+    private PlayerLog? FindByName(string name)
     {
         var needle = name.Trim().ToLowerInvariant();
         if (needle.Length == 0)
             return null;
 
-        EntityUid? partial = null;
-        foreach (var (uid, log) in _logs)
+        PlayerLog? partial = null;
+        foreach (var log in _logs.Values)
         {
             var logName = log.Name.ToLowerInvariant();
             if (logName == needle)
-                return uid;
+                return log;
             if (partial == null && (logName.Contains(needle) || needle.Contains(logName)))
-                partial = uid;
+                partial = log;
         }
         return partial;
     }
@@ -411,10 +451,12 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     /// бар-чарты урона и точности (моноширинный блок). Игроку в руки — читабельно и наглядно.
     /// </summary>
     public string? GetPaperReport(EntityUid player, bool lastOnly = true)
-    {
-        if (!_logs.TryGetValue(player, out var log))
-            return null;
+        => TryUser(player, out var user) && _logs.TryGetValue(user, out var log)
+            ? BuildPaperReport(log, lastOnly)
+            : null;
 
+    private string? BuildPaperReport(PlayerLog log, bool lastOnly)
+    {
         var episodes = CollectEpisodes(log, lastOnly);
         if (episodes.Count == 0)
             return null;
@@ -431,7 +473,9 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
             index++;
             var ago = (int)(now - ep.LastEvent).TotalMinutes;
             var duration = Math.Max((int)(ep.LastEvent - ep.Start).TotalSeconds, 1);
-            var kind = ep.IsDuel ? "дуэль на арене" : "стычка";
+            var kind = ep.IsDuel
+                ? ep.DuelNumber > 0 ? $"дуэль №{ep.DuelNumber} на арене" : "дуэль на арене"
+                : "стычка";
 
             if (episodes.Count > 1)
                 sb.AppendLine($"[head=3]Бой {index}[/head]");
@@ -489,7 +533,7 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     /// </summary>
     public string? GetVoiceSummary(EntityUid player)
     {
-        if (!_logs.TryGetValue(player, out var log))
+        if (!TryUser(player, out var user) || !_logs.TryGetValue(user, out var log))
             return null;
 
         var episodes = CollectEpisodes(log, lastOnly: true);
@@ -515,7 +559,144 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
             : "Без исхода.";
 
         var duration = Math.Max((int)(ep.LastEvent - ep.Start).TotalSeconds, 1);
-        return $"Бой {duration} секунд: {string.Join(", ", parts)}. {verdict}";
+        // Различаем на слух: настоящая дуэль на арене или уличная стычка.
+        var kind = ep.IsDuel
+            ? ep.DuelNumber > 0 ? $"Дуэль №{ep.DuelNumber}" : "Дуэль"
+            : "Стычка";
+        return $"{kind}, {duration} секунд: {string.Join(", ", parts)}. {verdict}";
+    }
+
+    // ------------------------------------------------------------------ дуэле-центричные отчёты
+
+    /// <summary>
+    /// Все дуэли сессии (номер > 0), собранные из эпизодов ВСЕХ игроков: (номер, заголовок,
+    /// подробный отчёт с разметкой). От свежих к старым. Для UI анализатора.
+    /// </summary>
+    public List<(int Number, string Title, string Report)> ListDuelReports()
+    {
+        var result = new List<(int, string, string)>();
+        foreach (var group in AllDuelEpisodes().GroupBy(pair => pair.Episode.DuelNumber)
+                     .OrderByDescending(g => g.Key))
+        {
+            var participants = group.Select(p => p.Name).Distinct().ToList();
+            var last = group.Max(p => p.Episode.LastEvent);
+            var ago = (int)(_timing.RealTime - last).TotalMinutes;
+            var title = $"Дуэль №{group.Key} — {string.Join(" vs ", participants.Take(4))}" +
+                        $" ({(ago < 1 ? "только что" : $"{ago} мин назад")})";
+            result.Add((group.Key, title, BuildDuelReport(group.Key, group.ToList())));
+        }
+        return result;
+    }
+
+    /// <summary>Подробный отчёт по одной дуэли (null = нет такой).</summary>
+    public string? GetDuelReport(int number)
+    {
+        var episodes = AllDuelEpisodes().Where(p => p.Episode.DuelNumber == number).ToList();
+        return episodes.Count == 0 ? null : BuildDuelReport(number, episodes);
+    }
+
+    /// <summary>Все дуэльные эпизоды всех игроков (включая незакрытые текущие).</summary>
+    private IEnumerable<(string Name, FightEpisode Episode)> AllDuelEpisodes()
+    {
+        foreach (var log in _logs.Values)
+        {
+            foreach (var ep in log.History)
+            {
+                if (ep.IsDuel && ep.DuelNumber > 0)
+                    yield return (log.Name, ep);
+            }
+            if (log.Current is { IsDuel: true, DuelNumber: > 0 } current)
+                yield return (log.Name, current);
+        }
+    }
+
+    /// <summary>Отчёт по дуэли: блок на каждого участника с графиками (разметка бумаги).</summary>
+    private string BuildDuelReport(int number, List<(string Name, FightEpisode Episode)> episodes)
+    {
+        var now = _timing.RealTime;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"[head=2]ДУЭЛЬ №{number}[/head]");
+
+        var start = episodes.Min(p => p.Episode.Start);
+        var end = episodes.Max(p => p.Episode.LastEvent);
+        var ago = (int)(now - end).TotalMinutes;
+        var duration = Math.Max((int)(end - start).TotalSeconds, 1);
+        sb.AppendLine($"[bullet]{(ago < 1 ? "только что" : $"{ago} мин назад")}, длилась ~{duration} c");
+        sb.AppendLine("[color=gray]────────────────────────────[/color]");
+
+        // Один игрок мог иметь несколько эпизодов одной дуэли (пауза) — сливаем по имени.
+        foreach (var player in episodes.GroupBy(p => p.Name))
+        {
+            var eps = player.Select(p => p.Episode).ToList();
+            var dealt = eps.Sum(e => e.DamageDealt.Values.Sum());
+            var taken = eps.Sum(e => e.DamageTaken.Values.Sum());
+            var swings = eps.Sum(e => e.Swings.Values.Sum());
+            var hits = eps.Sum(e => e.Hits.Values.Sum());
+            var shots = eps.Sum(e => e.ShotsFired);
+            var shotHits = eps.Sum(e => e.ShotsHit);
+            var outcome = eps.Select(e => e.Outcome).FirstOrDefault(o => o != null) ?? "без исхода";
+            var outcomeColor = outcome.Contains("ПОБЕДА") ? "#3fbf5a"
+                : outcome.Contains("ПОРАЖЕНИЕ") ? "#d94040" : "#c9a227";
+
+            sb.AppendLine($"[bold]{player.Key}[/bold] — [color={outcomeColor}]{outcome}[/color]");
+            var damageMax = Math.Max(dealt, taken);
+            sb.AppendLine("[mono]");
+            sb.AppendLine($"нанёс   {Bar(dealt, damageMax)} {dealt,4:0}");
+            sb.AppendLine($"получил {Bar(taken, damageMax)} {taken,4:0}");
+            if (swings > 0)
+                sb.AppendLine($"мили    {Bar(hits, swings)} {hits}/{swings} ({Percent(hits, swings)})");
+            if (shots > 0)
+                sb.AppendLine($"стрельба {Bar(shotHits, shots)} {shotHits}/{shots} ({Percent(shotHits, shots)})");
+            sb.AppendLine("[/mono]");
+        }
+
+        sb.AppendLine("[color=gray]────────────────────────────[/color]");
+        sb.AppendLine("[italic]Сформировано портативным боевым анализатором.[/italic]");
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Сводка сессии: сколько дуэлей и таблица бойцов (бои/победы/поражения, урон, точность).
+    /// Считаются только дуэли на арене — уличные стычки в зачёт не идут.
+    /// </summary>
+    public string GetSessionOverview()
+    {
+        var all = AllDuelEpisodes().ToList();
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[head=2]СВОДКА СЕССИИ[/head]");
+
+        var duelCount = all.Select(p => p.Episode.DuelNumber).Distinct().Count();
+        sb.AppendLine($"[bullet]Дуэлей сыграно: [bold]{duelCount}[/bold]");
+        if (duelCount == 0)
+        {
+            sb.AppendLine("[italic]Пока пусто: ни одной дуэли за сессию.[/italic]");
+            return sb.ToString().TrimEnd();
+        }
+        sb.AppendLine("[color=gray]────────────────────────────[/color]");
+
+        sb.AppendLine("[bold]БОЙЦЫ[/bold] (бои / победы-поражения / урон нанёс-получил / точность):");
+        sb.AppendLine("[mono]");
+        foreach (var player in all.GroupBy(p => p.Name)
+                     .OrderByDescending(g => g.Count(p => p.Episode.Outcome?.Contains("ПОБЕДА") == true)))
+        {
+            var eps = player.Select(p => p.Episode).ToList();
+            var duels = eps.Select(e => e.DuelNumber).Distinct().Count();
+            var wins = eps.Count(e => e.Outcome?.Contains("ПОБЕДА") == true);
+            var losses = eps.Count(e => e.Outcome?.Contains("ПОРАЖЕНИЕ") == true);
+            var dealt = eps.Sum(e => e.DamageDealt.Values.Sum());
+            var taken = eps.Sum(e => e.DamageTaken.Values.Sum());
+            var swings = eps.Sum(e => e.Swings.Values.Sum());
+            var hits = eps.Sum(e => e.Hits.Values.Sum());
+            var shots = eps.Sum(e => e.ShotsFired);
+            var shotHits = eps.Sum(e => e.ShotsHit);
+            var accuracy = swings + shots > 0 ? Percent(hits + shotHits, swings + shots) : "—";
+
+            sb.AppendLine($"{Fit(player.Key, 14)} {duels,2} боя  {wins}П/{losses}п  " +
+                          $"{dealt,4:0}/{taken,4:0}  {accuracy}");
+        }
+        sb.AppendLine("[/mono]");
+        sb.AppendLine("[italic]П — победы, п — поражения. Сформировано боевым анализатором.[/italic]");
+        return sb.ToString().TrimEnd();
     }
 
     /// <summary>Псевдографический бар: █ — заполнено, ░ — пусто.</summary>

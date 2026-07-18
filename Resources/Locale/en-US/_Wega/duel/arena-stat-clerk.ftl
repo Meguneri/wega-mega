@@ -8,3 +8,9 @@ arena-stat-clerk-empty = No records. Go fight in the arena first, then come back
 arena-stat-clerk-done-1 = Here. It's all in the numbers.
 arena-stat-clerk-done-2 = Your printout. Draw your own conclusions.
 arena-stat-clerk-done-3 = Here's your fight. Numbers don't flatter.
+
+# Portable fight analyzer UI
+fight-analyzer-window-title = Fight Analyzer
+fight-analyzer-session-summary = Session summary
+fight-analyzer-print = Print
+fight-analyzer-empty = No duels this session yet.

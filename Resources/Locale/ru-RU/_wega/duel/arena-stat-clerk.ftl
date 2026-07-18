@@ -8,3 +8,9 @@ arena-stat-clerk-empty = Записей нет. Сначала подерись 
 arena-stat-clerk-done-1 = Держи. Всё по цифрам.
 arena-stat-clerk-done-2 = Распечатка. Выводы делай сам.
 arena-stat-clerk-done-3 = Вот твой бой. Цифры не льстят.
+
+# UI портативного боевого анализатора
+fight-analyzer-window-title = Боевой анализатор
+fight-analyzer-session-summary = Сводка сессии
+fight-analyzer-print = Распечатать
+fight-analyzer-empty = Дуэлей за сессию пока не было.

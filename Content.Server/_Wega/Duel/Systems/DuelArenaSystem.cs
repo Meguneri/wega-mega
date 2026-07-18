@@ -189,6 +189,9 @@ public sealed partial class DuelArenaSystem : EntitySystem
         EnsureArsenalCrates(uid, comp);
     }
 
+    /// <summary>Сквозной счётчик дуэлей за раунд (по всем аренам сервера).</summary>
+    private int _duelCounter;
+
     public override void Initialize()
     {
         base.Initialize();
@@ -196,6 +199,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
         SubscribeLocalEvent<DuelArenaComponent, SignalReceivedEvent>(OnSignalReceived);
         SubscribeLocalEvent<DuelArenaComponent, ArenaRoundPreparingEvent>(OnRoundPreparing);
         SubscribeLocalEvent<MobStateChangedEvent>(OnMobStateChanged);
+        SubscribeLocalEvent<Content.Shared.GameTicking.RoundRestartCleanupEvent>(_ => _duelCounter = 0);
     }
 
     private void OnInit(EntityUid uid, DuelArenaComponent comp, ComponentInit args)
@@ -422,10 +426,13 @@ public sealed partial class DuelArenaSystem : EntitySystem
             ? _timing.CurTime + TimeSpan.FromSeconds(comp.SupplyDropDelay)
             : null;
 
+        // Сквозной номер дуэли за раунд: звучит в старте/финале, у Феликса/Макса и в распечатках.
+        comp.DuelNumber = ++_duelCounter;
+
         var vsSep = $" {Loc.GetString("duel-arena-connector-vs")} ";
         var names = string.Join(vsSep, comp.Duelists.Select(d => MetaData(d).EntityName));
         _chatManager.DispatchServerAnnouncement(
-            Loc.GetString("duel-arena-started", ("fighters", names)), Color.Gold);
+            Loc.GetString("duel-arena-started", ("number", comp.DuelNumber), ("fighters", names)), Color.Gold);
 
         // Подстраховка выдачи арсенал-ящиков для одиночных арен (без ротации): там нет переноса бойцов
         // на арену, а значит и ArenaRoundPreparingEvent, поэтому спавним здесь. Гард ArsenalSpawned
@@ -678,6 +685,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
                 : Loc.GetString("duel-arena-losers-fallback");
 
             msg = Loc.GetString("duel-arena-concluded-winner",
+                ("number", arena.DuelNumber),
                 ("winner", winnerName),
                 ("streak", store.Streak),
                 ("losers", loserNames),
@@ -687,7 +695,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
         {
             var andSep = $" {Loc.GetString("duel-arena-connector-and")} ";
             var names = string.Join(andSep, arena.Duelists.Select(SafeName));
-            msg = Loc.GetString("duel-arena-concluded-draw", ("fighters", names));
+            msg = Loc.GetString("duel-arena-concluded-draw", ("number", arena.DuelNumber), ("fighters", names));
         }
 
         if (scoreboard != null)
