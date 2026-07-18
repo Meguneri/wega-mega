@@ -332,3 +332,9 @@ Resources/MapImages
 # артефакт сборки, в git не нужен.
 /dist/
 DEPLOY.md
+
+# Локальный venv с Pillow для генераторов спрайтов (dev/gen_*.py, Tools/gen_*.py).
+# На машине разработчика framework-Python может виснуть на импорте PIL.Image
+# (проверка Gatekeeper) — venv из homebrew-python решает. Создаётся локально:
+#   /opt/homebrew/bin/python3 -m venv dev/.venv-sprites && dev/.venv-sprites/bin/pip install pillow
+dev/.venv-sprites/

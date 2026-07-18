@@ -1,4 +1,5 @@
-# Огнестрел арена-босса — пулемёт «Каратель» (спрайт и баллистика унаследованы от L6).
+# Огнестрел арена-босса — пулемёт «Каратель» (баллистика унаследована от L6, уникальный спрайт —
+# перекраска геометрии L6 в тёмную сталь и кримсон, генерируется Tools/gen_boss_kara_lmg.py).
 # Привязан к боссу (BossArenaBoundGun): поднять и стрелять из него может только сущность с
 # BossArenaBossComponent, для игроков он бесполезен. Ни в какие арсенал-пулы и лут не входит —
 # существует ровно один экземпляр, выдаваемый боссу через BossArenaGear, и умирает вместе с ним.
@@ -6,4 +7,6 @@
   parent: WeaponLightMachineGunL6
   id: WeaponBossArenaKara
   components:
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Guns/boss_kara.rsi
   - type: BossArenaBoundGun
