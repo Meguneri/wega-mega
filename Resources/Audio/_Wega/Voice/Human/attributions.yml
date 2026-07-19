@@ -1,0 +1,6 @@
+# Смягчённый женский зевок: -7 dB + lowpass 3.5 кГц от апстримного female_yawn_1.ogg
+# (оригинал резкий, «бил по ушам»). Обработка — ffmpeg + oggenc, моно сохранено.
+- files: ["female_yawn_soft.ogg"]
+  license: "CC0-1.0"
+  copyright: "Reitanna on freesound.org; softened (volume/lowpass) for wega-mega"
+  source: "https://freesound.org/people/Reitanna/sounds/252239/"
