@@ -47,6 +47,13 @@ public sealed partial class MediaPlayerSystem
         public int FrameCursor;
         public int AudioCursor;
         public int AudioTotal;
+
+        /// <summary>
+        /// Первая (стартовая) рассылка клипа: по её завершении часы клипа (<see cref="_tvStartedAt"/>)
+        /// перезапускаются с нуля — ролик начинает идти, когда зрители реально получили кадры,
+        /// а не пока они качались.
+        /// </summary>
+        public bool ResetClock;
     }
 
     private void InitializeTv()
@@ -213,7 +220,7 @@ public sealed partial class MediaPlayerSystem
             _sawmill.Info($"TV clip {id}: {frames.Count} frames {_tvWidth}x{_tvHeight}, " +
                           $"{total / 1024} KiB video, {_tvAudio.Length / 1024} KiB audio, {_tvDuration:0.0}s loop");
 
-            TvBroadcast(Filter.Broadcast());
+            TvBroadcast(Filter.Broadcast(), resetClock: true);
         }
         catch (Exception e)
         {
@@ -241,7 +248,7 @@ public sealed partial class MediaPlayerSystem
     /// рассылку — их дотачивает <see cref="TvTickSend"/> по несколько за тик, чтобы не завалить
     /// сервер и сетевой канал разом.
     /// </summary>
-    private void TvBroadcast(Filter filter)
+    private void TvBroadcast(Filter filter, bool resetClock = false)
     {
         if (_tvClipId is not { } id || _tvFrames.Count == 0 || _tvAudio is not { } audio)
             return;
@@ -255,6 +262,7 @@ public sealed partial class MediaPlayerSystem
             Filter = filter,
             ClipId = id,
             AudioTotal = (audio.Length + ChunkSize - 1) / ChunkSize,
+            ResetClock = resetClock,
         });
     }
 
@@ -290,7 +298,16 @@ public sealed partial class MediaPlayerSystem
             }
 
             if (job.FrameCursor >= _tvFrames.Count && job.AudioCursor >= job.AudioTotal)
+            {
+                // Передача доехала: стартовая рассылка перезапускает часы клипа с нуля, а адресату
+                // в любом случае подводим локальные часы — пока кадры качались, они утекли вперёд.
+                if (job.ResetClock)
+                    _tvStartedAt = _timing.RealTime;
+
+                var position = (float)((_timing.RealTime - _tvStartedAt).TotalSeconds % _tvDuration);
+                RaiseNetworkEvent(new TvClockSyncEvent(job.ClipId, position), job.Filter);
                 _tvSends.RemoveAt(j);
+            }
         }
     }
 

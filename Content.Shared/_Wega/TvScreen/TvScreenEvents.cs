@@ -21,6 +21,18 @@ public sealed class TvStartEvent(string clipId, float fps, int frameCount, int w
 }
 
 /// <summary>
+/// Подводит часы клипа на клиенте к серверной позиции. Шлётся адресату по завершении порционной
+/// передачи кадров/аудио: пока клип доезжал, локальные часы (запущенные TvStartEvent) утекли
+/// вперёд — без подводки телевизор «включался» с середины ролика.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class TvClockSyncEvent(string clipId, float position) : EntityEventArgs
+{
+    public string ClipId { get; } = clipId;
+    public float Position { get; } = position;
+}
+
+/// <summary>
 /// One PNG-encoded video frame of the current clip. PNG (не JPEG) — клиент в песочнице может
 /// декодировать только через движковый IClyde.LoadTextureFromPNGStream.
 /// </summary>

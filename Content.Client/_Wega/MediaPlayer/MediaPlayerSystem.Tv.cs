@@ -46,6 +46,7 @@ public sealed partial class MediaPlayerSystem
         SubscribeNetworkEvent<TvStartEvent>(OnTvStart);
         SubscribeNetworkEvent<TvFrameEvent>(OnTvFrame);
         SubscribeNetworkEvent<TvAudioChunkEvent>(OnTvAudioChunk);
+        SubscribeNetworkEvent<TvClockSyncEvent>(OnTvClockSync);
         SubscribeNetworkEvent<TvStopEvent>(_ => TvReset());
     }
 
@@ -72,6 +73,26 @@ public sealed partial class MediaPlayerSystem
         _tvPngs = new byte[]?[ev.FrameCount];
         _tvFramesReceived = 0;
         _sawmill.Info($"TV clip incoming: {ev.ClipId}, {ev.FrameCount} frames {ev.Width}x{ev.Height} @ {ev.Fps} fps, pos {ev.Position:0.0}s");
+    }
+
+    /// <summary>
+    /// Подводка часов от сервера (приходит, когда передача клипа нам доехала): пока кадры и звук
+    /// качались, локальные часы утекли вперёд — без снапа ролик «включался» с середины.
+    /// </summary>
+    private void OnTvClockSync(TvClockSyncEvent ev)
+    {
+        if (ev.ClipId != _tvClipId)
+            return;
+
+        _tvClock = ev.Position;
+        _tvLastIndex = -1;
+
+        // Уже запущенные аудио-стримы телевизоров подводим к новой позиции.
+        foreach (var stream in _tvStreams.Values)
+        {
+            if (Exists(stream))
+                _audio.SetPlaybackPosition(stream, _tvClock % _tvDuration);
+        }
     }
 
     private void OnTvFrame(TvFrameEvent ev)
