@@ -1,0 +1,5 @@
+# Звуки арена-босса «Голиаф» (замах чарджа, удар о стену, слэм, телеграф зоны).
+- files: ["windup.ogg", "wall.ogg", "slam.ogg", "telegraph.ogg"]
+  license: "Custom"
+  copyright: "'400 Sounds Pack' (hydraulic_up / metal_clang / hydraulic_down / air_burst), бесплатный пак с itch.io. Точный слаг автора не зафиксирован — уточнить перед публичным релизом. Converted to mono OGG for wega-mega."
+  source: "https://itch.io/"

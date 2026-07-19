@@ -275,7 +275,7 @@ public sealed partial class LlmNpcSystem
                 && (!npc.Greeted.TryGetValue(target, out var last) || now - last > TimeSpan.FromMinutes(5)))
             {
                 npc.Greeted[target] = now;
-                NoteOwnAction(uid, npc, $"замечает, что к бару подошёл {MetaData(target).EntityName} — стоит поприветствовать");
+                NoteOwnAction(uid, npc, $"замечает, что подошёл {MetaData(target).EntityName} — стоит поприветствовать");
                 npc.ReplyAt = now + TimeSpan.FromSeconds(1);
             }
             // Проактивность 2: гость рядом, но повисла долгая тишина — сама подкинуть тему.
@@ -368,7 +368,7 @@ public sealed partial class LlmNpcSystem
                 if (npc.PresenceLastNear.TryGetValue(mob, out var last)
                     && now - last > TimeSpan.FromMinutes(3))
                 {
-                    NoteOwnAction(uid, npc, $"видит: {MetaData(mob).EntityName} вернулся к бару " +
+                    NoteOwnAction(uid, npc, $"видит: {MetaData(mob).EntityName} вернулся " +
                         $"после отлучки (~{(int)(now - last).TotalMinutes} мин)");
                 }
                 npc.PresenceArrivedAt[mob] = now;
@@ -395,7 +395,7 @@ public sealed partial class LlmNpcSystem
             npc.PresenceArrivedAt.Remove(mob);
             // Прохожих не отмечаем — только тех, кто реально побыл у бара.
             if (lastNear - arrived >= TimeSpan.FromSeconds(45))
-                NoteOwnAction(uid, npc, $"замечает: {MetaData(mob).EntityName} ушёл от бара");
+                NoteOwnAction(uid, npc, $"замечает: {MetaData(mob).EntityName} ушёл");
         }
 
         UpdateTips(uid, npc, now);
@@ -622,6 +622,7 @@ public sealed partial class LlmNpcSystem
         _metaData.SetEntityName(paper, $"распечатка боя: {subject}");
         // Текст уже свёрстан ArenaFightLogSystem.GetPaperReport: заголовки, цвета, бар-чарты.
         _paper.SetContent(paper, paperText);
+        _audio.PlayPvs(npc.PrintSound, uid);
 
         // Эмоут рендерится как «Имя + текст» — начинаем с глагола 3-го лица.
         _chat.TrySendInGameICMessage(uid, "выдёргивает из жужжащего анализатора свежую распечатку",

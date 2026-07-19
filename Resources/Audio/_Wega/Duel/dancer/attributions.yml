@@ -1,0 +1,5 @@
+# Звуки арена-босса «Пепельная танцовщица» (вращение, телепорт, второе дыхание).
+- files: ["spin.ogg", "teleport.ogg", "rise.ogg"]
+  license: "Custom"
+  copyright: "'400 Sounds Pack' (swipe / fire_lighting / air_burst), бесплатный пак с itch.io. Точный слаг автора не зафиксирован — уточнить перед публичным релизом. Converted to mono OGG for wega-mega."
+  source: "https://itch.io/"

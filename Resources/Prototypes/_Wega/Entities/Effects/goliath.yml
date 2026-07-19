@@ -1,0 +1,53 @@
+# Эффекты арена-босса «Голиаф» (GoliathBossSystem): телеграф опасной зоны (слэм/линия чарджа)
+# и морозный след фазы 2. Спрайты генерятся dev/gen_goliath_effects.py.
+
+- type: entity
+  id: EffectGoliathWarning
+  categories: [ HideSpawnMenu ]
+  name: goliath warning
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/goliath.rsi
+    state: warning
+    drawdepth: FloorObjects
+  - type: Transform
+    anchored: true
+  - type: TimedDespawn
+    lifetime: 1.4
+  - type: TileEmission
+    color: "#ff5020"
+
+- type: entity
+  id: EffectGoliathFrost
+  categories: [ HideSpawnMenu ]
+  name: goliath frost
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/goliath.rsi
+    state: frost
+    drawdepth: FloorObjects
+  - type: Transform
+    anchored: true
+  - type: TimedDespawn
+    lifetime: 6
+  - type: Physics
+    bodyType: Static
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-0.5,-0.5,0.5,0.5"
+        layer:
+          - SlipLayer
+        mask:
+          - MobMask
+        density: 1000
+        hard: false
+  - type: SpeedModifierContacts
+    walkSpeedModifier: 0.55
+    sprintSpeedModifier: 0.55
+  - type: TileEmission
+    color: "#7fc4ff"

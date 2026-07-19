@@ -169,6 +169,11 @@ public sealed partial class LlmNpcComponent : Component
     [DataField]
     public string? GadgetProto;
 
+    /// <summary>Звук принтера в момент выдачи распечатки боя с гаджета.</summary>
+    [DataField]
+    public Robust.Shared.Audio.SoundSpecifier PrintSound =
+        new Robust.Shared.Audio.SoundPathSpecifier("/Audio/Machines/printer.ogg");
+
     /// <summary>Гаджет сейчас в руке (достала для поиска). null = убран.</summary>
     [ViewVariables]
     public EntityUid? HeldGadget;

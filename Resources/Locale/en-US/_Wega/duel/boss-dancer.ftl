@@ -1,0 +1,10 @@
+ent-MobBossDancer = Ash Dancer
+    .desc = A tall figure in a flowing robe with a smouldering hem. She moves as if gravity were merely a polite suggestion.
+ent-ClothingOuterDancerRobe = dancer's robe
+    .desc = Ashen cloth with a red-hot hem. You can feel its heat from a step away.
+ent-ClothingHeadDancerHood = dancer's hood
+    .desc = A deep hood from under which embers occasionally flare.
+ent-WeaponDancerBlade = charcoal blade
+    .desc = A curved blade of blackened steel with a red-hot edge. It cuts and burns at once.
+ent-BossArenaTrackerDancer = boss arena tracker (Dancer)
+    .desc = Invisible boss arena tracker configured for the Ash Dancer boss.

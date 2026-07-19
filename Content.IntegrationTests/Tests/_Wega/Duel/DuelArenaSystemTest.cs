@@ -636,11 +636,13 @@ public sealed class DuelArenaSystemTest : GameTest
             Assert.That(arena.IsActive, Is.True, "Дуэль должна быть активной");
             Assert.That(arena.Duelists.Count, Is.EqualTo(2), "Должно быть 2 дуэлянта");
 
-            // Принудительно запускаем шторм без задержки.
-            stormSystem.StartAllStorms();
+            // Принудительно запускаем шторм без задержки: StartAt в прошлом — Update активирует
+            // его на следующем тике (метода StartAllStorms в системе больше нет).
+            var storm = entManager.GetComponent<ArenaStormComponent>(tracker);
+            storm.StartAt = TimeSpan.Zero;
         });
 
-        // StartAllStorms лишь планирует старт; активность выставляется на следующем тике Update.
+        // Активность выставляется на следующем тике Update.
         await pair.RunTicksSync(1);
 
         await server.WaitAssertion(() =>

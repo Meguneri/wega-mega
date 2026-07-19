@@ -132,6 +132,7 @@ public sealed partial class ArenaStatClerkSystem : EntitySystem
             _metaData.SetEntityName(paper, Loc.GetString("arena-stat-clerk-paper-name",
                 ("name", MetaData(user).EntityName)));
             _paper.SetContent(paper, report);
+            _audio.PlayPvs(clerk.PrintSound, uid);
 
             _chat.TrySendInGameICMessage(uid, Loc.GetString("arena-stat-clerk-prints"),
                 InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);

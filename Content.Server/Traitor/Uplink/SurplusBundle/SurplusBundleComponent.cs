@@ -112,6 +112,14 @@ public sealed partial class SurplusBundleComponent : Component
     public bool GuaranteedWeapon;
 
     /// <summary>
+    ///     If true, at least one firearm (a product with a <c>GunComponent</c>) is guaranteed in the
+    ///     bundle before the regular fill, budget permitting. <see cref="GuaranteedWeapon"/> alone lets
+    ///     the box roll melee-only (~1 opening in 5 for the Full Arsenal pool); this stops that.
+    /// </summary>
+    [DataField]
+    public bool GuaranteedGun;
+
+    /// <summary>
     ///     Guarantee at least this many items costing at least <see cref="GuaranteedValueThreshold"/> TC,
     ///     picked before the regular fill (budget permitting). Stops a box from rolling entirely into cheap
     ///     filler (food, bags, 1-TC trinkets) and leaving the buyer with nothing of substance.

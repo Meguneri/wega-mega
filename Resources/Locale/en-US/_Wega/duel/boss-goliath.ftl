@@ -1,0 +1,10 @@
+ent-MobBossGoliath = Goliath
+    .desc = A mountain of frozen steel on hydraulic actuators. It slowly turns its helmet toward you — and the floor under it trembles ever so slightly.
+ent-ClothingOuterSuitGoliath = Goliath plate
+    .desc = An EOD suit reforged into knight plate. It radiates cold.
+ent-ClothingHeadHelmetGoliath = Goliath helm
+    .desc = A blank steel helm with a frostbitten visor slit.
+ent-WeaponGoliathHammer = Goliath's maul
+    .desc = A two-handed maul of blackened iron. Heavy to hold; worse to be under.
+ent-BossArenaTrackerGoliath = boss arena tracker (Goliath)
+    .desc = Invisible boss arena tracker configured for the Goliath boss.

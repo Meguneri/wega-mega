@@ -24,6 +24,16 @@ public sealed partial class DuelRotationComponent : Component, IDuelScoreStore
     NetUserId? IDuelScoreStore.StreakUser { get => StreakUser; set => StreakUser = value; }
     int IDuelScoreStore.Streak { get => Streak; set => Streak = value; }
 
+    /// <summary>Полностью обнуляет накопленный счёт (см. <see cref="IDuelScoreStore.Reset"/>).</summary>
+    public void Reset()
+    {
+        Scores.Clear();
+        ScoreNames.Clear();
+        LosingStreaks.Clear();
+        StreakUser = null;
+        Streak = 0;
+    }
+
     /// <summary>
     /// Список карт-арен для ротации (пути к .yml в Resources). Добавить арену = дописать строку.
     /// </summary>

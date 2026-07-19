@@ -15,9 +15,13 @@
     # косметика-троллфиллер (CatEars/ElegantMaid) съедает весь бюджет.
     costWeightExponent: 0.35
     markIssuedItems: true
-    # Каждый ящик гарантированно содержит хотя бы одно оружие и один весомый предмет (≥8 ТК),
-    # а патроны выпадают только под уже выпавший совместимый ствол — никакого мусора без боя.
+    # Каждый ящик гарантированно содержит хотя бы один огнестрел, одну броню и один весомый предмет
+    # (≥8 ТК); патроны выпадают только под уже выпавший совместимый ствол (совместимые — с весом ×4),
+    # но их наличие не гарантируется.
     guaranteedWeapon: true
+    guaranteedGun: true
+    guaranteedCategories:
+    - FullArsenalArmor
     requireGunForAmmo: true
     guaranteedValueCount: 1
     guaranteedValueThreshold: 8
@@ -58,6 +62,9 @@
     costWeightExponent: 0.35
     markIssuedItems: true
     guaranteedWeapon: true
+    guaranteedGun: true
+    guaranteedCategories:
+    - FullArsenalArmor
     requireGunForAmmo: true
     guaranteedValueCount: 3
     guaranteedValueThreshold: 10
@@ -115,6 +122,9 @@
     costWeightExponent: 0.35
     markIssuedItems: true
     guaranteedWeapon: true
+    guaranteedGun: true
+    guaranteedCategories:
+    - FullArsenalArmor
     requireGunForAmmo: true
     guaranteedValueCount: 2
     guaranteedValueThreshold: 8

@@ -103,6 +103,29 @@ public sealed partial class SurplusBundleSystem : EntitySystem
             listings.Remove(guaranteed);
         }
 
+        // Guaranteed gun: a chaos crate bought for a shooting duel shouldn't roll melee-only. Picked
+        // before the weapon guarantee (a gun satisfies it too) so the ammo affinity sees the gun early.
+        if (ent.Comp1.GuaranteedGun && !ret.Any(l => IsGunProduct(l)))
+        {
+            var remainingBudget = ent.Comp1.TotalPrice - totalCost;
+
+            var eligible = listings
+                .Where(l => IsGunProduct(l) &&
+                            EffectiveCost(l, ent.Comp1) <= remainingBudget &&
+                            !ExceedsCategoryLimit(l, ent.Comp1.CategoryLimits, categoryCounts))
+                .ToList();
+
+            if (eligible.Count > 0)
+            {
+                var gun = PickItem(eligible, ent.Comp1);
+                ret.Add(gun);
+                totalCost += EffectiveCost(gun, ent.Comp1);
+                foreach (var cat in gun.Categories)
+                    categoryCounts[cat.Id] = categoryCounts.GetValueOrDefault(cat.Id) + 1;
+                listings.Remove(gun);
+            }
+        }
+
         // Guaranteed weapon: every box should contain at least one thing to fight with. Picked early so a
         // following compatible-ammo affinity (and the orphan-ammo gate below) can see the rolled gun.
         if (ent.Comp1.GuaranteedWeapon && !ret.Any(l => IsWeaponProduct(l)))
@@ -310,6 +333,14 @@ public sealed partial class SurplusBundleSystem : EntitySystem
 
         return proto.TryGetComponent<GunComponent>(out _, EntityManager.ComponentFactory)
             || proto.TryGetComponent<MeleeWeaponComponent>(out _, EntityManager.ComponentFactory);
+    }
+
+    /// <summary>True if the listing's product is a firearm — has a gun component.</summary>
+    private bool IsGunProduct(ListingData listing)
+    {
+        return listing.ProductEntity is { } productId
+            && _prototype.TryIndex<EntityPrototype>(productId, out var proto)
+            && proto.TryGetComponent<GunComponent>(out _, EntityManager.ComponentFactory);
     }
 
     /// <summary>

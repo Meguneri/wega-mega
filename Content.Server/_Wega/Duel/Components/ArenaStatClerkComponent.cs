@@ -18,9 +18,13 @@ public sealed partial class ArenaStatClerkComponent : Component
     [DataField]
     public float PrintDelay = 2.5f;
 
-    /// <summary>Звук печати на анализаторе.</summary>
+    /// <summary>Звук стука по клавишам анализатора (при запросе).</summary>
     [DataField]
     public SoundSpecifier TypingSound = new SoundPathSpecifier("/Audio/_Wega/Effects/keyboard_typing.ogg");
+
+    /// <summary>Звук принтера в момент выдачи распечатки.</summary>
+    [DataField]
+    public SoundSpecifier PrintSound = new SoundPathSpecifier("/Audio/Machines/printer.ogg");
 
     /// <summary>Кому и когда печатали (кулдаун по игроку).</summary>
     [ViewVariables]

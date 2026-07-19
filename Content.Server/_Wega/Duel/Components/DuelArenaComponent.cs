@@ -45,6 +45,16 @@ public sealed partial class DuelArenaComponent : Component, IDuelScoreStore
     NetUserId? IDuelScoreStore.StreakUser { get => StreakUser; set => StreakUser = value; }
     int IDuelScoreStore.Streak { get => Streak; set => Streak = value; }
 
+    /// <summary>Полностью обнуляет накопленный счёт (см. <see cref="IDuelScoreStore.Reset"/>).</summary>
+    public void Reset()
+    {
+        Scores.Clear();
+        ScoreNames.Clear();
+        LosingStreaks.Clear();
+        StreakUser = null;
+        Streak = 0;
+    }
+
     /// <summary>
     /// Охват арены — весь грид трекера (дуэлянты считаются по всему гриду, без радиуса).
     /// Это значение — лишь запасной радиус (в тайлах) на случай, если трекер не на гриде (в космосе).

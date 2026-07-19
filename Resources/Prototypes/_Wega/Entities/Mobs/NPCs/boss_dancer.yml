@@ -1,0 +1,182 @@
+# Арена-босс «Пепельная танцовщица» — быстрый DS3-босс (Танцовщица/Фриде). Струящаяся пепельная
+# роба с раскалённой оторочкой и два угольных клинка (dev/gen_dancer_gear.py). Мувсет
+# (DancerBossSystem): двойное вращение (кольцо 2 → кольцо 4, оба телеграфированы), телепорт
+# за спину кайтящей цели со вспышкой пепла, «выдохлась» после трёх серий (стаггер-окно ×2 урона),
+# и ВТОРОЕ ДЫХАНИЕ: упав в крит, встаёт с 40% ХП — быстрее, злее, вращения поджигают пол.
+# Фазы BossArenaBoss не используются (второе дыхание — её собственная механика), но ярость,
+# HP-бар и скейл от участников — штатные. Спавн через трекер BossArenaTrackerDancer.
+
+- type: startingGear
+  id: DancerBossGear
+  equipment:
+    outerClothing: ClothingOuterDancerRobe
+    head: ClothingHeadDancerHood
+    shoes: ClothingShoesColorBlack
+    gloves: ClothingHandsGlovesColorBlack
+  inhand:
+    - WeaponDancerBlade
+    - WeaponDancerBlade
+
+- type: entity
+  parent: ClothingOuterNunRobe
+  id: ClothingOuterDancerRobe
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/OuterClothing/Misc/dancer_robe.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/OuterClothing/Misc/dancer_robe.rsi
+  # Лёгкая ткань, но пропитана пеплом: неплохо держит жар, слабо — пули.
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.85
+        Slash: 0.8
+        Piercing: 0.9
+        Heat: 0.5
+
+- type: entity
+  parent: ClothingHeadHatHoodNunHood
+  id: ClothingHeadDancerHood
+  components:
+  - type: Sprite
+    sprite: _Wega/Clothing/Head/Hoods/dancer_hood.rsi
+  - type: Clothing
+    sprite: _Wega/Clothing/Head/Hoods/dancer_hood.rsi
+
+- type: entity
+  parent: ArenaBaseKatana
+  id: WeaponDancerBlade
+  categories: [ DoNotMap ]
+  components:
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Melee/dancer_blade.rsi
+    layers:
+    - state: blade
+    - state: handle
+  - type: Item
+    sprite: _Wega/Objects/Weapons/Melee/dancer_blade.rsi
+  - type: Clothing
+    sprite: _Wega/Objects/Weapons/Melee/dancer_blade.rsi
+  # Быстрые лёгкие порезы + жар раскалённой кромки; урон второй жизни скейлит DancerBossSystem.
+  - type: MeleeWeapon
+    attackRate: 1.4
+    damage:
+      types:
+        Slash: 14
+        Heat: 4
+
+- type: entity
+  parent: MobHuman
+  id: MobBossDancer
+  suffix: Boss Arena
+  components:
+  - type: NpcFactionMember
+    factions:
+    - RaidBoss
+  - type: Loadout
+    prototypes:
+    - DancerBossGear
+  - type: RandomHumanoidAppearance
+    randomizeName: false
+  # Стеклянная пушка на фоне Голиафа — но жизней у неё две (второе дыхание с 40%).
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      350: PreCritical
+      450: Critical
+      550: Dead
+  - type: Destructible
+    thresholds: []
+  # Быстрая: почти скорость игрока — давит постоянным присутствием, а не рывками.
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 3.2
+    baseSprintSpeed: 4.3
+  # Природное меле — запасное, если клинки выбиты.
+  - type: MeleeWeapon
+    damage:
+      types:
+        Slash: 12
+    altDisarm: false
+  # Фазы по ХП не используются (второе дыхание — своя механика); списки минимальные валидные.
+  - type: BossArenaBoss
+    phaseThresholds: []
+    phaseSpeedMultipliers:
+    - 1.0
+    phaseDamageMultipliers:
+    - 1.0
+  - type: DancerBoss
+  - type: HTN
+    rootTask:
+      task: SimpleHostileCompound
+
+# Эффекты Танцовщицы (спрайты — dev/gen_dancer_effects.py).
+# Тлеющий сектор (после вращений второй жизни): жжёт стоящих в нём.
+- type: entity
+  id: EffectDancerEmber
+  categories: [ HideSpawnMenu ]
+  name: dancer embers
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: ember
+    drawdepth: FloorObjects
+  - type: Transform
+    anchored: true
+  - type: TimedDespawn
+    lifetime: 4
+  - type: Physics
+    bodyType: Static
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-0.45,-0.45,0.45,0.45"
+        layer:
+          - SlipLayer
+        mask:
+          - MobMask
+        density: 1000
+        hard: false
+  - type: TriggerOnCollide
+    fixtureID: fix1
+    maxTriggers: 10
+  - type: DamageOnTrigger
+    targetUser: true
+    damage:
+      types:
+        Heat: 6
+  - type: TileEmission
+    color: "#ff7a20"
+
+# Вспышка пепла при телепорте: чистая косметика.
+- type: entity
+  id: EffectDancerAsh
+  categories: [ HideSpawnMenu ]
+  name: ash puff
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: ash
+    drawdepth: Effects
+  - type: TimedDespawn
+    lifetime: 0.4
+
+# Трекер босс-арены с Танцовщицей: без миньонов, 5 минут до ярости.
+- type: entity
+  parent: BossArenaTracker
+  id: BossArenaTrackerDancer
+  suffix: Boss Arena (Dancer)
+  components:
+  - type: BossArena
+    scanRange: 200
+    scanInterval: 0.5
+    returnGrace: 20
+    bossPrototype: MobBossDancer
+    minionPrototypes: []
+    maxFightDuration: 300
+    healthScaleBase: 0.75
+    healthScalePerParticipant: 0.25
+    damageScalePerParticipant: 0.1

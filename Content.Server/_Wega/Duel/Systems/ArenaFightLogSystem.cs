@@ -24,7 +24,9 @@ public sealed partial class ArenaFightLogSystem : EntitySystem
     [Dependency] private IGameTiming _timing = default!;
 
     private static readonly TimeSpan EpisodeGap = TimeSpan.FromSeconds(25);
-    private const int MaxHistory = 5;
+    // Историй на игрока за раунд. Было 5 — сессия из ~30 дуэлей обрезалась, и анализатор,
+    // Феликс и Макс «видели» лишь хвост. Записи — лёгкие структуры со счётчиками, 100 не тяжело.
+    private const int MaxHistory = 100;
 
     // КЛЮЧ — NetUserId игрока, не EntityUid: после смерти в дуэли игрок получает НОВОЕ тело,
     // и летопись по старому uid терялась («Записей нет» сразу после честной дуэли).

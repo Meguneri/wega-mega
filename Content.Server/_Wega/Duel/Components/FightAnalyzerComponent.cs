@@ -12,7 +12,7 @@ public sealed partial class FightAnalyzerComponent : Component
 {
     /// <summary>Звук печати при выдаче распечатки.</summary>
     [DataField]
-    public SoundSpecifier PrintSound = new SoundPathSpecifier("/Audio/_Wega/Effects/keyboard_typing.ogg");
+    public SoundSpecifier PrintSound = new SoundPathSpecifier("/Audio/Machines/printer.ogg");
 
     /// <summary>Кулдаун печати, сек (защита от бумажного спама).</summary>
     [DataField]

@@ -109,46 +109,22 @@ public sealed partial class DuelArenaScoreSystem : EntitySystem
     /// </summary>
     public int ResetAllScores()
     {
+        return ResetStores<DuelArenaComponent>()
+            + ResetStores<BossArenaComponent>()
+            + ResetStores<DuelRotationComponent>();
+    }
+
+    /// <summary>Обнуляет счёт во всех хранилищах типа <typeparamref name="T"/>, где он был непустым.</summary>
+    private int ResetStores<T>() where T : Component, IDuelScoreStore
+    {
         var cleared = 0;
-        var query = EntityQueryEnumerator<DuelArenaComponent>();
+        var query = EntityQueryEnumerator<T>();
         while (query.MoveNext(out _, out var comp))
         {
             if (comp.Scores.Count == 0)
                 continue;
 
-            comp.Scores.Clear();
-            comp.ScoreNames.Clear();
-            comp.LosingStreaks.Clear();
-            comp.StreakUser = null;
-            comp.Streak = 0;
-            cleared++;
-        }
-
-        var bossQuery = EntityQueryEnumerator<BossArenaComponent>();
-        while (bossQuery.MoveNext(out _, out var boss))
-        {
-            if (boss.Scores.Count == 0)
-                continue;
-
-            boss.Scores.Clear();
-            boss.ScoreNames.Clear();
-            boss.LosingStreaks.Clear();
-            boss.StreakUser = null;
-            boss.Streak = 0;
-            cleared++;
-        }
-
-        var rotQuery = EntityQueryEnumerator<DuelRotationComponent>();
-        while (rotQuery.MoveNext(out _, out var rot))
-        {
-            if (rot.Scores.Count == 0)
-                continue;
-
-            rot.Scores.Clear();
-            rot.ScoreNames.Clear();
-            rot.LosingStreaks.Clear();
-            rot.StreakUser = null;
-            rot.Streak = 0;
+            comp.Reset();
             cleared++;
         }
 

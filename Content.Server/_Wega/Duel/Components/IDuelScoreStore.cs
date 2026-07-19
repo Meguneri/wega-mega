@@ -24,4 +24,7 @@ public interface IDuelScoreStore
 
     /// <summary>Длина текущей серии побед подряд.</summary>
     int Streak { get; set; }
+
+    /// <summary>Полностью обнуляет накопленный счёт: победы, имена, серии поражений и побед.</summary>
+    void Reset();
 }

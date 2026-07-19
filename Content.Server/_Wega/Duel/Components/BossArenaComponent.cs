@@ -17,6 +17,16 @@ public sealed partial class BossArenaComponent : Component, IDuelScoreStore
     NetUserId? IDuelScoreStore.StreakUser { get => StreakUser; set => StreakUser = value; }
     int IDuelScoreStore.Streak { get => Streak; set => Streak = value; }
 
+    /// <summary>Полностью обнуляет накопленный счёт (см. <see cref="IDuelScoreStore.Reset"/>).</summary>
+    public void Reset()
+    {
+        Scores.Clear();
+        ScoreNames.Clear();
+        LosingStreaks.Clear();
+        StreakUser = null;
+        Streak = 0;
+    }
+
     /// <summary>
     /// Победы по игрокам (NetUserId → число побед в босс-арене).
     /// </summary>

@@ -84,45 +84,8 @@ public sealed partial class ArenaStormSystem : EntitySystem
     }
 
     /// <summary>
-    /// Отменяет сужение зоны на всех аренах со штормом. Возвращает число затронутых арен.
-    /// Вызывается консольной командой <c>arenastorm off</c>.
-    /// </summary>
-    public int CancelAllStorms()
-    {
-        var count = 0;
-        var query = EntityQueryEnumerator<ArenaStormComponent>();
-        while (query.MoveNext(out var uid, out var comp))
-        {
-            if (comp.Cancelled && !comp.Active && comp.StartAt == null)
-                continue;
-
-            CancelStorm(uid, comp);
-            count++;
-        }
-        return count;
-    }
-
-    /// <summary>
-    /// (Пере)запускает сужение зоны на всех аренах, где сейчас идёт бой. Возвращает число затронутых
-    /// арен. Вызывается консольной командой <c>arenastorm on</c>.
-    /// </summary>
-    public int StartAllStorms()
-    {
-        var count = 0;
-        var query = EntityQueryEnumerator<ArenaStormComponent, DuelArenaComponent>();
-        while (query.MoveNext(out var uid, out var comp, out var arena))
-        {
-            if (!comp.Enabled || !arena.IsActive)
-                continue;
-
-            OnDuelStarted(uid, comp);
-            count++;
-        }
-        return count;
-    }
-
-    /// <summary>
     /// Включает или выключает шторм на конкретной арене. При включении во время боя сбрасывает отсчёт.
+    /// Вызывается консольной командой <c>arenazone on|off</c>.
     /// </summary>
     public void ToggleStorm(EntityUid uid, bool enabled)
     {
