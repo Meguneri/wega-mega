@@ -14,6 +14,10 @@ public enum GoliathState : byte
     ChargeWindup,
     /// <summary>Несётся по прямой; стена = стаггер, игроки на пути — таран.</summary>
     Charging,
+    /// <summary>Замах ударной волны: телеграф-луч(и) по полу, босс заносит молот вбок.</summary>
+    ShockWindup,
+    /// <summary>Волна идёт по полу от босса: фронт продвигается тайл за тайлом.</summary>
+    Shockwave,
 }
 
 /// <summary>
@@ -83,9 +87,55 @@ public sealed partial class GoliathBossComponent : Component
     [DataField]
     public float SlamTriggerRange = 2.6f;
 
+    /// <summary>Сколько плиток пола сдирает слэм (радиус в тайлах). 0 = не сдирать.</summary>
+    [DataField]
+    public float SlamRipRadius = 2.4f;
+
+    // ── Ударная волна (средняя дистанция) ────────────────────────────────────
+
+    /// <summary>Кулдаун ударной волны, сек.</summary>
+    [DataField]
+    public float ShockCooldown = 11f;
+
+    /// <summary>Замах перед волной, сек (по полу горит телеграф-луч).</summary>
+    [DataField]
+    public float ShockWindup = 1.2f;
+
+    /// <summary>Длина волны в тайлах.</summary>
+    [DataField]
+    public float ShockRange = 7f;
+
+    /// <summary>Сколько тайлов волна проходит за секунду.</summary>
+    [DataField]
+    public float ShockSpeed = 11f;
+
+    /// <summary>Полуширина волны в тайлах (насколько широк фронт).</summary>
+    [DataField]
+    public float ShockHalfWidth = 0.9f;
+
+    /// <summary>Урон от волны (Blunt).</summary>
+    [DataField]
+    public float ShockDamage = 24f;
+
+    /// <summary>Нокдаун от волны, сек.</summary>
+    [DataField]
+    public float ShockParalyze = 1.4f;
+
+    /// <summary>Минимальная дистанция до цели для волны (вблизи он бьёт слэмом).</summary>
+    [DataField]
+    public float ShockMinTargetRange = 2.5f;
+
+    /// <summary>Угол между лучами веера на фазе 2, градусы (веер из трёх волн).</summary>
+    [DataField]
+    public float ShockFanAngle = 22f;
+
     // ── Стаггер (наказание за чардж в стену) ─────────────────────────────────
 
-    /// <summary>Сколько секунд босс оглушён после удара в стену.</summary>
+    /// <summary>
+    /// Сколько секунд длится стаггер. Значение ФИКСИРОВАННОЕ: пока окно не истекло, стан
+    /// продлевается каждый тик, поэтому пробуждение NPC (NPCOptimizationSystem будит соседей
+    /// игрока и получившего урон) больше не сокращает наказание.
+    /// </summary>
     [DataField]
     public float StaggerDuration = 3.5f;
 
@@ -110,6 +160,18 @@ public sealed partial class GoliathBossComponent : Component
 
     [DataField]
     public EntProtoId FrostProto = "EffectGoliathFrost";
+
+    /// <summary>Пыль/искры от ударов и шагов — чистая косметика.</summary>
+    [DataField]
+    public EntProtoId DustProto = "EffectGoliathDust";
+
+    /// <summary>Обломки на месте сорванной плитки.</summary>
+    [DataField]
+    public EntProtoId RubbleProto = "EffectGoliathRubble";
+
+    /// <summary>Фронт ударной волны.</summary>
+    [DataField]
+    public EntProtoId ShockProto = "EffectGoliathShock";
 
     [DataField]
     public SoundSpecifier WindupSound = new SoundPathSpecifier("/Audio/_Wega/Duel/goliath/windup.ogg");
@@ -161,6 +223,32 @@ public sealed partial class GoliathBossComponent : Component
 
     [ViewVariables]
     public TimeSpan NextSlam;
+
+    [ViewVariables]
+    public TimeSpan NextShock;
+
+    /// <summary>Направления лучей текущей волны (на фазе 2 их три — веер).</summary>
+    [ViewVariables]
+    public readonly List<Vector2> ShockDirs = new();
+
+    /// <summary>Сколько тайлов уже прошёл фронт волны.</summary>
+    [ViewVariables]
+    public float ShockTravelled;
+
+    /// <summary>Кого уже задела текущая волна (урон один раз за волну).</summary>
+    [ViewVariables]
+    public readonly HashSet<EntityUid> ShockHit = new();
+
+    /// <summary>
+    /// Сорванные слэмом плитки: (грид, координаты, что было). Возвращаются на место, когда босс
+    /// падает, — арена не должна оставаться дырявой после боя.
+    /// </summary>
+    [ViewVariables]
+    public readonly List<(EntityUid Grid, Vector2i Indices, Robust.Shared.Map.Tile Old)> RippedTiles = new();
+
+    /// <summary>Плитки уже возвращены на место (чтобы не восстанавливать повторно).</summary>
+    [ViewVariables]
+    public bool TilesRestored;
 
     /// <summary>Последняя увиденная фаза BossArenaBoss — для разового скейла молота и эмоута.</summary>
     [ViewVariables]

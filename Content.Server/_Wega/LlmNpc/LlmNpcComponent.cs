@@ -55,6 +55,18 @@ public sealed partial class LlmNpcComponent : Component
     [DataField]
     public int ContextLines = 20;
 
+    /// <summary>
+    /// Сколько СВОИХ последних реплик помнить отдельно от общего контекста. Нужен отдельный
+    /// список: в общем окне на 20 строк собственные слова быстро вытесняются чужими репликами и
+    /// служебными заметками о действиях — и NPC, не видя, что уже говорил, повторяется.
+    /// </summary>
+    [DataField]
+    public int SelfMemoryLines = 8;
+
+    /// <summary>Последние собственные реплики (для блока «не повторяйся» и отсева дублей).</summary>
+    [ViewVariables]
+    public readonly List<string> RecentSaid = new();
+
     // --- пер-NPC переопределения API (иначе — глобальные cvar'ы wega.llm_npc_*) ---
 
     /// <summary>Модель только для этого NPC (напр. "openai/gpt-5-mini"). null = глобальная.</summary>

@@ -110,6 +110,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         _mediaPlayer.SearchReceived += OnSearchReceived;
         _mediaPlayer.StatusReceived += OnStatusReceived;
         _mediaPlayer.StateUpdated += UpdateNowPlaying;
+        _mediaPlayer.TvStateUpdated += UpdateNowPlaying;
         _mediaPlayer.ThumbnailLoaded += OnThumbnailLoaded;
         _mediaPlayer.QueueUpdated += RefreshQueue;
 
@@ -262,6 +263,7 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         _mediaPlayer.SearchReceived -= OnSearchReceived;
         _mediaPlayer.StatusReceived -= OnStatusReceived;
         _mediaPlayer.StateUpdated -= UpdateNowPlaying;
+        _mediaPlayer.TvStateUpdated -= UpdateNowPlaying;
         _mediaPlayer.ThumbnailLoaded -= OnThumbnailLoaded;
         _mediaPlayer.QueueUpdated -= RefreshQueue;
     }
@@ -352,7 +354,11 @@ public sealed partial class MediaPlayerWindow : FancyWindow
     {
         if (_tvMode)
         {
-            PlaySelected();
+            // Клип уже крутится — кнопка работает как пауза/продолжение, как и у музыки.
+            if (_mediaPlayer.TvHasClip)
+                _mediaPlayer.RequestTvPause();
+            else
+                PlaySelected();
             return;
         }
 
@@ -560,9 +566,31 @@ public sealed partial class MediaPlayerWindow : FancyWindow
         {
             NowPlayingLabel.Text = Loc.GetString("ui-media-player-tv-hint");
             UpdateCover(null);
+            SetEnabled(StopButton, true); // «Стоп» гасит экраны в любой момент
+
+            if (_mediaPlayer.TvLoading)
+            {
+                // Пока клип едет по сети — показываем процент, кнопку блокируем.
+                StatusLabel.Text = Loc.GetString("ui-media-player-tv-loading",
+                    ("percent", (int)(_mediaPlayer.TvProgress * 100f)));
+                StatusLabel.FontColorOverride = WorkingColor;
+                PlayPauseButton.Text = Loc.GetString("ui-media-player-play-button");
+                SetEnabled(PlayPauseButton, false);
+                return;
+            }
+
+            if (_mediaPlayer.TvHasClip)
+            {
+                // Клип крутится: кнопка становится паузой/продолжением.
+                PlayPauseButton.Text = Loc.GetString(_mediaPlayer.TvPaused
+                    ? "ui-media-player-resume-button"
+                    : "ui-media-player-pause-button");
+                SetEnabled(PlayPauseButton, true);
+                return;
+            }
+
             PlayPauseButton.Text = Loc.GetString("ui-media-player-play-button");
             SetEnabled(PlayPauseButton, ResultsList.GetSelected().Any());
-            SetEnabled(StopButton, true); // «Стоп» гасит экраны в любой момент
             return;
         }
 

@@ -100,6 +100,37 @@ dotnet run --project Content.YAMLLinter --no-build
 
 Все текущие переносы проходят линтер без ошибок.
 
+## Карточные игры (Estação Pirata / CorvaxGoob)
+
+Источник: [space-syndicate/Goob-Station](https://github.com/space-syndicate/Goob-Station) (CorvaxGoob).
+Код — **AGPL-3.0-or-later** (SPDX-заголовки сохранены в файлах), текстуры/звуки — атрибуция в
+`attributions.yml` рядом с ассетами. Первоисточник системы карт — бразильский форк Estação Pirata.
+⚠️ AGPL: игрокам сервера по запросу нужно предоставлять исходники этой части.
+
+Перенесено с сохранением оригинальных префиксных каталогов:
+
+- **Код**: `Content.{Shared,Client}/_EstacaoPirata/Cards/` (карты/колоды/руки/стопки + UI руки),
+  `Content.Server/_EstacaoPirata/OpenTriggeredStorageFill/`. Адаптация под форк: системы сделаны
+  `partial`, `[Dependency]`-поля без `readonly` (RA0049/RA0051).
+- **Прототипы**: `Resources/Prototypes/EstacaoPirata/Entities/Objects/Misc/{black,nt,syndicate}_cards.yml`
+  (обычные игральные колоды), `EstacaoPirata/SoundCollections/cards.yml`,
+  `Resources/Prototypes/_CorvaxGoob/Entities/Objects/Misc/kotahi_cards.yml` — **Kotahi** (аналог UNO):
+  колода `CardBoxKotahi`, книга правил `BookKotahiRules`.
+- **Ассеты**: `Resources/Textures/EstacaoPirata/Objects/Misc/cards.rsi`,
+  `Resources/Textures/_CorvaxGoob/Objects/Fun/Tabletop/Kotahi/rulebook.rsi`,
+  `Resources/Audio/EstacaoPirata/Effects/Cards/`.
+- **Локализация**: имена всех 230 сущностей разрешаются и в ru-RU, и в en-US (частью через ключи
+  `ent-*`, частью через loc-ключи в поле `name:` — так сделано в исходнике для номиналов карт).
+  Правила Kotahi: `Locale/{ru-RU,en-US}/_CorvaxGoob/entities/objects/fun/tabletop/kotahi/rulebook.ftl`.
+  Русский текст правил переписан (в исходнике — сломанная разметка `[bold]`, ошибки и обрывы фраз),
+  английской версии в исходнике не было вовсе — написана с нуля. Правила выверены по фактическому
+  составу колоды из `kotahi_cards.yml`: 108 карт, 4 цвета × 25 + 8 чёрных.
+
+Отличия от источника: вырезан Goob-only компонент `ThrowableBlocked` и хим-гиммики метательных
+карт (`SolutionContainerManager`/`SolutionRegeneration`/`SolutionInjectWhileEmbedded` — несовместимые
+поля и отсутствующий у нас реагент Tirizene); карты остались метательными, но без инъекций.
+Uplink-каталог Estação Pirata не переносился.
+
 ## Чего избегать
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.

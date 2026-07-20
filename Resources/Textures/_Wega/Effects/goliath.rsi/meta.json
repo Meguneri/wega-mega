@@ -20,6 +20,32 @@
         {
             "name": "frost",
             "directions": 1
+        },
+        {
+            "name": "rubble",
+            "directions": 1
+        },
+        {
+            "name": "dust",
+            "directions": 1,
+            "delays": [
+                [
+                    0.12,
+                    0.12,
+                    0.16
+                ]
+            ]
+        },
+        {
+            "name": "shock",
+            "directions": 1,
+            "delays": [
+                [
+                    0.1,
+                    0.1,
+                    0.12
+                ]
+            ]
         }
     ]
 }

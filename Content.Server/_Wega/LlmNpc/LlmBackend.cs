@@ -83,11 +83,18 @@ public sealed class LlmBackend
                 sawmill.Info("финальный раунд: инструменты отключены, требуем текстовый ответ");
             }
             // Рассуждающим моделям max_tokens тоже мал: они тратят токены на «мысли» до ответа.
+            // Штрафы за повтор: главный рычаг против «NPC говорит одно и то же». Рассуждающие
+            // модели (gpt-5/o*) их не принимают — им шлём без штрафов, как и без temperature.
+            const double freqPenalty = 0.6;
+            const double presPenalty = 0.4;
+
             object body = (toolsAllowed, reasoning) switch
             {
                 (true, false) => new { model, messages, temperature = 0.8, max_tokens = 500,
+                    frequency_penalty = freqPenalty, presence_penalty = presPenalty,
                     tools = tools!.Select(t => t.Declaration), tool_choice = "auto", response_format = jsonFormat },
                 (false, false) => new { model, messages, temperature = 0.8, max_tokens = 400,
+                    frequency_penalty = freqPenalty, presence_penalty = presPenalty,
                     response_format = jsonFormat },
                 // reasoning_effort=low: болтовня в баре не стоит долгих размышлений — отвечает быстрее.
                 (true, true) => new { model, messages, max_completion_tokens = 2000,

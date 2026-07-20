@@ -8,12 +8,50 @@
     "copyright": "Drawn for wega-mega (dev/gen_dancer_effects.py).",
     "states": [
         {
+            "name": "warning-inner",
+            "directions": 1,
+            "delays": [
+                [
+                    0.18,
+                    0.18,
+                    0.18,
+                    0.18
+                ]
+            ]
+        },
+        {
+            "name": "warning-outer",
+            "directions": 1,
+            "delays": [
+                [
+                    0.18,
+                    0.18,
+                    0.18,
+                    0.18
+                ]
+            ]
+        },
+        {
+            "name": "spin",
+            "directions": 1,
+            "delays": [
+                [
+                    0.08,
+                    0.08,
+                    0.08,
+                    0.08
+                ]
+            ]
+        },
+        {
             "name": "ember",
             "directions": 1,
             "delays": [
                 [
-                    0.3,
-                    0.3
+                    0.18,
+                    0.18,
+                    0.18,
+                    0.18
                 ]
             ]
         },
@@ -22,8 +60,24 @@
             "directions": 1,
             "delays": [
                 [
-                    0.15,
-                    0.15
+                    0.12,
+                    0.12,
+                    0.12,
+                    0.12
+                ]
+            ]
+        },
+        {
+            "name": "rise",
+            "directions": 1,
+            "delays": [
+                [
+                    0.12,
+                    0.12,
+                    0.12,
+                    0.12,
+                    0.12,
+                    0.12
                 ]
             ]
         }

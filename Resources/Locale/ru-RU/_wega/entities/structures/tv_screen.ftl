@@ -13,3 +13,4 @@ cmd-tvplay-help = tvplay <id или ссылка YouTube>
 cmd-tvplay-usage = Использование: tvplay <id или ссылка>
 cmd-tvstop-desc = Остановить клип и погасить телевизоры.
 cmd-tvstop-help = tvstop
+ui-media-player-tv-loading = Загрузка ролика на экраны… { $percent }%

@@ -78,6 +78,15 @@
     - DancerBossGear
   - type: RandomHumanoidAppearance
     randomizeName: false
+  # Танцовщица всегда высокая и узнаваемая: пепельно-чёрные длинные волосы под капюшоном.
+  - type: FixedHumanoidAppearance
+    height: 180
+    markings:
+      Head:
+        Hair:
+        - markingId: HumanHairLongWithBangs
+          markingColor:
+          - "#302724"
   # Стеклянная пушка на фоне Голиафа — но жизней у неё две (второе дыхание с 40%).
   - type: MobThresholds
     thresholds:
@@ -110,6 +119,64 @@
       task: SimpleHostileCompound
 
 # Эффекты Танцовщицы (спрайты — dev/gen_dancer_effects.py).
+# Телеграфы различаются рисунком и цветом: плотный багровый центр для первого удара,
+# разомкнутая золотая дуга для второго кольца. Так два ритма читаются даже в толпе.
+- type: entity
+  id: EffectDancerWarningInner
+  categories: [ HideSpawnMenu ]
+  name: dancer inner warning
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: warning-inner
+    drawdepth: FloorObjects
+  - type: TimedDespawn
+    lifetime: 0.85
+
+- type: entity
+  id: EffectDancerWarningOuter
+  categories: [ HideSpawnMenu ]
+  name: dancer outer warning
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: warning-outer
+    drawdepth: FloorObjects
+  - type: TimedDespawn
+    lifetime: 0.85
+
+# Круговой след клинков появляется в момент нанесения урона. Масштабы соответствуют
+# диаметрам стандартных зон: 2.1 и 4.2 тайла радиуса соответственно.
+- type: entity
+  id: EffectDancerSpinInner
+  categories: [ HideSpawnMenu ]
+  name: dancer inner blade trail
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: spin
+    drawdepth: Effects
+    scale: 4.2, 4.2
+  - type: TimedDespawn
+    lifetime: 0.32
+
+- type: entity
+  id: EffectDancerSpinOuter
+  categories: [ HideSpawnMenu ]
+  name: dancer outer blade trail
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: spin
+    drawdepth: Effects
+    scale: 8.4, 8.4
+  - type: TimedDespawn
+    lifetime: 0.32
+
 # Тлеющий сектор (после вращений второй жизни): жжёт стоящих в нём.
 - type: entity
   id: EffectDancerEmber
@@ -162,7 +229,22 @@
     state: ash
     drawdepth: Effects
   - type: TimedDespawn
-    lifetime: 0.4
+    lifetime: 0.48
+
+# Вертикальный вихрь пепла и углей при начале второй жизни.
+- type: entity
+  id: EffectDancerRise
+  categories: [ HideSpawnMenu ]
+  name: dancer rebirth
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: rise
+    drawdepth: Effects
+    scale: 3, 3
+  - type: TimedDespawn
+    lifetime: 0.72
 
 # Трекер босс-арены с Танцовщицей: без миньонов, 5 минут до ярости.
 - type: entity

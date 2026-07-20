@@ -13,3 +13,4 @@ cmd-tvplay-help = tvplay <YouTube id or url>
 cmd-tvplay-usage = Usage: tvplay <id or url>
 cmd-tvstop-desc = Stop the clip and blank all TVs.
 cmd-tvstop-help = tvstop
+ui-media-player-tv-loading = Streaming the clip to the screens… { $percent }%

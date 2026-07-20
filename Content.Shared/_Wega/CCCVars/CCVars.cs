@@ -69,6 +69,15 @@ public sealed partial class WegaCVars
     public static readonly CVarDef<int> MediaPlayerMaxDuration =
         CVarDef.Create("wega.media_player_max_duration", 900, CVar.SERVERONLY);
 
+    /// <summary>
+    /// Скорость рассылки ТВ-клипа каждому клиенту, КиБ/с. Клип (кадры + звук) едет целиком по
+    /// надёжному каналу, поэтому без потолка очередь разбухает и игровые пакеты — вплоть до клика
+    /// по самому телевизору — застревают за ней. 350 КиБ/с ≈ 2.8 Мбит/с: ролик приезжает за
+    /// десятки секунд, а игра не замечает передачи. Ниже — медленнее, но бережнее к каналу.
+    /// </summary>
+    public static readonly CVarDef<int> MediaPlayerTvKbps =
+        CVarDef.Create("wega.media_player_tv_kbps", 350, CVar.SERVERONLY);
+
     /*
         Night Light System CVars
     */

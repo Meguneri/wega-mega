@@ -102,13 +102,25 @@ public sealed partial class DancerBossComponent : Component
     // ── Прототипы и звуки ────────────────────────────────────────────────────
 
     [DataField]
-    public EntProtoId WarningProto = "EffectGoliathWarning";
+    public EntProtoId InnerWarningProto = "EffectDancerWarningInner";
+
+    [DataField]
+    public EntProtoId OuterWarningProto = "EffectDancerWarningOuter";
+
+    [DataField]
+    public EntProtoId InnerSpinProto = "EffectDancerSpinInner";
+
+    [DataField]
+    public EntProtoId OuterSpinProto = "EffectDancerSpinOuter";
 
     [DataField]
     public EntProtoId EmberProto = "EffectDancerEmber";
 
     [DataField]
     public EntProtoId AshProto = "EffectDancerAsh";
+
+    [DataField]
+    public EntProtoId RiseProto = "EffectDancerRise";
 
     [DataField]
     public SoundSpecifier SpinSound = new SoundPathSpecifier("/Audio/_Wega/Duel/dancer/spin.ogg");

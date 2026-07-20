@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Content.Shared.CCVar;
 using Content.Shared.Interaction;
 using Content.Shared.MediaPlayer;
 using Content.Shared.TvScreen;
@@ -22,11 +23,11 @@ public sealed partial class MediaPlayerSystem
     private const int TvWidth = 160;      // ширина кадра; высота по аспекту (чётная)
     private const int TvFps = 15;         // кадров в секунду
 
-    // Рассылка кадров/аудио размазана по тикам: полное видео — это тысячи кадров, и слать их
-    // одним тиком значит застопорить сервер и переполнить надёжный сетевой канал. За тик уходит
-    // не больше этого числа кадров и чанков (на каждого адресата).
-    private const int TvFramesPerTick = 20;
-    private const int TvAudioChunksPerTick = 4;
+    /// <summary>
+    /// Размер чанка ТВ-аудио. Мельче общего ChunkSize (128 КиБ) намеренно: рассылка ограничена
+    /// байтовым бюджетом на тик, и 128-КиБ куски давали бы рваную отправку далеко за бюджет.
+    /// </summary>
+    private const int TvChunkSize = 32 * 1024;
 
     private string? _tvClipId;
     private List<byte[]> _tvFrames = new();
@@ -36,6 +37,12 @@ public sealed partial class MediaPlayerSystem
     private TimeSpan _tvStartedAt;
     private float _tvDuration;
     private bool _tvBusy;
+
+    /// <summary>Клип на паузе (часы стоят, у клиентов замерший кадр и выключенный звук).</summary>
+    private bool _tvPaused;
+
+    /// <summary>Позиция, на которой поставили паузу.</summary>
+    private float _tvPausedPosition;
 
     /// <summary>Незавершённые порционные рассылки клипа (broadcast + досылки поздним игрокам).</summary>
     private readonly List<TvSendJob> _tvSends = new();
@@ -47,6 +54,11 @@ public sealed partial class MediaPlayerSystem
         public int FrameCursor;
         public int AudioCursor;
         public int AudioTotal;
+        public int TotalBytes;
+        public int SentBytes;
+
+        /// <summary>Когда последний раз сообщали адресату прогресс (шлём не чаще раза в ~2%).</summary>
+        public float LastProgress = -1f;
 
         /// <summary>
         /// Первая (стартовая) рассылка клипа: по её завершении часы клипа (<see cref="_tvStartedAt"/>)
@@ -61,6 +73,18 @@ public sealed partial class MediaPlayerSystem
         SubscribeLocalEvent<TvScreenComponent, ActivateInWorldEvent>(OnTvActivate);
         SubscribeNetworkEvent<TvPlayRequestEvent>(OnTvPlayRequest);
         SubscribeNetworkEvent<TvStopRequestEvent>(OnTvStopRequest);
+        SubscribeNetworkEvent<TvPauseRequestEvent>(OnTvPauseRequest);
+    }
+
+    /// <summary>Текущая позиция клипа с учётом паузы, сек (клип зациклен).</summary>
+    private float TvPosition()
+    {
+        if (_tvDuration <= 0f)
+            return 0f;
+
+        return _tvPaused
+            ? _tvPausedPosition
+            : (float)((_timing.RealTime - _tvStartedAt).TotalSeconds % _tvDuration);
     }
 
     /// <summary>Клик по телевизору открывает окно медиаплеера в ТВ-режиме: его кнопки управляют экраном.</summary>
@@ -87,6 +111,35 @@ public sealed partial class MediaPlayerSystem
             return;
 
         TvStop();
+    }
+
+    private void OnTvPauseRequest(TvPauseRequestEvent ev, EntitySessionEventArgs args)
+    {
+        if (!CheckAdmin(args))
+            return;
+
+        TvTogglePause();
+    }
+
+    /// <summary>Пауза/продолжение клипа: часы стоят, у клиентов замирает кадр и глохнет звук.</summary>
+    public void TvTogglePause()
+    {
+        if (_tvClipId == null)
+            return;
+
+        if (_tvPaused)
+        {
+            // Снимаем паузу: сдвигаем точку отсчёта так, чтобы клип пошёл с той же позиции.
+            _tvStartedAt = _timing.RealTime - TimeSpan.FromSeconds(_tvPausedPosition);
+            _tvPaused = false;
+        }
+        else
+        {
+            _tvPausedPosition = TvPosition();
+            _tvPaused = true;
+        }
+
+        RaiseNetworkEvent(new TvPauseEvent(_tvPaused, TvPosition()), Filter.Broadcast());
     }
 
     /// <summary>Запускает клип на всех ТВ-экранах. Вызывается командой tvplay.</summary>
@@ -167,9 +220,12 @@ public sealed partial class MediaPlayerSystem
                 Directory.Delete(framesDir, recursive: true);
             Directory.CreateDirectory(framesDir);
 
+            // -pix_fmt pal8: палитровый PNG (256 цветов) — вдвое легче truecolor при том же виде на
+            // экране 160px, а весь клип едет по сети целиком, так что каждый килобайт на кадре
+            // умножается на тысячи. Движковый LoadTextureFromPNGStream палитру понимает.
             var pattern = Path.Combine(framesDir, "f_%06d.png");
             var (ffExit, ffErr) = await RunFfmpeg(
-                $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" \"{pattern}\"");
+                $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" -pix_fmt pal8 \"{pattern}\"");
             var frameFiles = Directory.EnumerateFiles(framesDir, "f_*.png").OrderBy(f => f).ToList();
             if (ffExit != 0 || frameFiles.Count == 0)
             {
@@ -215,6 +271,8 @@ public sealed partial class MediaPlayerSystem
             _tvAudio = await File.ReadAllBytesAsync(audioPath);
             _tvDuration = frames.Count / (float)TvFps;
             _tvStartedAt = _timing.RealTime;
+            _tvPaused = false;
+            _tvPausedPosition = 0f;
 
             var total = frames.Sum(f => f.Length);
             _sawmill.Info($"TV clip {id}: {frames.Count} frames {_tvWidth}x{_tvHeight}, " +
@@ -239,6 +297,8 @@ public sealed partial class MediaPlayerSystem
         _tvClipId = null;
         _tvFrames = new List<byte[]>();
         _tvAudio = null;
+        _tvPaused = false;
+        _tvPausedPosition = 0f;
         _tvSends.Clear();
         RaiseNetworkEvent(new TvStopEvent(), Filter.Broadcast());
     }
@@ -254,23 +314,39 @@ public sealed partial class MediaPlayerSystem
             return;
 
         // Позиция клипа на момент отправки — чтобы поздно зашедший попал в тот же кадр цикла.
-        var position = (float)((_timing.RealTime - _tvStartedAt).TotalSeconds % _tvDuration);
-        RaiseNetworkEvent(new TvStartEvent(id, TvFps, _tvFrames.Count, _tvWidth, _tvHeight, position), filter);
+        RaiseNetworkEvent(new TvStartEvent(id, TvFps, _tvFrames.Count, _tvWidth, _tvHeight, TvPosition()), filter);
+
+        var totalBytes = audio.Length;
+        foreach (var frame in _tvFrames)
+            totalBytes += frame.Length;
 
         _tvSends.Add(new TvSendJob
         {
             Filter = filter,
             ClipId = id,
-            AudioTotal = (audio.Length + ChunkSize - 1) / ChunkSize,
+            AudioTotal = (audio.Length + TvChunkSize - 1) / TvChunkSize,
+            TotalBytes = totalBytes,
             ResetClock = resetClock,
         });
     }
 
-    /// <summary>Дотачивает порционные рассылки: за тик — до TvFramesPerTick кадров и TvAudioChunksPerTick чанков на задачу.</summary>
+    /// <summary>
+    /// Дотачивает порционные рассылки в рамках БАЙТОВОГО бюджета на тик (cvar
+    /// <c>wega.media_player_tv_kbps</c>). Раньше лимит был в штуках (20 кадров + 4 чанка по 128 КиБ),
+    /// то есть попытка пропихнуть ~20 МБ/с в надёжный канал: очередь разбухала, кадры ползли
+    /// минутами, а игровые пакеты (тот же клик по телевизору) стояли в очереди за ними.
+    /// Сначала уходит аудио (оно небольшое), затем кадры; играть клиент начнёт только когда
+    /// приедет всё — см. <see cref="TvClockSyncEvent"/>.
+    /// </summary>
     private void TvTickSend()
     {
         if (_tvSends.Count == 0)
             return;
+
+        // Бюджет на тик = КиБ/с из cvar, делённые на частоту тиков.
+        var perSecond = Math.Max(16, _cfg.GetCVar(WegaCVars.MediaPlayerTvKbps)) * 1024;
+        var tickRate = Math.Max(1, (int)_timing.TickRate);
+        var budget = Math.Max(1024, perSecond / tickRate);
 
         for (var j = _tvSends.Count - 1; j >= 0; j--)
         {
@@ -283,29 +359,54 @@ public sealed partial class MediaPlayerSystem
                 continue;
             }
 
-            var frameEnd = Math.Min(job.FrameCursor + TvFramesPerTick, _tvFrames.Count);
-            for (; job.FrameCursor < frameEnd; job.FrameCursor++)
-                RaiseNetworkEvent(new TvFrameEvent(job.ClipId, job.FrameCursor, _tvFrames[job.FrameCursor]), job.Filter);
+            var spent = 0;
 
-            var chunkEnd = Math.Min(job.AudioCursor + TvAudioChunksPerTick, job.AudioTotal);
-            for (; job.AudioCursor < chunkEnd; job.AudioCursor++)
+            // Аудио вперёд: клиенту нужно время собрать и смонтировать ogg-ресурс.
+            while (spent < budget && job.AudioCursor < job.AudioTotal)
             {
-                var offset = job.AudioCursor * ChunkSize;
-                var size = Math.Min(ChunkSize, audio.Length - offset);
+                var offset = job.AudioCursor * TvChunkSize;
+                var size = Math.Min(TvChunkSize, audio.Length - offset);
                 var chunk = new byte[size];
                 Array.Copy(audio, offset, chunk, 0, size);
                 RaiseNetworkEvent(new TvAudioChunkEvent(job.ClipId, job.AudioCursor, job.AudioTotal, chunk), job.Filter);
+                job.AudioCursor++;
+                spent += size;
+                job.SentBytes += size;
             }
 
-            if (job.FrameCursor >= _tvFrames.Count && job.AudioCursor >= job.AudioTotal)
+            while (spent < budget && job.FrameCursor < _tvFrames.Count)
+            {
+                var frame = _tvFrames[job.FrameCursor];
+                RaiseNetworkEvent(new TvFrameEvent(job.ClipId, job.FrameCursor, frame), job.Filter);
+                job.FrameCursor++;
+                spent += frame.Length;
+                job.SentBytes += frame.Length;
+            }
+
+            var done = job.FrameCursor >= _tvFrames.Count && job.AudioCursor >= job.AudioTotal;
+
+            // Прогресс адресату (не чаще, чем раз в 2%) — окно показывает «Загрузка ролика… 45%».
+            if (!done && job.TotalBytes > 0)
+            {
+                var progress = Math.Clamp(job.SentBytes / (float)job.TotalBytes, 0f, 1f);
+                if (progress - job.LastProgress >= 0.02f)
+                {
+                    job.LastProgress = progress;
+                    RaiseNetworkEvent(new TvProgressEvent(job.ClipId, progress), job.Filter);
+                }
+            }
+
+            if (done)
             {
                 // Передача доехала: стартовая рассылка перезапускает часы клипа с нуля, а адресату
                 // в любом случае подводим локальные часы — пока кадры качались, они утекли вперёд.
                 if (job.ResetClock)
+                {
                     _tvStartedAt = _timing.RealTime;
+                    _tvPausedPosition = 0f;
+                }
 
-                var position = (float)((_timing.RealTime - _tvStartedAt).TotalSeconds % _tvDuration);
-                RaiseNetworkEvent(new TvClockSyncEvent(job.ClipId, position), job.Filter);
+                RaiseNetworkEvent(new TvClockSyncEvent(job.ClipId, TvPosition(), _tvPaused), job.Filter);
                 _tvSends.RemoveAt(j);
             }
         }

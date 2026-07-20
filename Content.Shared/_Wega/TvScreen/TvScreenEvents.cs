@@ -21,15 +21,35 @@ public sealed class TvStartEvent(string clipId, float fps, int frameCount, int w
 }
 
 /// <summary>
-/// Подводит часы клипа на клиенте к серверной позиции. Шлётся адресату по завершении порционной
-/// передачи кадров/аудио: пока клип доезжал, локальные часы (запущенные TvStartEvent) утекли
-/// вперёд — без подводки телевизор «включался» с середины ролика.
+/// «Клип доехал — можно показывать»: шлётся адресату по завершении порционной передачи кадров и
+/// аудио. Несёт актуальную позицию и состояние паузы. До этого события клиент НИЧЕГО не играет
+/// (иначе звук, который доезжает первым, шёл бы задолго до картинки), а часы клипа не идут.
 /// </summary>
 [Serializable, NetSerializable]
-public sealed class TvClockSyncEvent(string clipId, float position) : EntityEventArgs
+public sealed class TvClockSyncEvent(string clipId, float position, bool paused) : EntityEventArgs
 {
     public string ClipId { get; } = clipId;
     public float Position { get; } = position;
+    public bool Paused { get; } = paused;
+}
+
+/// <summary>Пауза/продолжение клипа с точной позицией (сервер — всем клиентам).</summary>
+[Serializable, NetSerializable]
+public sealed class TvPauseEvent(bool paused, float position) : EntityEventArgs
+{
+    public bool Paused { get; } = paused;
+    public float Position { get; } = position;
+}
+
+/// <summary>
+/// Прогресс доставки клипа этому клиенту (0..1) — чтобы окно показывало «Загрузка ролика… 45%»
+/// вместо непонятного молчания экрана на время передачи.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class TvProgressEvent(string clipId, float progress) : EntityEventArgs
+{
+    public string ClipId { get; } = clipId;
+    public float Progress { get; } = progress;
 }
 
 /// <summary>
@@ -68,3 +88,7 @@ public sealed class TvPlayRequestEvent(string idOrUrl) : EntityEventArgs
 /// <summary>Admin client asks the server to stop the TV clip.</summary>
 [Serializable, NetSerializable]
 public sealed class TvStopRequestEvent : EntityEventArgs;
+
+/// <summary>Admin client asks the server to pause/resume the TV clip (переключатель).</summary>
+[Serializable, NetSerializable]
+public sealed class TvPauseRequestEvent : EntityEventArgs;

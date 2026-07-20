@@ -13,6 +13,7 @@ using Content.Shared.Stunnable;
 using Content.Shared.Weapons.Melee;
 using Robust.Server.Audio;
 using Robust.Shared.Player;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 
 namespace Content.Server._Wega.Duel.Systems;
@@ -183,23 +184,25 @@ public sealed partial class DancerBossSystem : EntitySystem
         dancer.StateEndsAt = now + TimeSpan.FromSeconds(dancer.SpinWindup);
         _chat.TrySendInGameICMessage(uid, "заносит клинки, начиная смертельный танец",
             InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
-        TelegraphRing(uid, dancer, 0f, dancer.InnerRadius);
+        TelegraphRing(uid, dancer.InnerWarningProto, 0f, dancer.InnerRadius);
     }
 
     private void ResolveInnerSpin(EntityUid uid, DancerBossComponent dancer, TimeSpan now)
     {
         _audio.PlayPvs(dancer.SpinSound, uid);
+        Spawn(dancer.InnerSpinProto, Transform(uid).Coordinates);
         DamageRing(uid, dancer, 0f, dancer.InnerRadius + 0.3f, dancer.InnerDamage, paralyze: 0f);
 
         // Сразу второй замах — внешнее кольцо: «увернулся от первого — не расслабляйся».
         dancer.State = DancerState.SpinOuter;
         dancer.StateEndsAt = now + TimeSpan.FromSeconds(dancer.SpinWindup);
-        TelegraphRing(uid, dancer, dancer.InnerRadius - 0.4f, dancer.OuterRadius);
+        TelegraphRing(uid, dancer.OuterWarningProto, dancer.InnerRadius - 0.4f, dancer.OuterRadius);
     }
 
     private void ResolveOuterSpin(EntityUid uid, DancerBossComponent dancer, TimeSpan now)
     {
         _audio.PlayPvs(dancer.SpinSound, uid);
+        Spawn(dancer.OuterSpinProto, Transform(uid).Coordinates);
         DamageRing(uid, dancer, dancer.InnerRadius - 0.6f, dancer.OuterRadius + 0.3f,
             dancer.OuterDamage, dancer.OuterParalyze);
 
@@ -242,6 +245,7 @@ public sealed partial class DancerBossSystem : EntitySystem
         dancer.State = DancerState.Idle;
         dancer.SecondLife = true;
         EnsureComp<ActiveNPCComponent>(uid);
+        Spawn(dancer.RiseProto, Transform(uid).Coordinates);
         _audio.PlayPvs(dancer.RiseSound, uid);
         _chat.TrySendInGameICMessage(uid,
             "поднимается — из-под капюшона вспыхивают угли, клинки раскаляются добела",
@@ -256,7 +260,7 @@ public sealed partial class DancerBossSystem : EntitySystem
     }
 
     /// <summary>Телеграф-плитки кольца [inner..outer] вокруг босса.</summary>
-    private void TelegraphRing(EntityUid uid, DancerBossComponent dancer, float inner, float outer)
+    private void TelegraphRing(EntityUid uid, EntProtoId warningProto, float inner, float outer)
     {
         var r = (int)MathF.Ceiling(outer);
         for (var dx = -r; dx <= r; dx++)
@@ -266,7 +270,7 @@ public sealed partial class DancerBossSystem : EntitySystem
                 var len = new Vector2(dx, dy).Length();
                 if (len > outer + 0.2f || len < inner - 0.2f)
                     continue;
-                Spawn(dancer.WarningProto, Transform(uid).Coordinates.Offset(new Vector2(dx, dy)));
+                Spawn(warningProto, Transform(uid).Coordinates.Offset(new Vector2(dx, dy)));
             }
         }
     }

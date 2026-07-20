@@ -482,6 +482,14 @@ public sealed partial class LlmNpcSystem : EntitySystem
 
             // Снимок контекста ДО await — рантайм-состояние трогаем только на главном потоке.
             var context = string.Join("\n", npc.Heard);
+
+            // Явный список уже сказанного: в общем окне свои слова вытесняются чужими репликами,
+            // и NPC начинал повторяться. Здесь они всегда на виду, с прямым запретом.
+            if (npc.RecentSaid.Count > 0)
+            {
+                context += "\n\nТВОИ ПОСЛЕДНИЕ РЕПЛИКИ (НЕ повторяй их ни дословно, ни по смыслу — "
+                    + "скажи что-то новое или промолчи):\n- " + string.Join("\n- ", npc.RecentSaid);
+            }
             var personality = npc.Personality;
             var memoryFile = npc.MemoryFile;
             var mood = npc.Mood;
@@ -606,16 +614,33 @@ public sealed partial class LlmNpcSystem : EntitySystem
             }
 
             reply.Say = TrimSpeech(SanitizeText(reply.Say!));
-            _chat.TrySendInGameICMessage(uid, reply.Say, InGameICChatType.Speak, ChatTransmitRange.Normal);
+
+            // Последний рубеж против попугая: если модель выдала то, что уже говорила недавно,
+            // молчим. Повтор не добавляет сцене ничего, а звучит как поломка.
+            if (npc != null && IsRepeat(npc, reply.Say))
+            {
+                _sawmill.Info($"{ToPrettyString(uid)} повтор отсеян: «{reply.Say}»");
+                reply.Say = string.Empty;
+            }
+            else
+            {
+                _chat.TrySendInGameICMessage(uid, reply.Say, InGameICChatType.Speak, ChatTransmitRange.Normal);
+            }
 
             // Свою реплику кладём в тот же контекст, что и чужие: собственная речь через OnSpoke
             // отфильтровывается (чтобы NPC не отвечал сам себе), поэтому без этого он не видит, что
             // уже сказал, и здоровается по кругу. Так контекст становится полноценным диалогом.
-            if (npc != null)
+            if (npc != null && !string.IsNullOrEmpty(reply.Say))
             {
                 npc.Heard.Add($"{MetaData(uid).EntityName}: {reply.Say}");
                 if (npc.Heard.Count > npc.ContextLines)
                     npc.Heard.RemoveRange(0, npc.Heard.Count - npc.ContextLines);
+
+                // Отдельная память о своих словах — её не вытесняют чужие реплики и заметки.
+                npc.RecentSaid.Add(reply.Say);
+                if (npc.RecentSaid.Count > npc.SelfMemoryLines)
+                    npc.RecentSaid.RemoveRange(0, npc.RecentSaid.Count - npc.SelfMemoryLines);
+
                 // Её собственная реплика тоже «звук за стойкой» — отсчёт тишины с нуля.
                 npc.LastHeardAt = _timing.RealTime;
             }
@@ -631,6 +656,63 @@ public sealed partial class LlmNpcSystem : EntitySystem
             _ = _memory.AppendAsync(memoryFile, stamp, reply.Remember!)
                 .ContinueWith(_ => MaybeConsolidateAsync(memoryFile));
         }
+    }
+
+    /// <summary>
+    /// Реплика — почти дословный повтор недавно сказанного? Сравниваем по «скелету» строки
+    /// (буквы и цифры в нижнем регистре), поэтому смена знаков препинания повтор не маскирует.
+    /// Порог 0.9 по коэффициенту Дайса на биграммах: перефразировку пропускаем, копию — нет.
+    /// </summary>
+    private static bool IsRepeat(LlmNpcComponent npc, string say)
+    {
+        var candidate = RepeatSkeleton(say);
+        if (candidate.Length < 8) // «Ага», «Привет» — короткие ответы повторять нормально
+            return false;
+
+        foreach (var previous in npc.RecentSaid)
+        {
+            if (DiceSimilarity(candidate, RepeatSkeleton(previous)) >= 0.9)
+                return true;
+        }
+        return false;
+    }
+
+    private static string RepeatSkeleton(string text)
+    {
+        var sb = new StringBuilder(text.Length);
+        foreach (var c in text)
+        {
+            if (char.IsLetterOrDigit(c))
+                sb.Append(char.ToLowerInvariant(c));
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Коэффициент Дайса по биграммам символов: 1 = строки совпали, 0 = ничего общего.</summary>
+    private static double DiceSimilarity(string a, string b)
+    {
+        if (a.Length < 2 || b.Length < 2)
+            return a == b ? 1.0 : 0.0;
+
+        var bigrams = new Dictionary<string, int>();
+        for (var i = 0; i < a.Length - 1; i++)
+        {
+            var key = a.Substring(i, 2);
+            bigrams[key] = bigrams.GetValueOrDefault(key) + 1;
+        }
+
+        var shared = 0;
+        for (var i = 0; i < b.Length - 1; i++)
+        {
+            var key = b.Substring(i, 2);
+            if (bigrams.TryGetValue(key, out var left) && left > 0)
+            {
+                bigrams[key] = left - 1;
+                shared++;
+            }
+        }
+
+        return 2.0 * shared / (a.Length - 1 + b.Length - 1);
     }
 
     // Предкомпилированные регэкспы для чистки ремарок (RA0026: без строк-паттернов в вызовах).

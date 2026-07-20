@@ -38,6 +38,8 @@ public sealed partial class GoliathBossSystem : EntitySystem
     [Dependency] private Content.Server.NPC.Systems.NPCSteeringSystem _steering = default!;
     [Dependency] private Content.Shared.Height.HeightSystem _height = default!;
     [Dependency] private Robust.Shared.Prototypes.IPrototypeManager _proto = default!;
+    [Dependency] private SharedMapSystem _map = default!;
+    [Dependency] private Robust.Shared.Map.ITileDefinitionManager _tileDefs = default!;
 
     public override void Initialize()
     {
@@ -61,7 +63,11 @@ public sealed partial class GoliathBossSystem : EntitySystem
         while (query.MoveNext(out var uid, out var goliath))
         {
             if (_mobState.IsIncapacitated(uid))
+            {
+                // Босс лёг — возвращаем сорванный слэмами пол на место.
+                RestoreTiles(uid, goliath);
                 continue;
+            }
 
             InitOnce(uid, goliath);
             SyncPhase(uid, goliath);
@@ -71,16 +77,28 @@ public sealed partial class GoliathBossSystem : EntitySystem
             if (goliath.State != GoliathState.Idle || goliath.StaggeredUntil != null)
                 _physics.SetLinearVelocity(uid, Vector2.Zero);
 
-            // Стаггер: стоит оглушённый, ИИ выключен — окно для урона.
+            // Стаггер: стоит оглушённый — окно для урона.
             if (goliath.StaggeredUntil is { } staggered)
             {
                 if (now < staggered)
+                {
+                    // Держим стан ФИКСИРОВАННО до конца окна. Снятия ActiveNPCComponent мало:
+                    // NPCOptimizationSystem будит NPC, у которого рядом игрок или который получил
+                    // урон, — то есть ровно в стаггер-окне стан и «сходил на нет».
+                    HoldStun(uid, staggered - now);
                     continue;
+                }
+
                 goliath.StaggeredUntil = null;
                 EnsureComp<ActiveNPCComponent>(uid);
                 _chat.TrySendInGameICMessage(uid, "с лязгом выпрямляется, восстанавливая равновесие",
                     InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
             }
+
+            // В любом «занятом» состоянии босс скован собственным замахом: тем же станом гасим
+            // и ходьбу, и удары молотом, которые иначе продолжались бы прямо сквозь телеграф.
+            if (goliath.State != GoliathState.Idle)
+                HoldStun(uid, TimeSpan.FromSeconds(0.4));
 
             switch (goliath.State)
             {
@@ -102,8 +120,28 @@ public sealed partial class GoliathBossSystem : EntitySystem
                 case GoliathState.Charging:
                     UpdateCharging(uid, goliath, now, frameTime);
                     break;
+                case GoliathState.ShockWindup:
+                    if (now >= goliath.StateEndsAt)
+                        StartShockwave(uid, goliath);
+                    break;
+                case GoliathState.Shockwave:
+                    UpdateShockwave(uid, goliath, now, frameTime);
+                    break;
             }
         }
+    }
+
+    /// <summary>
+    /// Держит настоящий стан (StunnedComponent) заданное время. Он блокирует AttackAttempt и
+    /// движение на уровне ActionBlocker, поэтому переживает пробуждение NPC — в отличие от снятия
+    /// ActiveNPCComponent, которое NPCOptimizationSystem откатывает через долю секунды.
+    /// </summary>
+    private void HoldStun(EntityUid uid, TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero)
+            return;
+
+        _stun.TryUpdateStunDuration(uid, duration);
     }
 
     /// <summary>
@@ -190,6 +228,39 @@ public sealed partial class GoliathBossSystem : EntitySystem
             return;
         }
 
+        // Ударная волна: средняя/дальняя дистанция, босс не двигается — гасит «беготню по кругу».
+        if (dist >= goliath.ShockMinTargetRange && now >= goliath.NextShock)
+        {
+            var dir = Vector2.Normalize(targetPos - myPos);
+
+            FreezeMovement(uid);
+            goliath.State = GoliathState.ShockWindup;
+            goliath.StateEndsAt = now + TimeSpan.FromSeconds(goliath.ShockWindup);
+            _rotateToFace.TryFaceCoordinates(uid, targetPos);
+            _audio.PlayPvs(goliath.WindupSound, uid);
+            _chat.TrySendInGameICMessage(uid,
+                "заносит молот вбок — под ногами с хрустом идут трещины",
+                InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
+
+            // Веер лучей: на фазе 2 их три — уклоняться вбок больше не бесплатно.
+            goliath.ShockDirs.Clear();
+            goliath.ShockDirs.Add(dir);
+            if (goliath.LastPhase >= 1)
+            {
+                var rad = MathF.PI / 180f * goliath.ShockFanAngle;
+                goliath.ShockDirs.Add(Rotate(dir, rad));
+                goliath.ShockDirs.Add(Rotate(dir, -rad));
+            }
+
+            // Телеграф: каждый луч на всю длину.
+            foreach (var d in goliath.ShockDirs)
+            {
+                for (var step = 1f; step <= goliath.ShockRange; step += 1f)
+                    Spawn(goliath.WarningProto, Transform(uid).Coordinates.Offset(d * step));
+            }
+            return;
+        }
+
         // Чардж: цель на дистанции — телеграф-линия до стены и рывок.
         if (dist >= goliath.ChargeMinTargetRange && now >= goliath.NextCharge)
         {
@@ -231,11 +302,29 @@ public sealed partial class GoliathBossSystem : EntitySystem
         EnsureComp<ActiveNPCComponent>(uid);
 
         _audio.PlayPvs(goliath.SlamSound, uid);
-        _chat.TrySendInGameICMessage(uid, "обрушивает молот — пол содрогается", InGameICChatType.Emote,
-            ChatTransmitRange.Normal, ignoreActionBlocker: true);
+        _chat.TrySendInGameICMessage(uid, "обрушивает молот — пол вздыбливается, плиты летят в стороны",
+            InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
 
         var myPos = _transform.GetWorldPosition(uid);
         var map = Transform(uid).MapID;
+
+        // Пыль по всей площади удара + сорванные плиты в эпицентре.
+        var r = (int)MathF.Ceiling(goliath.SlamRadius);
+        for (var dx = -r; dx <= r; dx++)
+        {
+            for (var dy = -r; dy <= r; dy++)
+            {
+                var offset = new Vector2(dx, dy);
+                var dist = offset.Length();
+                if (dist > goliath.SlamRadius + 0.2f)
+                    continue;
+
+                Spawn(goliath.DustProto, Transform(uid).Coordinates.Offset(offset));
+                if (dist <= goliath.SlamRipRadius)
+                    RipTile(uid, goliath, Transform(uid).Coordinates.Offset(offset));
+            }
+        }
+
         var mobs = EntityQueryEnumerator<MobStateComponent>();
         while (mobs.MoveNext(out var mob, out _))
         {
@@ -248,6 +337,129 @@ public sealed partial class GoliathBossSystem : EntitySystem
             damage.DamageDict.Add("Blunt", goliath.SlamDamage);
             _damageable.TryChangeDamage(mob, damage, origin: uid);
             _stun.TryAddParalyzeDuration(mob, TimeSpan.FromSeconds(goliath.SlamParalyze));
+        }
+    }
+
+    /// <summary>
+    /// Срывает плитку пола: тайл заменяется своей подложкой (обычно плитинг — дыры в космос не
+    /// будет) и запоминается, чтобы вернуться на место после боя. Предметы-плитки не спавним:
+    /// пол должен выглядеть разбитым, а не завалить арену мусором.
+    /// </summary>
+    private void RipTile(EntityUid uid, GoliathBossComponent goliath, Robust.Shared.Map.EntityCoordinates coords)
+    {
+        var grid = _transform.GetGrid(coords);
+        if (grid is not { } gridUid || !TryComp<Robust.Shared.Map.Components.MapGridComponent>(gridUid, out var gridComp))
+            return;
+
+        var indices = _map.TileIndicesFor(gridUid, gridComp, coords);
+        var tileRef = _map.GetTileRef(gridUid, gridComp, indices);
+        if (tileRef.Tile.IsEmpty)
+            return;
+
+        if (_tileDefs[tileRef.Tile.TypeId] is not Content.Shared.Maps.ContentTileDefinition def
+            || def.BaseTurf is not { } baseTurf
+            || !def.CanCrowbar) // непробиваемое (плитинг арены, спец-покрытия) не трогаем
+            return;
+
+        if (_tileDefs[baseTurf] is not Content.Shared.Maps.ContentTileDefinition baseDef)
+            return;
+
+        goliath.RippedTiles.Add((gridUid, indices, tileRef.Tile));
+        _map.SetTile(gridUid, gridComp, indices, new Robust.Shared.Map.Tile(baseDef.TileId));
+        Spawn(goliath.RubbleProto, _map.GridTileToLocal(gridUid, gridComp, indices));
+    }
+
+    /// <summary>Возвращает сорванные плитки: арена не должна оставаться дырявой после боя.</summary>
+    private void RestoreTiles(EntityUid uid, GoliathBossComponent goliath)
+    {
+        if (goliath.TilesRestored || goliath.RippedTiles.Count == 0)
+            return;
+
+        goliath.TilesRestored = true;
+        foreach (var (gridUid, indices, old) in goliath.RippedTiles)
+        {
+            if (TryComp<Robust.Shared.Map.Components.MapGridComponent>(gridUid, out var gridComp))
+                _map.SetTile(gridUid, gridComp, indices, old);
+        }
+        goliath.RippedTiles.Clear();
+    }
+
+    /// <summary>Поворот вектора на угол (радианы) — для веера ударных волн.</summary>
+    private static Vector2 Rotate(Vector2 v, float radians)
+    {
+        var (sin, cos) = MathF.SinCos(radians);
+        return new Vector2(v.X * cos - v.Y * sin, v.X * sin + v.Y * cos);
+    }
+
+    /// <summary>Замах кончился — волна пошла по полу.</summary>
+    private void StartShockwave(EntityUid uid, GoliathBossComponent goliath)
+    {
+        goliath.State = GoliathState.Shockwave;
+        goliath.ShockTravelled = 0f;
+        goliath.ShockHit.Clear();
+
+        _audio.PlayPvs(goliath.SlamSound, uid);
+        _chat.TrySendInGameICMessage(uid, "бьёт молотом оземь — по полу расходится ударная волна",
+            InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
+    }
+
+    /// <summary>
+    /// Фронт волны ползёт от босса по каждому лучу: на своём пути ломает пол, поднимает пыль и
+    /// сбивает с ног. От неё уходят вбок (или за спину боссу) — но на фазе 2 лучей три.
+    /// </summary>
+    private void UpdateShockwave(EntityUid uid, GoliathBossComponent goliath, TimeSpan now, float frameTime)
+    {
+        var prev = goliath.ShockTravelled;
+        goliath.ShockTravelled += goliath.ShockSpeed * frameTime;
+
+        var xform = Transform(uid);
+        var origin = _transform.GetWorldPosition(xform);
+        var map = xform.MapID;
+
+        // Визуал: фронт на каждом пройденном за тик тайле каждого луча.
+        for (var t = MathF.Ceiling(prev); t <= MathF.Min(goliath.ShockTravelled, goliath.ShockRange); t += 1f)
+        {
+            foreach (var dir in goliath.ShockDirs)
+            {
+                var coords = xform.Coordinates.Offset(dir * t);
+                Spawn(goliath.ShockProto, coords);
+                if (t <= goliath.ShockRange * 0.6f)
+                    RipTile(uid, goliath, coords);
+            }
+        }
+
+        // Урон: кто оказался под фронтом (проекция на луч в пределах пройденного, отклонение — в
+        // пределах полуширины). Каждого задеваем один раз за волну.
+        var mobs = EntityQueryEnumerator<MobStateComponent>();
+        while (mobs.MoveNext(out var mob, out _))
+        {
+            if (mob == uid || HasComp<GoliathBossComponent>(mob) || goliath.ShockHit.Contains(mob)
+                || Transform(mob).MapID != map)
+                continue;
+
+            var rel = _transform.GetWorldPosition(mob) - origin;
+            foreach (var dir in goliath.ShockDirs)
+            {
+                var along = Vector2.Dot(rel, dir);
+                if (along < prev || along > goliath.ShockTravelled || along > goliath.ShockRange)
+                    continue;
+                if (MathF.Abs(rel.X * -dir.Y + rel.Y * dir.X) > goliath.ShockHalfWidth)
+                    continue;
+
+                goliath.ShockHit.Add(mob);
+                var damage = new DamageSpecifier();
+                damage.DamageDict.Add("Blunt", goliath.ShockDamage);
+                _damageable.TryChangeDamage(mob, damage, origin: uid);
+                _stun.TryAddParalyzeDuration(mob, TimeSpan.FromSeconds(goliath.ShockParalyze));
+                break;
+            }
+        }
+
+        if (goliath.ShockTravelled >= goliath.ShockRange)
+        {
+            goliath.State = GoliathState.Idle;
+            goliath.NextShock = now + TimeSpan.FromSeconds(goliath.ShockCooldown * CooldownScale(goliath));
+            EnsureComp<ActiveNPCComponent>(uid);
         }
     }
 
@@ -288,6 +500,15 @@ public sealed partial class GoliathBossSystem : EntitySystem
             _chat.TrySendInGameICMessage(uid,
                 "с оглушительным лязгом врезается в стену и застывает, потеряв равновесие",
                 InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
+
+            // Пыль и осыпавшаяся крошка от удара: место стаггера должно быть видно издалека.
+            var crashCoords = Transform(uid).Coordinates;
+            Spawn(goliath.DustProto, crashCoords);
+            foreach (var side in new[] { -1f, 1f })
+            {
+                Spawn(goliath.DustProto, crashCoords.Offset(perp * side));
+                Spawn(goliath.DustProto, crashCoords.Offset(goliath.ChargeDir + perp * side * 0.5f));
+            }
             return;
         }
 
@@ -314,15 +535,15 @@ public sealed partial class GoliathBossSystem : EntitySystem
             _stun.TryAddParalyzeDuration(mob, TimeSpan.FromSeconds(goliath.ChargeParalyze));
         }
 
-        // Морозный след (фаза 2): наледь позади, кайтить по своему следу не выйдет.
-        if (goliath.LastPhase >= 1)
+        // След за чарджем: пыль из-под ног всегда, наледь — на фазе 2 (кайтить по своему следу
+        // не выйдет). Оба сыплются по одному накопителю пути.
+        goliath.FrostAccumulator += step;
+        while (goliath.FrostAccumulator >= 0.7f)
         {
-            goliath.FrostAccumulator += step;
-            while (goliath.FrostAccumulator >= 0.7f)
-            {
-                goliath.FrostAccumulator -= 0.7f;
+            goliath.FrostAccumulator -= 0.7f;
+            Spawn(goliath.DustProto, xform.Coordinates);
+            if (goliath.LastPhase >= 1)
                 Spawn(goliath.FrostProto, xform.Coordinates);
-            }
         }
 
         // Дистанция вышла — плавная остановка без стаггера.

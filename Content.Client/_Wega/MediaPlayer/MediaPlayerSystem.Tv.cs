@@ -38,6 +38,30 @@ public sealed partial class MediaPlayerSystem
     private float _tvDuration;
     private int _tvLastIndex = -1;
 
+    /// <summary>
+    /// Клип полностью доехал и синхронизирован — только теперь можно показывать и озвучивать.
+    /// Без этого флага звук (он приезжает первым) шёл бы задолго до появления картинки.
+    /// </summary>
+    private bool _tvReady;
+
+    /// <summary>Клип на паузе: часы стоят, кадр замер, звук выключен.</summary>
+    private bool _tvPaused;
+
+    /// <summary>Доля доставленного клипа (0..1) — для строки состояния в окне плеера.</summary>
+    public float TvProgress { get; private set; }
+
+    /// <summary>Клип есть и готов к показу (можно ставить на паузу).</summary>
+    public bool TvHasClip => _tvReady;
+
+    /// <summary>Клип сейчас на паузе.</summary>
+    public bool TvPaused => _tvPaused;
+
+    /// <summary>Клип объявлен, но ещё едет по сети.</summary>
+    public bool TvLoading => _tvClipId != null && !_tvReady;
+
+    /// <summary>Состояние ТВ изменилось (готовность/пауза/прогресс) — окну пора обновиться.</summary>
+    public event Action? TvStateUpdated;
+
     /// <summary>Звуковой стрим на каждом телевизоре: ТВ → сущность аудио-стрима.</summary>
     private readonly Dictionary<EntityUid, EntityUid> _tvStreams = new();
 
@@ -47,7 +71,13 @@ public sealed partial class MediaPlayerSystem
         SubscribeNetworkEvent<TvFrameEvent>(OnTvFrame);
         SubscribeNetworkEvent<TvAudioChunkEvent>(OnTvAudioChunk);
         SubscribeNetworkEvent<TvClockSyncEvent>(OnTvClockSync);
-        SubscribeNetworkEvent<TvStopEvent>(_ => TvReset());
+        SubscribeNetworkEvent<TvPauseEvent>(OnTvPause);
+        SubscribeNetworkEvent<TvProgressEvent>(OnTvProgress);
+        SubscribeNetworkEvent<TvStopEvent>(_ =>
+        {
+            TvReset();
+            TvStateUpdated?.Invoke();
+        });
     }
 
     /// <summary>Просит сервер запустить ролик на ТВ-экранах (окно в ТВ-режиме).</summary>
@@ -62,6 +92,12 @@ public sealed partial class MediaPlayerSystem
         RaiseNetworkEvent(new TvStopRequestEvent());
     }
 
+    /// <summary>Просит сервер поставить ТВ-клип на паузу / снять с паузы.</summary>
+    public void RequestTvPause()
+    {
+        RaiseNetworkEvent(new TvPauseRequestEvent());
+    }
+
     private void OnTvStart(TvStartEvent ev)
     {
         TvReset();
@@ -73,11 +109,12 @@ public sealed partial class MediaPlayerSystem
         _tvPngs = new byte[]?[ev.FrameCount];
         _tvFramesReceived = 0;
         _sawmill.Info($"TV clip incoming: {ev.ClipId}, {ev.FrameCount} frames {ev.Width}x{ev.Height} @ {ev.Fps} fps, pos {ev.Position:0.0}s");
+        TvStateUpdated?.Invoke();
     }
 
     /// <summary>
-    /// Подводка часов от сервера (приходит, когда передача клипа нам доехала): пока кадры и звук
-    /// качались, локальные часы утекли вперёд — без снапа ролик «включался» с середины.
+    /// «Клип доехал»: до этого события ничего не играет и часы не идут — иначе звук, который
+    /// приезжает первым, шёл бы на чёрном экране, а часы за время передачи утекли бы вперёд.
     /// </summary>
     private void OnTvClockSync(TvClockSyncEvent ev)
     {
@@ -85,14 +122,44 @@ public sealed partial class MediaPlayerSystem
             return;
 
         _tvClock = ev.Position;
+        _tvPaused = ev.Paused;
         _tvLastIndex = -1;
+        _tvReady = true;
+        TvProgress = 1f;
+        _sawmill.Info($"TV clip ready to play at {ev.Position:0.0}s (paused: {ev.Paused})");
+        TvStateUpdated?.Invoke();
+    }
 
-        // Уже запущенные аудио-стримы телевизоров подводим к новой позиции.
-        foreach (var stream in _tvStreams.Values)
+    private void OnTvProgress(TvProgressEvent ev)
+    {
+        if (ev.ClipId != _tvClipId)
+            return;
+
+        TvProgress = ev.Progress;
+        TvStateUpdated?.Invoke();
+    }
+
+    /// <summary>Пауза от сервера: часы замирают, звук глохнет, кадр остаётся на экране.</summary>
+    private void OnTvPause(TvPauseEvent ev)
+    {
+        if (_tvClipId == null)
+            return;
+
+        _tvPaused = ev.Paused;
+        _tvClock = ev.Position;
+
+        if (_tvPaused)
         {
-            if (Exists(stream))
-                _audio.SetPlaybackPosition(stream, _tvClock % _tvDuration);
+            // Стримы гасим целиком: при снятии паузы FrameUpdate создаст их заново с нужной позиции.
+            foreach (var stream in _tvStreams.Values)
+            {
+                if (Exists(stream))
+                    _audio.Stop(stream);
+            }
+            _tvStreams.Clear();
         }
+
+        TvStateUpdated?.Invoke();
     }
 
     private void OnTvFrame(TvFrameEvent ev)
@@ -186,6 +253,9 @@ public sealed partial class MediaPlayerSystem
         _tvFrameCount = 0;
         _tvTextures = null; // текстуры освободит GC
         _tvLastIndex = -1;
+        _tvReady = false;
+        _tvPaused = false;
+        TvProgress = 0f;
 
         foreach (var stream in _tvStreams.Values)
             _audio.Stop(stream);
@@ -223,10 +293,13 @@ public sealed partial class MediaPlayerSystem
     {
         base.FrameUpdate(frameTime);
 
-        if (_tvClipId == null)
+        // Пока клип не доехал целиком — экран тёмный и тишина: иначе звук (он приезжает первым)
+        // играл бы задолго до картинки.
+        if (_tvClipId == null || !_tvReady)
             return;
 
-        _tvClock += frameTime;
+        if (!_tvPaused)
+            _tvClock += frameTime;
 
         // Видео: кадр по часам клипа.
         var frameChanged = false;
@@ -260,8 +333,9 @@ public sealed partial class MediaPlayerSystem
                 }
             }
 
-            // Позиционный звук: свой зацикленный стрим на каждом телевизоре.
-            if (_tvAudioRes is { } audioRes && (!_tvStreams.TryGetValue(uid, out var streamEnt) || !Exists(streamEnt)))
+            // Позиционный звук: свой зацикленный стрим на каждом телевизоре (на паузе — молчим).
+            if (!_tvPaused && _tvAudioRes is { } audioRes
+                && (!_tvStreams.TryGetValue(uid, out var streamEnt) || !Exists(streamEnt)))
             {
                 var audioParams = AudioParams.Default
                     .WithVolume(SharedAudioSystem.GainToVolume(_volume))

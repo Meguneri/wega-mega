@@ -1,5 +1,6 @@
-# Эффекты арена-босса «Голиаф» (GoliathBossSystem): телеграф опасной зоны (слэм/линия чарджа)
-# и морозный след фазы 2. Спрайты генерятся dev/gen_goliath_effects.py.
+# Эффекты арена-босса «Голиаф» (GoliathBossSystem): телеграф опасной зоны (слэм/линия чарджа/
+# лучи ударной волны), морозный след фазы 2, пыль от ударов, обломки сорванных плит и фронт
+# ударной волны. Спрайты генерятся dev/gen_goliath_effects.py.
 
 - type: entity
   id: EffectGoliathWarning
@@ -51,3 +52,52 @@
     sprintSpeedModifier: 0.55
   - type: TileEmission
     color: "#7fc4ff"
+
+# Пыль от ударов и из-под ног в чардже — чистая косметика, ни на что не влияет.
+- type: entity
+  id: EffectGoliathDust
+  categories: [ HideSpawnMenu ]
+  name: goliath dust
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/goliath.rsi
+    state: dust
+    drawdepth: Effects
+  - type: TimedDespawn
+    lifetime: 0.4
+
+# Обломки на месте сорванной слэмом плиты: пол выглядит разбитым, пока идёт бой.
+# Сам тайл возвращает GoliathBossSystem.RestoreTiles, когда босс падает.
+- type: entity
+  id: EffectGoliathRubble
+  categories: [ HideSpawnMenu ]
+  name: goliath rubble
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/goliath.rsi
+    state: rubble
+    drawdepth: FloorObjects
+  - type: Transform
+    anchored: true
+  - type: TimedDespawn
+    lifetime: 45
+
+# Фронт ударной волны: кольцо пыли, бегущее по полу. Урон считает система, это визуал.
+- type: entity
+  id: EffectGoliathShock
+  categories: [ HideSpawnMenu ]
+  name: goliath shockwave
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/goliath.rsi
+    state: shock
+    drawdepth: FloorObjects
+  - type: Transform
+    anchored: true
+  - type: TimedDespawn
+    lifetime: 0.35
+  - type: TileEmission
+    color: "#c8a878"
