@@ -1,5 +1,7 @@
-book-text-kotahi-rules =
-    [bold]KOTAHI RULEBOOK[/bold]
+# NOTE: in Fluent a line of a multiline value must NOT start with "[" — that is selector-variant
+# syntax and it junks the whole message (the book rendered the raw key).
+# That is why no [bold] tag here sits at the start of a line.
+book-text-kotahi-rules = [bold]KOTAHI RULEBOOK[/bold]
 
      The deck
 
@@ -24,12 +26,13 @@ book-text-kotahi-rules =
 
      Special cards
 
-    [bold]Draw Two[/bold] — the next player draws two cards and loses their turn.
-    [bold]Reverse[/bold] — play turns around. With two players it acts as a Skip: you go again.
-    [bold]Skip[/bold] — the next player loses their turn.
-    [bold]Wild[/bold] (black) — whoever plays it names any colour out loud; play continues in that colour.
-    [bold]Wild Draw Four[/bold] (black) — the same, and the next player draws four cards and loses
-    their turn. By convention you may only play it when you hold no card of the current colour.
+    The [bold]Draw Two[/bold] — the next player draws two cards and loses their turn.
+    The [bold]Reverse[/bold] — play turns around. With two players it acts as a Skip: you go again.
+    The [bold]Skip[/bold] — the next player loses their turn.
+    The black [bold]Wild[/bold] — whoever plays it names any colour out loud; play continues
+    in that colour.
+    The black [bold]Wild Draw Four[/bold] — the same, and the next player draws four cards and
+    loses their turn. By convention you may only play it when you hold no card of the current colour.
 
      The call
 

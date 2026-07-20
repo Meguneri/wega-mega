@@ -81,8 +81,10 @@ public sealed partial class DancerBossSystem : EntitySystem
         dancer.StateEndsAt = _timing.CurTime + TimeSpan.FromSeconds(dancer.KneelDuration);
         dancer.ExhaustedUntil = null;
         dancer.ComboCount = 0;
+        Spawn(dancer.StasisProto, Transform(uid).Coordinates);
+        _audio.PlayPvs(dancer.RiseSound, uid);
         _chat.TrySendInGameICMessage(uid,
-            "падает на колени, опираясь на клинок, — пепел медленно кружит вокруг неё",
+            "падает в стазис, опираясь на клинок, — пепел запечатывает её на несколько секунд",
             InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
     }
 
@@ -246,7 +248,6 @@ public sealed partial class DancerBossSystem : EntitySystem
         dancer.SecondLife = true;
         EnsureComp<ActiveNPCComponent>(uid);
         Spawn(dancer.RiseProto, Transform(uid).Coordinates);
-        _audio.PlayPvs(dancer.RiseSound, uid);
         _chat.TrySendInGameICMessage(uid,
             "поднимается — из-под капюшона вспыхивают угли, клинки раскаляются добела",
             InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);

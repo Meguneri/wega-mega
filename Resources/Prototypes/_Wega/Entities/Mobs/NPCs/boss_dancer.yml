@@ -55,6 +55,13 @@
     - state: handle
   - type: Item
     sprite: _Wega/Objects/Weapons/Melee/dancer_blade.rsi
+    inhandVisuals:
+      left:
+      - state: handle-inhand-left
+      - state: blade-inhand-left
+      right:
+      - state: handle-inhand-right
+      - state: blade-inhand-right
   - type: Clothing
     sprite: _Wega/Objects/Weapons/Melee/dancer_blade.rsi
   # Быстрые лёгкие порезы + жар раскалённой кромки; урон второй жизни скейлит DancerBossSystem.
@@ -78,6 +85,8 @@
     - DancerBossGear
   - type: RandomHumanoidAppearance
     randomizeName: false
+  # Раны не должны превращать вторую фазу в медленный бой: это босс, а не обычный гуманоид.
+  - type: IgnoreSlowOnDamage
   # Танцовщица всегда высокая и узнаваемая: пепельно-чёрные длинные волосы под капюшоном.
   - type: FixedHumanoidAppearance
     height: 180
@@ -245,6 +254,21 @@
     scale: 3, 3
   - type: TimedDespawn
     lifetime: 0.72
+
+# Четырёхсекундный стазис второй жизни: эффект держится на месте босса ровно до подъёма.
+- type: entity
+  id: EffectDancerStasis
+  categories: [ HideSpawnMenu ]
+  name: dancer stasis
+  suffix: DO NOT MAP
+  components:
+  - type: Sprite
+    sprite: _Wega/Effects/dancer.rsi
+    state: rise
+    drawdepth: Effects
+    scale: 3, 3
+  - type: TimedDespawn
+    lifetime: 4
 
 # Трекер босс-арены с Танцовщицей: без миньонов, 5 минут до ярости.
 - type: entity

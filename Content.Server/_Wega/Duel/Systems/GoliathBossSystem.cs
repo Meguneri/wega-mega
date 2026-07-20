@@ -39,12 +39,27 @@ public sealed partial class GoliathBossSystem : EntitySystem
     [Dependency] private Content.Shared.Height.HeightSystem _height = default!;
     [Dependency] private Robust.Shared.Prototypes.IPrototypeManager _proto = default!;
     [Dependency] private SharedMapSystem _map = default!;
+    [Dependency] private Content.Shared.Humanoid.HumanoidProfileSystem _humanoidProfile = default!;
+    [Dependency] private Content.Shared.Body.SharedVisualBodySystem _visualBody = default!;
     [Dependency] private Robust.Shared.Map.ITileDefinitionManager _tileDefs = default!;
 
     public override void Initialize()
     {
         base.Initialize();
         SubscribeLocalEvent<GoliathBossComponent, DamageModifyEvent>(OnDamageModify);
+        SubscribeLocalEvent<GoliathBossComponent, Content.Shared.Interaction.Events.AttackAttemptEvent>(OnAttackAttempt);
+    }
+
+    /// <summary>
+    /// Пока Голиаф скован своим замахом (или стаггером), он не машет молотом: телеграф обязан быть
+    /// честным. Раньше для этого вешался настоящий стан — но любой стан рассылает
+    /// DropHandItemsEvent, и босс ронял молот перед каждой атакой. Блокируем ровно удар.
+    /// </summary>
+    private void OnAttackAttempt(Entity<GoliathBossComponent> ent,
+        ref Content.Shared.Interaction.Events.AttackAttemptEvent args)
+    {
+        if (ent.Comp.State != GoliathState.Idle || ent.Comp.StaggeredUntil != null)
+            args.Cancel();
     }
 
     /// <summary>Стаггер-окно: оглушённый об стену Голиаф получает двойной урон.</summary>
@@ -82,10 +97,11 @@ public sealed partial class GoliathBossSystem : EntitySystem
             {
                 if (now < staggered)
                 {
-                    // Держим стан ФИКСИРОВАННО до конца окна. Снятия ActiveNPCComponent мало:
-                    // NPCOptimizationSystem будит NPC, у которого рядом игрок или который получил
-                    // урон, — то есть ровно в стаггер-окне стан и «сходил на нет».
-                    HoldStun(uid, staggered - now);
+                    // Окно ФИКСИРОВАННОЕ и не прерывается: удары гасит OnAttackAttempt, движение —
+                    // снятый ActiveNPC плюс обнуление скорости выше. Снятия ActiveNPCComponent
+                    // одного было мало — NPCOptimizationSystem будит NPC, рядом с которым игрок
+                    // или который получил урон, то есть ровно в стаггер-окне.
+                    RemComp<ActiveNPCComponent>(uid);
                     continue;
                 }
 
@@ -95,10 +111,11 @@ public sealed partial class GoliathBossSystem : EntitySystem
                     InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
             }
 
-            // В любом «занятом» состоянии босс скован собственным замахом: тем же станом гасим
-            // и ходьбу, и удары молотом, которые иначе продолжались бы прямо сквозь телеграф.
+            // В «занятом» состоянии босс скован замахом: удары режет OnAttackAttempt, а ходьбу —
+            // снятый ActiveNPC (его постоянно возвращает NPCOptimizationSystem, поэтому снимаем
+            // каждый тик) и обнуление скорости выше.
             if (goliath.State != GoliathState.Idle)
-                HoldStun(uid, TimeSpan.FromSeconds(0.4));
+                RemComp<ActiveNPCComponent>(uid);
 
             switch (goliath.State)
             {
@@ -132,21 +149,9 @@ public sealed partial class GoliathBossSystem : EntitySystem
     }
 
     /// <summary>
-    /// Держит настоящий стан (StunnedComponent) заданное время. Он блокирует AttackAttempt и
-    /// движение на уровне ActionBlocker, поэтому переживает пробуждение NPC — в отличие от снятия
-    /// ActiveNPCComponent, которое NPCOptimizationSystem откатывает через долю секунды.
-    /// </summary>
-    private void HoldStun(EntityUid uid, TimeSpan duration)
-    {
-        if (duration <= TimeSpan.Zero)
-            return;
-
-        _stun.TryUpdateStunDuration(uid, duration);
-    }
-
-    /// <summary>
-    /// Разовая инициализация: рост всегда максимальный для вида — Голиаф обязан нависать.
-    /// Делается в первом Update (после MapInit порядок применения случайной внешности уже не важен).
+    /// Разовая инициализация: Голиаф всегда мужчина максимального для вида роста — босс обязан
+    /// выглядеть одинаково и нависать, а не выпадать случайной субтильной фигурой.
+    /// Делается в первом Update — после того, как отработала случайная внешность.
     /// </summary>
     private void InitOnce(EntityUid uid, GoliathBossComponent goliath)
     {
@@ -154,8 +159,19 @@ public sealed partial class GoliathBossSystem : EntitySystem
             return;
         goliath.SetupDone = true;
 
-        if (TryComp<Content.Shared.Humanoid.HumanoidProfileComponent>(uid, out var humanoid)
-            && _proto.TryIndex(humanoid.Species, out var species))
+        if (!TryComp<Content.Shared.Humanoid.HumanoidProfileComponent>(uid, out var humanoid))
+            return;
+
+        var profile = Content.Shared.Preferences.HumanoidCharacterProfile
+            .RandomWithSpecies(humanoid.Species)
+            .WithSex(Content.Shared.Humanoid.Sex.Male)
+            .WithGender(Robust.Shared.Enums.Gender.Male);
+
+        _visualBody.ApplyProfileTo(uid, profile);
+        _humanoidProfile.ApplyProfileTo(uid, profile);
+        // Имя не трогаем: оно из прототипа (ent-ключ), а не из случайного профиля.
+
+        if (_proto.TryIndex(humanoid.Species, out var species))
             _height.SetHeight(uid, species.MaxHeight);
     }
 

@@ -26,12 +26,18 @@ TEX = os.path.join(ROOT, "Resources", "Textures")
 PREVIEW = os.path.join(ROOT, "dev", "goliath_gear_preview.png")
 
 # --- палитра «мёрзлой стали» ---
-STEEL_DARK = (16, 18, 24)
-STEEL_LIGHT = (128, 138, 152)
-ICE_DARK = (30, 62, 92)
-ICE_LIGHT = (140, 200, 240)
+# Корпус — тёмный гансметал, ледяная синева осталась только кромкой/визором.
+# Раньше корпус и акцент делились по НАСЫЩЕННОСТИ, но у бомб-костюма-исходника 61% пикселей
+# насыщеннее порога, и в лёд уходила почти вся броня — босс выглядел блёкло-синим целиком.
+STEEL_DARK = (10, 11, 14)
+STEEL_LIGHT = (126, 130, 138)
+ICE_DARK = (20, 86, 124)
+ICE_LIGHT = (150, 226, 255)
 IRON_DARK = (10, 10, 12)
 IRON_LIGHT = (74, 78, 86)
+
+# Яркость, выше которой пиксель считается кромкой/бликом и красится акцентом (~9% брони).
+TRIM_THRESHOLD = 0.5
 
 ITEMS = [
     # (источник, назначение, режим)
@@ -65,20 +71,29 @@ def saturation(r, g, b):
 
 
 def recolor_armor(r, g, b):
-    """Бомб-костюм: корпус → сталь; насыщенные детали (ремни/визор) → ледяная синева."""
+    """
+    Бомб-костюм → тяжёлая рыцарская плита: тёмная масса брони с ледяной кромкой.
+    Делим по ЯРКОСТИ, а не по насыщенности: у исходника насыщены почти все пиксели, и по
+    насыщенности вся броня уходила в лёд. Обе части растягиваем на полную рампу, иначе тёмный
+    исходник даёт грязное серое пятно вместо металла.
+    """
     lum = luminance(r, g, b)
-    if saturation(r, g, b) > 0.35:
-        return ramp(lum, ICE_DARK, ICE_LIGHT)
-    return ramp(lum, STEEL_DARK, STEEL_LIGHT)
+    if lum > TRIM_THRESHOLD:
+        return ramp(min(1.0, (lum - TRIM_THRESHOLD) / 0.35), ICE_DARK, ICE_LIGHT)
+    return ramp(lum / TRIM_THRESHOLD, STEEL_DARK, STEEL_LIGHT)
 
 
 def recolor_hammer(r, g, b):
-    """Кувалда: тёплая рукоять → чернёное железо; серая голова → светлая мёрзлая сталь."""
+    """
+    Кувалда: тёплая рукоять → чернёное железо; голова → холодная сталь брони с ледяным бликом
+    только на самых светлых гранях. Целиком ледяная голова смотрелась пластиковой игрушкой.
+    """
     lum = luminance(r, g, b)
-    warm = r > b + 15  # дерево/тёплые тона
-    if warm:
+    if r > b + 15:  # дерево/тёплые тона — рукоять
         return ramp(lum, IRON_DARK, IRON_LIGHT)
-    return ramp(min(1.0, lum * 1.15 + 0.08), ICE_DARK, ICE_LIGHT)
+    if lum > 0.72:  # редкий блик на кромке бойка
+        return ramp(min(1.0, (lum - 0.72) / 0.28), ICE_DARK, ICE_LIGHT)
+    return ramp(min(1.0, lum * 1.1 + 0.05), STEEL_DARK, STEEL_LIGHT)
 
 
 MODES = {"armor": recolor_armor, "hammer": recolor_hammer}

@@ -87,9 +87,9 @@ public sealed partial class DancerBossComponent : Component
     [DataField]
     public float SecondLifeHealthFraction = 0.4f;
 
-    /// <summary>Сколько секунд стоит на коленях (неуязвима, пауза-передышка для всех).</summary>
+    /// <summary>Сколько секунд находится в стазисе (неуязвима, пауза-передышка для всех).</summary>
     [DataField]
-    public float KneelDuration = 3f;
+    public float KneelDuration = 4f;
 
     /// <summary>Множитель кулдаунов после второго дыхания.</summary>
     [DataField]
@@ -121,6 +121,9 @@ public sealed partial class DancerBossComponent : Component
 
     [DataField]
     public EntProtoId RiseProto = "EffectDancerRise";
+
+    [DataField]
+    public EntProtoId StasisProto = "EffectDancerStasis";
 
     [DataField]
     public SoundSpecifier SpinSound = new SoundPathSpecifier("/Audio/_Wega/Duel/dancer/spin.ogg");

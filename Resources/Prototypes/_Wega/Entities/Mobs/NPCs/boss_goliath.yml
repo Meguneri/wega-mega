@@ -59,6 +59,10 @@
     damage:
       types:
         Blunt: 28
+  # Молот приварен к рукам: обезоружить босса нельзя ни дизармом, ни разоружающими эффектами.
+  # deleteOnDrop: false — если его всё же вынут (гибы), молот останется предметом, а не исчезнет.
+  - type: Unremoveable
+    deleteOnDrop: false
 
 - type: entity
   parent: MobHuman
