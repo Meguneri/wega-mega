@@ -28,13 +28,19 @@ public sealed class ChessWindow : DefaultWindow
     private static readonly Color SelectedTint = Color.FromHex("#7FB069");
     private static readonly Color HintColor = Color.FromHex("#20B2AA");
 
+    /// <summary>Кольцо вокруг фигуры, которую можно съесть (в Личесе именно кольцо, а не точка).</summary>
+    private static readonly Color CaptureRing = Color.FromHex("#D64545");
+
+    /// <summary>Клетка короля, стоящего под шахом.</summary>
+    private static readonly Color CheckTint = Color.FromHex("#E03131");
+
     private readonly IPlayerManager _player;
     private readonly SpriteSystem _sprites;
 
     private readonly GridContainer _board;
     private readonly PanelContainer[] _cells = new PanelContainer[64];
     private readonly TextureRect[] _pieces = new TextureRect[64];
-    private readonly Control[] _hints = new Control[64];
+    private readonly PanelContainer[] _hints = new PanelContainer[64];
 
     private readonly Label _status;
     private readonly Label _whiteLabel;
@@ -249,6 +255,12 @@ public sealed class ChessWindow : DefaultWindow
             ? _state.LegalMoves.Where(m => m.From == _selected).Select(m => m.To).ToHashSet()
             : new HashSet<int>();
 
+        // Король под шахом — подсвечиваем его клетку. Шах всегда у той стороны, чей ход;
+        // при мате подсвечиваем тоже, чтобы было видно, чем всё кончилось.
+        var checkSquare = -1;
+        if (_state.Status is ChessStatus.Check or ChessStatus.Checkmate)
+            checkSquare = FindKing(board, _state.SideToMove);
+
         for (var cell = 0; cell < 64; cell++)
         {
             var square = CellToSquare(cell);
@@ -260,13 +272,76 @@ public sealed class ChessWindow : DefaultWindow
                 color = Color.InterpolateBetween(color, LastMoveTint, 0.55f);
             if (square == _selected)
                 color = Color.InterpolateBetween(color, SelectedTint, 0.65f);
+            if (square == checkSquare)
+                color = Color.InterpolateBetween(color, CheckTint, 0.7f);
 
             ((StyleBoxFlat)_cells[cell].PanelOverride!).BackgroundColor = color;
 
             var piece = board[square];
             _pieces[cell].Texture = piece == null ? null : GetPieceTexture(piece.Value.Color, piece.Value.Type);
-            _hints[cell].Visible = hints.Contains(square);
+
+            SetHint(cell, hints.Contains(square) ? HintKind(board, square) : Hint.None);
         }
+    }
+
+    private enum Hint : byte
+    {
+        None,
+        /// <summary>Пустая клетка — точка в центре.</summary>
+        Move,
+        /// <summary>Есть кого съесть — кольцо вокруг фигуры.</summary>
+        Capture,
+    }
+
+    /// <summary>Чем подсветить клетку назначения: точкой или «съедобным» кольцом.</summary>
+    private Hint HintKind((ChessColor Color, ChessPieceType Type)?[] board, int target)
+    {
+        if (board[target] != null)
+            return Hint.Capture;
+
+        // Взятие на проходе: клетка пустая, но пешка ходит по диагонали — это тоже взятие.
+        if (_selected >= 0 && board[_selected] is { Type: ChessPieceType.Pawn }
+            && ChessSquare.File(_selected) != ChessSquare.File(target))
+        {
+            return Hint.Capture;
+        }
+
+        return Hint.Move;
+    }
+
+    private void SetHint(int cell, Hint hint)
+    {
+        var control = _hints[cell];
+        control.Visible = hint != Hint.None;
+        if (hint == Hint.None)
+            return;
+
+        var style = (StyleBoxFlat)control.PanelOverride!;
+        if (hint == Hint.Capture)
+        {
+            // Рамка во всю клетку поверх фигуры: видно и саму фигуру, и что её можно съесть.
+            control.MinSize = new Vector2(SquarePx - 4, SquarePx - 4);
+            style.BackgroundColor = Color.Transparent;
+            style.BorderColor = CaptureRing;
+            style.BorderThickness = new Thickness(4);
+        }
+        else
+        {
+            control.MinSize = new Vector2(16, 16);
+            style.BackgroundColor = HintColor.WithAlpha(0.65f);
+            style.BorderThickness = new Thickness(0);
+        }
+    }
+
+    /// <summary>Клетка короля нужного цвета (-1, если не нашли).</summary>
+    private static int FindKing((ChessColor Color, ChessPieceType Type)?[] board, ChessColor color)
+    {
+        for (var square = 0; square < 64; square++)
+        {
+            if (board[square] is { } piece && piece.Type == ChessPieceType.King && piece.Color == color)
+                return square;
+        }
+        return -1;
     }
 
     private Texture? GetPieceTexture(ChessColor color, ChessPieceType type)

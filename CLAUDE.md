@@ -62,7 +62,18 @@ dotnet test Content.Tests --filter "FullyQualifiedName~SomeTestName"
 
 Client и Shared сборки проверяются IL-вайтлистом при *старте* (`RobustToolbox/Robust.Shared/ContentPack/Sandbox.yml`). `dotnet build` нарушения НЕ ловит; клиент умирает на запуске с `Sandbox violation`. Известные грабли:
 
+**Проверять ЭТИМ, а не глазами** — апстримный тест поднимает клиент и гоняет ту же проверку, что и запуск игры:
+
+```bash
+dotnet test Content.IntegrationTests --filter "FullyQualifiedName~SandboxTest"   # ~25 сек
+```
+
+Он входит в `./dev/precheck.sh` — прогоняй его перед пушем, если трогал `Content.Shared`/`Content.Client`.
+
+Известные грабли:
+
 - ImageSharp `Image.Load*` запрещён на клиенте — PNG декодировать через `IClyde.LoadTextureFromPNGStream`; вайтлистнуты лишь несколько методов ImageSharp `Processing`.
+- `System.ReadOnlySpan`/`Span` запрещены ЦЕЛИКОМ (в `Sandbox.yml` нет ни одного разрешённого члена). Компилятор создаёт их незаметно: **интерполяция строки с `char`** (`$"{someChar}{x}"`) и **склейка `строка + char`** превращаются в `string.Concat` со span-конструктором. Складывай строки со строками (`char.ToString()`, таблицы готовых строк); `StringBuilder.Append(char)` безопасен.
 - Позиционный звук (`AudioSystem.PlayEntity`) ассертит на стерео-потоках — серверный ffmpeg обязан выдавать **моно** (`-ac 1`) для звуков, привязанных к сущностям.
 
 ### Внедрение зависимостей (RA0049 / RA0051)
@@ -98,7 +109,7 @@ public sealed partial class MySystem : EntitySystem
 - `Content.Tests` — юнит-тесты; `Content.IntegrationTests` — интеграционные (пул сервер+клиент, медленные).
 - Тесты форка лежат в `Content.IntegrationTests/Tests/_Wega/`: арена (`Arena101x101Test`, `ArenaMapsLoadTest`, `ArenaPunisherTest`), дуэли (`Duel/`), рейд (`Raid/RaidControllerTest`), медиаплеер, оружие (`Weapons/Rengoku/`).
 - Фильтрация: `dotnet test Content.IntegrationTests --filter "FullyQualifiedName~_Wega.Raid.RaidControllerTest"`.
-- Перед коммитом минимум: сборка Server+Client и `Content.YAMLLinter`, если трогал прототипы.
+- Перед коммитом: `./dev/precheck.sh` — сборка Server+Client, YAMLLinter, **проверка песочницы клиента** и тесты форка одной командой (`fast` — без интеграционных). Именно песочница ловит класс «сборка зелёная, а клиент не запускается»; глазами и сборкой такое не видно.
 
 ## CI
 
