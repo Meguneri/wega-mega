@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -8,21 +10,22 @@ using NUnit.Framework;
 namespace Content.Tests.Shared._Wega.Chess;
 
 /// <summary>
-/// Страж клиентской песочницы для шахмат.
+/// Страж клиентской песочницы.
 ///
 /// Content.Shared проверяется IL-вайтлистом при СТАРТЕ клиента, а не при сборке: `dotnet build`
-/// проходит, клиент падает с «Assembly Content.Shared failed type checks». Уже наступали:
-/// «строка + char» и интерполяция с char компилируются в string.Concat со span-конструктором,
-/// а тип System.ReadOnlySpan песочницей запрещён целиком.
+/// молчит, а клиент падает с «Assembly Content.Shared failed type checks» и вообще не открывается.
+/// Тип System.ReadOnlySpan запрещён целиком (в Sandbox.yml у него нет ни одного разрешённого
+/// члена), поэтому любой его конструктор в общей сборке = неработающий клиент.
 ///
-/// Тест читает метаданные собранной сборки и ищет ссылки на конструктор ReadOnlySpan в шахматных
-/// типах. Дешевле, чем ловить это запуском клиента.
+/// ВАЖНО: у обобщённых типов родитель ссылки на член — TypeSpecification, а не TypeReference.
+/// Первая версия этого теста проверяла только TypeReference и молча «проходила» даже на
+/// намеренно вставленном нарушении — бесполезный зелёный тест хуже отсутствующего.
 /// </summary>
 [TestFixture]
 public sealed class ChessSandboxTest
 {
     [Test]
-    public void ChessTypesDoNotConstructSpans()
+    public void SharedAssemblyDoesNotConstructSpans()
     {
         var path = FindSharedAssembly();
         if (path == null)
@@ -34,34 +37,37 @@ public sealed class ChessSandboxTest
         using var stream = File.OpenRead(path);
         using var pe = new PEReader(stream);
         var reader = pe.GetMetadataReader();
+        var provider = new TypeNameProvider();
 
-        // Ссылки на .ctor у ReadOnlySpan<T>/Span<T> — ровно то, что валит песочницу.
         var forbidden = new List<string>();
         foreach (var handle in reader.MemberReferences)
         {
             var member = reader.GetMemberReference(handle);
-            var name = reader.GetString(member.Name);
-            if (name != ".ctor")
+            if (reader.GetString(member.Name) != ".ctor")
                 continue;
 
-            if (member.Parent.Kind != HandleKind.TypeReference)
-                continue;
+            var owner = member.Parent.Kind switch
+            {
+                HandleKind.TypeReference =>
+                    reader.GetString(reader.GetTypeReference((TypeReferenceHandle)member.Parent).Name),
+                // Обобщённый владелец (ReadOnlySpan`1<char> и т.п.) — имя лежит в сигнатуре.
+                HandleKind.TypeSpecification =>
+                    reader.GetTypeSpecification((TypeSpecificationHandle)member.Parent)
+                        .DecodeSignature(provider, null),
+                _ => null,
+            };
 
-            var type = reader.GetTypeReference((TypeReferenceHandle)member.Parent);
-            var typeName = reader.GetString(type.Name);
-            if (typeName.StartsWith("ReadOnlySpan") || typeName.StartsWith("Span"))
-                forbidden.Add(typeName);
+            if (owner != null && (owner.StartsWith("ReadOnlySpan") || owner.StartsWith("Span")))
+                forbidden.Add(owner);
         }
 
         Assert.That(forbidden, Is.Empty,
-            "Content.Shared конструирует Span/ReadOnlySpan — клиент упадёт на проверке песочницы. "
-            + "Обычная причина: склейка «строка + char» или интерполяция с char. "
-            + $"Найдено: {string.Join(", ", forbidden.Distinct())}");
+            "Content.Shared конструирует Span/ReadOnlySpan — клиент упадёт на проверке песочницы "
+            + "и не запустится. Найдено: " + string.Join(", ", forbidden.Distinct()));
     }
 
     private static string? FindSharedAssembly()
     {
-        // Тест запускается из bin/Content.Tests; сборка лежит рядом либо в bin/Content.Client.
         var candidates = new[]
         {
             Path.Combine(TestContext.CurrentContext.TestDirectory, "Content.Shared.dll"),
@@ -69,5 +75,35 @@ public sealed class ChessSandboxTest
         };
 
         return candidates.FirstOrDefault(File.Exists);
+    }
+
+    /// <summary>Минимальный декодер сигнатур: нужно только имя типа-владельца.</summary>
+    private sealed class TypeNameProvider : ISignatureTypeProvider<string, object?>
+    {
+        public string GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
+            => reader.GetString(reader.GetTypeReference(handle).Name);
+
+        public string GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
+            => reader.GetString(reader.GetTypeDefinition(handle).Name);
+
+        // Для ReadOnlySpan`1<char> важен сам обобщённый тип, аргументы не нужны.
+        public string GetGenericInstantiation(string genericType, ImmutableArray<string> typeArguments)
+            => genericType;
+
+        public string GetPrimitiveType(PrimitiveTypeCode typeCode) => typeCode.ToString();
+        public string GetSZArrayType(string elementType) => elementType + "[]";
+        public string GetArrayType(string elementType, ArrayShape shape) => elementType + "[]";
+        public string GetByReferenceType(string elementType) => elementType + "&";
+        public string GetPointerType(string elementType) => elementType + "*";
+        public string GetGenericMethodParameter(object? genericContext, int index) => "!!" + index;
+        public string GetGenericTypeParameter(object? genericContext, int index) => "!" + index;
+        public string GetPinnedType(string elementType) => elementType;
+        public string GetModifiedType(string modifier, string unmodifiedType, bool isRequired) => unmodifiedType;
+
+        public string GetTypeFromSpecification(MetadataReader reader, object? genericContext,
+            TypeSpecificationHandle handle, byte rawTypeKind)
+            => reader.GetTypeSpecification(handle).DecodeSignature(this, genericContext);
+
+        public string GetFunctionPointerType(MethodSignature<string> signature) => "fnptr";
     }
 }
