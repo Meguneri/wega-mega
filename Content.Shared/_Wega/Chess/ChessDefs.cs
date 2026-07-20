@@ -47,11 +47,15 @@ public enum ChessStatus : byte
 [Serializable, NetSerializable]
 public readonly record struct ChessMove(int From, int To, ChessPieceType Promotion = ChessPieceType.None)
 {
-    /// <summary>Запись хода в UCI («e2e4», «e7e8q») — компактный ключ для сети и логов.</summary>
+    /// <summary>
+    /// Запись хода в UCI («e2e4», «e7e8q») — компактный ключ для сети и логов.
+    /// Складываем только СТРОКИ: «строка + char» компилятор превращает в string.Concat со
+    /// span-конструктором, а ReadOnlySpan клиентской песочницей запрещён (клиент падал на старте).
+    /// </summary>
     public string ToUci()
     {
-        var s = $"{ChessSquare.Name(From)}{ChessSquare.Name(To)}";
-        return Promotion == ChessPieceType.None ? s : s + ChessSquare.PromotionChar(Promotion);
+        var s = ChessSquare.Name(From) + ChessSquare.Name(To);
+        return Promotion == ChessPieceType.None ? s : s + ChessSquare.PromotionLetter(Promotion);
     }
 }
 
@@ -63,9 +67,25 @@ public static class ChessSquare
     public static int Of(int file, int rank) => rank * 8 + file;
     public static bool Valid(int file, int rank) => file is >= 0 and < 8 && rank is >= 0 and < 8;
 
-    /// <summary>Имя клетки в алгебраической нотации: 0 → «a1».</summary>
-    public static string Name(int square) => $"{(char)('a' + File(square))}{Rank(square) + 1}";
+    // Готовые строки вместо склейки символов: интерполяция с char тоже уходит в span-конструктор,
+    // запрещённый песочницей клиента. Заодно и быстрее — таблица вместо аллокаций.
+    private static readonly string[] FileNames = { "a", "b", "c", "d", "e", "f", "g", "h" };
+    private static readonly string[] RankNames = { "1", "2", "3", "4", "5", "6", "7", "8" };
 
+    /// <summary>Имя клетки в алгебраической нотации: 0 → «a1».</summary>
+    public static string Name(int square) => FileNames[File(square)] + RankNames[Rank(square)];
+
+    /// <summary>Буква превращения строкой — для склейки без char.</summary>
+    public static string PromotionLetter(ChessPieceType type) => type switch
+    {
+        ChessPieceType.Queen => "q",
+        ChessPieceType.Rook => "r",
+        ChessPieceType.Bishop => "b",
+        ChessPieceType.Knight => "n",
+        _ => "?",
+    };
+
+    /// <summary>Буква превращения символом — только для StringBuilder.Append(char), он разрешён.</summary>
     public static char PromotionChar(ChessPieceType type) => type switch
     {
         ChessPieceType.Queen => 'q',

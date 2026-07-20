@@ -62,8 +62,10 @@ public sealed class ChessWindow : DefaultWindow
         _player = IoCManager.Resolve<IPlayerManager>();
         _sprites = IoCManager.Resolve<IEntityManager>().System<SpriteSystem>();
 
+        // Именно Contents, а не AddChild: у DefaultWindow свои дети (фон, шапка, контейнер
+        // содержимого), и добавление напрямую в окно кладёт доску поверх оформления.
         var root = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
-        AddChild(root);
+        Contents.AddChild(root);
 
         _board = new GridContainer { Columns = Ranks, HSeparationOverride = 0, VSeparationOverride = 0 };
         root.AddChild(_board);
