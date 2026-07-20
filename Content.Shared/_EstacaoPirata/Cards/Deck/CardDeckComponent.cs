@@ -27,4 +27,16 @@ public sealed partial class CardDeckComponent : Component
 
     [DataField("limit")]
     public int CardLimit = 5;
+
+    /// <summary>
+    /// Wega: сколько карт раздаёт верб «Раздать» каждому игроку рядом. Без раздачи старт партии
+    /// стоил бы по одному альт-клику на карту (7 карт × 2 игрока = 14 действий).
+    /// 6 — «дурак» на обычной колоде; у колоды Kotahi переопределено на 7.
+    /// </summary>
+    [DataField("dealCount")]
+    public int DealCount = 6;
+
+    /// <summary>Wega: радиус поиска игроков для раздачи, тайлы.</summary>
+    [DataField("dealRange")]
+    public float DealRange = 2.5f;
 }

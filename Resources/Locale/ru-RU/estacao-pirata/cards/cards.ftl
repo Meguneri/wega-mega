@@ -88,3 +88,5 @@ card-sc-queen-spades = дама пики
 card-sc-joker = джокер
 container-sealed = На нём голографическая пломба. При открытии она рассеется.
 container-unsealed = Печать, наложенная на него, рассеивается.
+cards-verb-deal = Раздать по { $count } карт
+cards-deal-not-enough = В колоде не хватает карт для раздачи

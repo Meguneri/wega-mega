@@ -94,3 +94,5 @@ card-sc-joker = joker
 container-sealed = A holographic security seal is on it. Opening it will have the seal dissipate.
 container-unsealed = The seal attached to it dissipates.
 
+cards-verb-deal = Deal { $count } cards each
+cards-deal-not-enough = Not enough cards left in the deck to deal

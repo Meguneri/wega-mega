@@ -1,146 +1,124 @@
-using System.Numerics;
 using Content.Shared._Wega.Duel.Components;
-using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.FixedPoint;
 using Content.Shared.Mobs;
-using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
-using Robust.Server.GameObjects;
-using Robust.Shared.GameObjects;
+using Content.Shared.Movement.Systems;
+using Content.Shared.Popups;
+using Content.Shared.StatusEffectNew;
+using Robust.Server.Audio;
+using Robust.Shared.Audio;
 using Robust.Shared.Map;
-using Robust.Shared.Physics.Components;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 
 namespace Content.Server._Wega.Duel.Systems;
 
-/// <summary>
-/// Система миньона-помощника для проигравшего 3 дуэли подряд.
-/// Дрон только следует за владельцем и лечит его — стрелять он не умеет (убрано намеренно,
-/// чтобы поддержка отстающего не превращалась во вторую пушку на арене).
-/// </summary>
+/// <summary>Скрытое одноразовое «Право на реванш» вместо постоянного миньона.</summary>
 public sealed partial class ArenaLoserMinionSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
-    [Dependency] private TransformSystem _transform = default!;
-    [Dependency] private PhysicsSystem _physics = default!;
     [Dependency] private DamageableSystem _damageable = default!;
-    [Dependency] private MobThresholdSystem _mobThreshold = default!;
+    [Dependency] private MobThresholdSystem _thresholds = default!;
+    [Dependency] private MovementModStatusSystem _movementMod = default!;
+    [Dependency] private SharedPopupSystem _popup = default!;
+    [Dependency] private AudioSystem _audio = default!;
+    [Dependency] private StatusEffectsSystem _statusEffects = default!;
 
-    /// <summary>
-    /// Удаляет всех миньонов, чьи владельцы входят в <paramref name="owners"/> (бойцы завершившегося
-    /// боя), независимо от их позиции — иначе дрон «уезжает» со станции за победителем мимо радиусной
-    /// очистки арены (<c>DuelArenaCleanupSystem.CleanupArea</c>).
-    /// </summary>
-    public void RemoveMinionsForOwners(ICollection<EntityUid> owners)
+    private static readonly TimeSpan BuffDuration = TimeSpan.FromSeconds(5);
+    private static readonly EntProtoId SpeedEffect = "BasicSpeedUpStatusEffect";
+    private static readonly SoundSpecifier ActivationSound =
+        new SoundPathSpecifier("/Audio/_Wega/Duel/duel_ready.ogg");
+
+    public override void Initialize()
     {
-        if (owners.Count == 0)
-            return;
-
-        var query = EntityQueryEnumerator<ArenaLoserMinionComponent>();
-        while (query.MoveNext(out var uid, out var minion))
-        {
-            if (owners.Contains(minion.MinionOwner))
-                QueueDel(uid);
-        }
+        base.Initialize();
+        SubscribeLocalEvent<ArenaLoserMinionComponent, ComponentShutdown>(OnShutdown);
     }
 
     public override void Update(float frameTime)
     {
+        base.Update(frameTime);
+
         var now = _timing.CurTime;
-        var query = EntityQueryEnumerator<ArenaLoserMinionComponent, TransformComponent, PhysicsComponent>();
-
-        while (query.MoveNext(out var uid, out var minion, out var xform, out var phys))
+        var query = EntityQueryEnumerator<ArenaLoserMinionComponent, DamageableComponent>();
+        while (query.MoveNext(out var uid, out var revenge, out var damageable))
         {
-            // Если владелец был задан и умер/исчез — миньон тоже умирает.
-            // Если владельца нет (спавн через меню), миньон просто стоит.
-            if (minion.MinionOwner.IsValid() &&
-                (!Exists(minion.MinionOwner) || TerminatingOrDeleted(minion.MinionOwner) ||
-                 TryComp<MobStateComponent>(minion.MinionOwner, out var ownerMob) && ownerMob.CurrentState == MobState.Dead))
-            {
-                QueueDel(uid);
-                continue;
-            }
-
-            // Без владельца останавливаемся и ничего не делаем.
-            if (!minion.MinionOwner.IsValid())
-            {
-                _physics.SetLinearVelocity(uid, Vector2.Zero, body: phys);
-                continue;
-            }
-
-            var ownerXform = Transform(minion.MinionOwner);
-            var ownerPos = _transform.GetWorldPosition(ownerXform);
-            var minionPos = _transform.GetWorldPosition(xform);
-
-            // Движение обновляем каждый тик, чтобы дрон не летел вслепую между действиями.
-            var offset = ownerPos - minionPos;
-            var dist = offset.Length();
-            if (dist > minion.FollowRadius)
-            {
-                var dir = dist > 0 ? offset.Normalized() : Vector2.UnitX;
-                _physics.SetLinearVelocity(uid, dir * minion.MoveSpeed, body: phys);
-            }
-            else
-            {
-                _physics.SetLinearVelocity(uid, Vector2.Zero, body: phys);
-            }
-
-            if (now < minion.NextAction)
+            if (revenge.Used || !TryGetHealthFraction(uid, damageable, out var healthFraction))
                 continue;
 
-            // Лечим, только когда владелец рядом и ранен. Кулдаун взводим лишь при реальном
-            // лечении — иначе, подлетев к раненому владельцу, дрон ждал бы полный цикл впустую.
-            if (dist <= minion.FollowRadius + 0.5f && ShouldHeal(minion))
+            if (healthFraction > 0.4f)
+                continue;
+
+            revenge.Used = true;
+            revenge.ActiveUntil = now + BuffDuration;
+            revenge.AddedIgnoreSlowOnDamage = !HasComp<IgnoreSlowOnDamageComponent>(uid);
+            if (revenge.AddedIgnoreSlowOnDamage)
+                EnsureComp<IgnoreSlowOnDamageComponent>(uid);
+            _movementMod.TryUpdateMovementSpeedModDuration(
+                uid, SpeedEffect, BuffDuration, 1.15f);
+            _popup.PopupEntity(Loc.GetString("duel-arena-revenge-activated"), uid, PopupType.LargeCaution);
+            _audio.PlayPvs(ActivationSound, uid);
+        }
+
+        var activeQuery = EntityQueryEnumerator<ArenaLoserMinionComponent>();
+        while (activeQuery.MoveNext(out var uid, out var active))
+        {
+            if (active.ActiveUntil != TimeSpan.Zero && now >= active.ActiveUntil)
             {
-                minion.NextAction = now + TimeSpan.FromSeconds(minion.ActionCooldown);
-                HealOwner(uid, minion);
+                active.ActiveUntil = TimeSpan.Zero;
+                RemoveOwnedSlowdownImmunity(uid, active);
             }
         }
     }
 
-    /// <summary>
-    /// Спавнит миньона-помощника рядом с указанным владельцем.
-    /// </summary>
-    public EntityUid SpawnMinion(EntityUid owner, EntityCoordinates coords)
+    /// <summary>Выдаёт скрытый заряд бойцу; отдельный дрон больше не спавнится.</summary>
+    public void SpawnMinion(EntityUid owner, EntityCoordinates coords)
     {
-        var minion = Spawn("ArenaLoserMinion", coords);
-        if (TryComp<ArenaLoserMinionComponent>(minion, out var comp))
-            comp.MinionOwner = owner;
-        else
-            Log.Warning($"[duel-arena-loserminion] SpawnMinion: spawned entity {ToPrettyString(minion)} does not have ArenaLoserMinionComponent!");
-
-        return minion;
+        var revenge = EnsureComp<ArenaLoserMinionComponent>(owner);
+        revenge.Used = false;
+        revenge.ActiveUntil = TimeSpan.Zero;
+        revenge.AddedIgnoreSlowOnDamage = false;
     }
 
-    /// <summary>
-    /// Лечить стоит, только если владелец ранен и его здоровье ниже <see cref="ArenaLoserMinionComponent.HealThreshold"/>
-    /// (доля от порога крита). Если порог крита неизвестен — лечим при любом уроне, как раньше.
-    /// </summary>
-    private bool ShouldHeal(ArenaLoserMinionComponent minion)
+    /// <summary>Снимает заряд после завершения дуэли.</summary>
+    public void RemoveMinionsForOwners(ICollection<EntityUid> owners)
     {
-        if (!TryComp<DamageableComponent>(minion.MinionOwner, out var damageable))
-            return false;
-
-        var damage = _damageable.GetTotalDamage((minion.MinionOwner, damageable));
-        if (damage <= FixedPoint2.Zero)
-            return false;
-
-        if (!_mobThreshold.TryGetThresholdForState(minion.MinionOwner, MobState.Critical, out var crit) ||
-            crit.Value <= FixedPoint2.Zero)
-            return true;
-
-        var healthFraction = 1f - damage.Float() / crit.Value.Float();
-        return healthFraction < minion.HealThreshold;
-    }
-
-    private void HealOwner(EntityUid minionUid, ArenaLoserMinionComponent minion)
-    {
-        if (TryComp<DamageableComponent>(minion.MinionOwner, out var damageable))
+        foreach (var owner in owners)
         {
-            var target = new Entity<DamageableComponent?>(minion.MinionOwner, damageable);
-            _damageable.HealEvenly(target, -FixedPoint2.New(minion.HealAmount), origin: minionUid);
+            if (TryComp<ArenaLoserMinionComponent>(owner, out var revenge))
+                RemoveOwnedSlowdownImmunity(owner, revenge);
+
+            RemComp<ArenaLoserMinionComponent>(owner);
         }
+    }
+
+    private bool TryGetHealthFraction(EntityUid uid, DamageableComponent damageable, out float fraction)
+    {
+        fraction = 1f;
+        if (!_thresholds.TryGetThresholdForState(uid, MobState.Critical, out var critical) ||
+            critical.Value <= FixedPoint2.Zero)
+            return false;
+
+        var damage = _damageable.GetTotalDamage((uid, damageable));
+        fraction = Math.Clamp(1f - damage.Float() / critical.Value.Float(), 0f, 1f);
+        return true;
+    }
+
+    private void OnShutdown(EntityUid uid, ArenaLoserMinionComponent component, ref ComponentShutdown args)
+    {
+        RemoveOwnedSlowdownImmunity(uid, component);
+    }
+
+    private void RemoveOwnedSlowdownImmunity(EntityUid uid, ArenaLoserMinionComponent component)
+    {
+        _statusEffects.TryRemoveStatusEffect(uid, SpeedEffect);
+
+        if (!component.AddedIgnoreSlowOnDamage)
+            return;
+
+        component.AddedIgnoreSlowOnDamage = false;
+        RemComp<IgnoreSlowOnDamageComponent>(uid);
     }
 }

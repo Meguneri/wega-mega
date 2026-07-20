@@ -366,14 +366,15 @@ public sealed class DuelRotationSystemTest : GameTest
             var arena = entManager.GetComponent<DuelArenaComponent>(tracker);
             Assert.That(arena.IsActive, Is.True, "Четвёртый раунд должен начаться по кнопке");
 
-            EntityUid? minionOwner = null;
+            // «Право на реванш» — компонент на самом бойце, отдельная сущность не спавнится.
+            EntityUid? holder = null;
             var query = entManager.EntityQueryEnumerator<ArenaLoserMinionComponent>();
-            while (query.MoveNext(out _, out var minion))
-                minionOwner = minion.MinionOwner;
+            while (query.MoveNext(out var uid, out _))
+                holder = uid;
 
-            Assert.That(minionOwner, Is.Not.Null,
-                "Миньон должен заспавниться у проигравшего 3 раунда подряд в ротации");
-            Assert.That(minionOwner, Is.EqualTo(fighter2), "Миньон должен принадлежать проигравшему");
+            Assert.That(holder, Is.Not.Null,
+                "Право на реванш должно появиться у проигравшего 3 раунда подряд в ротации");
+            Assert.That(holder, Is.EqualTo(fighter2), "Право на реванш должно висеть на проигравшем");
         });
     }
 

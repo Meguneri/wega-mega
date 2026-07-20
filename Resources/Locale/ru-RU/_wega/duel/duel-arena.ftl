@@ -50,7 +50,8 @@ cmd-duelscorereset-invalid-args = Неверные аргументы. Испо�
 cmd-duelscorereset-result = Счёт обнулён на аренах: { $count }.
 
 # Усиление для проигравшего 3 раза подряд
-duel-arena-loser-minion-spawned = { $name } получает миньона-помощника после серии поражений!
+duel-arena-loser-minion-spawned = { $name } получает «Право на реванш» после серии поражений!
+duel-arena-revenge-activated = ПРАВО НА РЕВАНШ!
 
 # Команда arenazone — управление зоной арены (шторм + авиаудары)
 cmd-arenazone-desc = Управляет зоной дуэльной арены: включает или выключает шторм и/или авиаудары на ближайшей арене.

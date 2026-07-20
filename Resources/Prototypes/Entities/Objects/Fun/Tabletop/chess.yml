@@ -1,22 +1,31 @@
-﻿- type: entity
-  parent: BaseBoardEntity
+﻿# Wega: родитель BaseItem, а НЕ BaseBoardEntity: тот несёт TabletopGame, который слушает тот же
+# ActivateInWorldEvent, что и ActivatableUI, — клик открывал бы заодно старый виртуальный стол
+# (причём с ломом вместо доски). Тег TabletopBoard возвращаем вручную, он нужен наборам столов.
+- type: entity
+  parent: BaseItem
   id: ChessBoard
   name: chessboard
   description: A chessboard. Pieces included!
   components:
+  - type: Tag
+    tags:
+    - TabletopBoard
   - type: Sprite
     sprite: Objects/Fun/Tabletop/chessboard.rsi
     state: chessboard
-  - type: TabletopGame
-    boardName: tabletop-chess-board-name
-    size: 338, 274
-    setup:
-      !type:TabletopChessSetup
-      boardPrototype: &ChessBoard ChessBoardTabletop
+  # Wega: доска с настоящими правилами (ChessGameSystem) вместо виртуального стола с
+  # перетаскиванием фигур: ходы проверяются, очередь соблюдается, есть шах/мат и часы.
+  - type: ChessGame
+  - type: ActivatableUI
+    key: enum.ChessUiKey.Key
+  - type: UserInterface
+    interfaces:
+      enum.ChessUiKey.Key:
+        type: ChessBoundUserInterface
 
 - type: entity
   parent: BaseBoardTabletop
-  id: *ChessBoard
+  id: ChessBoardTabletop
   name: chessboard
   categories: [ HideSpawnMenu ]
   components:

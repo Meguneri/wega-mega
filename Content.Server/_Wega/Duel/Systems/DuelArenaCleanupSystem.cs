@@ -463,7 +463,6 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
         CleanupLogs(origin, originGrid, range);
 
         // 4. Миньоны-помощники (усиление для проигравшего 3 раза подряд).
-        CleanupMinions(origin, originGrid, range);
 
         // 5. Магические руны со свитка рун (блэнкетом по гриду арены).
         CleanupMagicRunes(origin, originGrid, range);
@@ -632,23 +631,6 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
                 continue;
 
             QueueDel(logUid);
-        }
-    }
-
-    /// <summary>
-    /// Миньоны-помощники (усиление для проигравшего 3 раза подряд).
-    /// </summary>
-    private void CleanupMinions(MapCoordinates origin, EntityUid? originGrid, float range)
-    {
-        var minionQuery = EntityQueryEnumerator<ArenaLoserMinionComponent, TransformComponent>();
-        while (minionQuery.MoveNext(out var minionUid, out _, out _))
-        {
-            if (!InRange(minionUid, origin, originGrid, range))
-                continue;
-            if (HasComp<ArenaCleanupExemptComponent>(minionUid))
-                continue;
-
-            QueueDel(minionUid);
         }
     }
 

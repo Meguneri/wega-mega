@@ -48,6 +48,9 @@ public sealed partial class GoliathBossSystem : EntitySystem
         base.Initialize();
         SubscribeLocalEvent<GoliathBossComponent, DamageModifyEvent>(OnDamageModify);
         SubscribeLocalEvent<GoliathBossComponent, Content.Shared.Interaction.Events.AttackAttemptEvent>(OnAttackAttempt);
+        // Босса могут удалить, не убив (админский деспавн, уборка арены, конец раунда) — тогда
+        // Update до восстановления пола уже не дойдёт. Возвращаем плитки и на удалении.
+        SubscribeLocalEvent<GoliathBossComponent, ComponentShutdown>((ent, comp, _) => RestoreTiles(ent, comp));
     }
 
     /// <summary>

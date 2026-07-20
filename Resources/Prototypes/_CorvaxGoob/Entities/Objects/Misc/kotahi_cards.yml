@@ -53,6 +53,9 @@
   - type: Sprite
     sprite: EstacaoPirata/Objects/Misc/cards.rsi
     state: deck_kotahi_full
+  # Wega: раздача по правилам Kotahi — 7 карт на игрока (у обычных колод по умолчанию 6).
+  - type: CardDeck
+    dealCount: 7
   - type: CardStack
     content:
     # MARK: Blue

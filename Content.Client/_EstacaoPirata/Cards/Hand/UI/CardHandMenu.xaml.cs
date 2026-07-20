@@ -48,15 +48,17 @@ public sealed partial class CardHandMenu : RadialMenu
                 return;
             if (!_entManager.TryGetComponent<CardComponent>(card, out var cardComp))
                 return;
-            string cardName;
-            if (cardComp.Flipped && _entManager.TryGetComponent<MetaDataComponent>(card, out var metadata))
-            {
-                cardName = metadata.EntityName;
-            }
-            else
-            {
-                cardName = Loc.GetString(cardComp.Name);
-            }
+
+            // Wega: это меню видит ТОЛЬКО владелец руки, поэтому здесь карты всегда лицом вверх —
+            // даже когда веер перевёрнут рубашкой к столу. Иначе в карты нельзя играть: чтобы
+            // увидеть свои номиналы, приходилось разворачивать веер на виду у соперника.
+            // Чужим клиентам карты в руке вообще не отправляются (лежат в контейнере игрока),
+            // так что подсмотреть отсюда нечего.
+            var cardName = !string.IsNullOrEmpty(cardComp.Name)
+                ? Loc.GetString(cardComp.Name)
+                : _entManager.TryGetComponent<MetaDataComponent>(card, out var metadata)
+                    ? metadata.EntityName
+                    : string.Empty;
 
             var button = new CardMenuButton()
             {
@@ -64,16 +66,19 @@ public sealed partial class CardHandMenu : RadialMenu
                 ToolTip = cardName,
             };
 
-            if (_entManager.TryGetComponent<SpriteComponent>(card, out var sprite))
-            {
-                if (sprite.Icon == null)
-                    continue;
+            // Лицевую сторону берём из FrontSprite (его клиент собирает при старте компонента),
+            // а не из текущего спрайта: у перевёрнутой карты текущий — рубашка.
+            var face = cardComp.FrontSprite.Count > 0
+                ? _spriteSystem.Frame0(cardComp.FrontSprite[^1])
+                : _entManager.TryGetComponent<SpriteComponent>(card, out var sprite) ? sprite.Icon?.Default : null;
 
+            if (face != null)
+            {
                 var tex = new TextureRect()
                 {
                     VerticalAlignment = VAlignment.Center,
                     HorizontalAlignment = HAlignment.Center,
-                    Texture = sprite.Icon?.Default,
+                    Texture = face,
                     TextureScale = new Vector2(2f, 2f),
                 };
 

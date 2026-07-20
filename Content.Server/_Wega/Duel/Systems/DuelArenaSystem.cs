@@ -439,7 +439,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
         // делает вызов no-op, если ящики уже выданы при подготовке раунда (ротация).
         EnsureArsenalCrates(uid, comp);
 
-        // Усиление для проигравшего 3 раза подряд: миньон-помощник.
+        // Усиление для проигравшего 3 раза подряд: скрытое «Право на реванш».
         SpawnLoserMinions(comp);
 
         // Звук старта дуэли играет штатный DuelStartSoundEmitter на карте
@@ -447,7 +447,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
     }
 
     /// <summary>
-    /// Спавнит миньона-помощника каждому бойцу с серией из 3+ поражений. Серии поражений
+    /// Выдаёт «Право на реванш» каждому бойцу с серией из 3+ поражений. Серии поражений
     /// берутся из контроллера ротации, если арена в ротации, иначе из самой арены.
     /// </summary>
     private void SpawnLoserMinions(DuelArenaComponent comp)
@@ -467,8 +467,7 @@ public sealed partial class DuelArenaSystem : EntitySystem
             if (streak < 3)
                 continue;
 
-            var coords = Transform(duelist).Coordinates;
-            _minionSystem.SpawnMinion(duelist, coords);
+            _minionSystem.SpawnMinion(duelist, Transform(duelist).Coordinates);
             _chatManager.DispatchServerAnnouncement(
                 Loc.GetString("duel-arena-loser-minion-spawned", ("name", SafeName(duelist))),
                 Color.Pink);
