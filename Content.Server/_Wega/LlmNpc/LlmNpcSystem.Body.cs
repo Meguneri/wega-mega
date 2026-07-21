@@ -683,6 +683,35 @@ public sealed partial class LlmNpcSystem
     }
 
     /// <summary>
+    /// Рефлекторная сдача: бьёт обидчика сразу, не дожидаясь круга API (модель звала attack не всегда
+    /// и с задержкой — со стороны казалось, что бот «не реагирует»). Те же тормоза, что у DoAttack:
+    /// не бьём лежачих и уже сильно раненых, только в пределах досягаемости и если есть чем ударить.
+    /// </summary>
+    private bool TryRetaliate(EntityUid uid, EntityUid attacker)
+    {
+        if (_mobState.IsIncapacitated(attacker))
+            return false;
+
+#pragma warning disable CS0618
+        if (_damageable.GetTotalDamage(attacker) > 70)
+#pragma warning restore CS0618
+            return false;
+
+        var dist = (_transform.GetWorldPosition(uid) - _transform.GetWorldPosition(attacker)).Length();
+        if (dist > 2f)
+            return false;
+
+        if (!_melee.TryGetWeapon(uid, out var weaponUid, out var weapon))
+            return false;
+
+        _rotateToFace.TryFaceCoordinates(uid, _transform.GetWorldPosition(attacker));
+        var hit = _melee.AttemptLightAttack(uid, weaponUid, weapon, attacker);
+        NoteOwnAction(uid, Comp<LlmNpcComponent>(uid),
+            hit ? $"дала сдачи — ударила {MetaData(attacker).EntityName}" : "замахнулась в ответ, но промазала");
+        return hit;
+    }
+
+    /// <summary>
     /// «Отлежаться»: медленное самолечение лёгких ран, только вне боя (10с без урона). Не магия
     /// бессмертия — просто чтобы после стычки она не ковыляла побитой весь раунд без медиков.
     /// </summary>

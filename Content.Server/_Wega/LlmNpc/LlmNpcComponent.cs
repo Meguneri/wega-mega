@@ -256,6 +256,13 @@ public sealed partial class LlmNpcComponent : Component
     [ViewVariables]
     public TimeSpan LastHurtAt;
 
+    /// <summary>
+    /// Сколько болевых событий подряд без большой паузы. Растёт при избиении, обнуляется, когда
+    /// удары прекращаются. Чем выше — тем острее эмоциональный регистр реакции (возмущение → паника).
+    /// </summary>
+    [ViewVariables]
+    public byte HurtStreak;
+
     /// <summary>Следующий тик самолечения.</summary>
     [ViewVariables]
     public TimeSpan NextRegen;

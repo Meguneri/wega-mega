@@ -173,6 +173,13 @@ public sealed partial class LlmNpcSystem : EntitySystem
         ent.Comp.LastHurtAt = now;
         if (now < ent.Comp.NextPain)
             return;
+
+        // Серия ударов: если между болевыми событиями большой разрыв — счётчик сбрасывается, иначе
+        // растёт. lapsed = насколько now превысил прошлое окно троттлинга (NextPain = прошлая боль + 4с).
+        var lapsed = now - ent.Comp.NextPain;
+        ent.Comp.HurtStreak = lapsed > TimeSpan.FromSeconds(10)
+            ? (byte)1
+            : (byte)Math.Min(ent.Comp.HurtStreak + 1, 9);
         ent.Comp.NextPain = now + TimeSpan.FromSeconds(4);
 
         if (_mobState.IsIncapacitated(ent))
@@ -195,6 +202,14 @@ public sealed partial class LlmNpcSystem : EntitySystem
             return;
         }
 
+        // Дать сдачи рефлекторно, не дожидаясь ответа модели: ударил живой моб и она в состоянии
+        // ответить — бьём в ответ прямо сейчас. Модель всё равно потом прокомментирует случившееся.
+        if (args.Origin is { } aggressor && Exists(aggressor)
+            && HasComp<Content.Shared.Mobs.Components.MobStateComponent>(aggressor))
+        {
+            TryRetaliate(ent, aggressor);
+        }
+
         // Обида — настроение, а не приговор: само выветрится, а извинение может снять раньше (set_mood).
         if (args.Origin is { } offender && Exists(offender) && HasComp<Content.Shared.Mobs.Components.MobStateComponent>(offender))
         {
@@ -202,9 +217,32 @@ public sealed partial class LlmNpcSystem : EntitySystem
             ent.Comp.MoodUntil = now + TimeSpan.FromMinutes(12);
         }
 
-        NoteOwnAction(ent, ent.Comp, args.Origin is { } who && Exists(who)
-            ? $"почувствовала боль — её ударил {MetaData(who).EntityName} (урон {total})"
-            : $"почувствовала боль (урон {total})");
+        // Тяжесть по свежему удару и по общему состоянию тела — чтобы реакция росла вместе с уроном.
+        var hitWord = total >= 25 ? "тяжёлый удар" : total >= 10 ? "резкая боль" : "укол боли";
+        string state;
+        if (myTotal > 40)
+            state = "тело уже плохо слушается, ты еле держишься на ногах";
+        else if (myTotal > 20)
+            state = "тебе ощутимо досталось, ты пошатываешься";
+        else
+            state = "пока терпимо, но обидно и страшно";
+
+        // Эмоциональный регистр по серии ударов — чтобы это не было дежурным «прекрати».
+        string mode;
+        if (ent.Comp.HurtStreak <= 1)
+            mode = "первый удар — среагируй вживую: вскрик или резкий вдох, злость и возмущение, "
+                + "а не вежливая просьба";
+        else if (ent.Comp.HurtStreak == 2)
+            mode = "бьют уже не впервые — испуг и злость разом: повысь тон, огрызнись или пригрози";
+        else
+            mode = "тебя избивают — паника: кричи, зови на помощь по имени, умоляй или угрожай, "
+                + "короткие рваные фразы, не рассуждай спокойно";
+
+        var painNote = args.Origin is { } who && Exists(who)
+            ? $"{hitWord} — тебя бьёт {MetaData(who).EntityName} (урон {total}); {state}. {mode}. "
+                + "Реагируй каждый раз по-новому, без повторов"
+            : $"{hitWord} (урон {total}); {state}. {mode}. Реагируй каждый раз по-новому, без повторов";
+        NoteOwnAction(ent, ent.Comp, painNote);
         if (ent.Comp.MuteUntil == null)
             ent.Comp.ReplyAt = now + TimeSpan.FromSeconds(1.2);
     }
