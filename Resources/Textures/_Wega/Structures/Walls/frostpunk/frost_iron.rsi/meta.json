@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Wega frostpunk recolor of vanilla solid.rsi (CC-BY-SA-3.0)",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "full"
+    },
+    {
+      "name": "frost_iron0",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron1",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron2",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron3",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron4",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron5",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron6",
+      "directions": 4
+    },
+    {
+      "name": "frost_iron7",
+      "directions": 4
+    }
+  ]
+}

@@ -263,6 +263,14 @@ public sealed partial class LlmNpcComponent : Component
     [ViewVariables]
     public byte HurtStreak;
 
+    /// <summary>
+    /// Боевой темперамент 0..1: как рано она ломается и как охотно даёт сдачи под уроном.
+    /// 0 — трусиха (рано отступает, бьёт в ответ неохотно), 1 — берсерк (дерётся до последнего,
+    /// добивает обидчика). 0.5 — обычный человек. Задаёт разброс реакций между разными NPC.
+    /// </summary>
+    [DataField]
+    public float Aggression = 0.5f;
+
     /// <summary>Следующий тик самолечения.</summary>
     [ViewVariables]
     public TimeSpan NextRegen;

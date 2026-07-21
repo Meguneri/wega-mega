@@ -95,6 +95,18 @@ public sealed partial class ArenaColdSystem : EntitySystem
             if (mob.CurrentState == MobState.Dead)
                 continue;
 
+            // Мерзлота бьёт только по людям и гуманоидам. Животных и прочую живность холод не трогает;
+            // если на ком-то из них уже висел дебаф — снимаем, иначе он «замёрзнет» навсегда (тик мимо).
+            if (!HasComp<Content.Shared.Humanoid.HumanoidProfileComponent>(uid))
+            {
+                if (HasComp<ColdExposureComponent>(uid))
+                {
+                    RemComp<ColdExposureComponent>(uid);
+                    _speed.RefreshMovementSpeedModifiers(uid);
+                }
+                continue;
+            }
+
             var zone = GetColdZone(xform);
             if (zone == null)
             {

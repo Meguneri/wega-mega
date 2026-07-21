@@ -1,0 +1,90 @@
+# Arena frostpunk walls (Wega). Геометрия IconSmooth и обводка — от ванильных стен (solid/ice/
+# cobblebrick_snow), перекрашены в фростпанк-материалы (см. Tools/gen_frostpunk_pack.py).
+# Имена несут приписку "(Arena)" через локализацию (ent-WallArenaFrost*), как у arena_cyberpunk.
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaFrostIron
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/frostpunk/frost_iron.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/frostpunk/frost_iron.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: frost_iron
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaIceBlock
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/frostpunk/ice_block.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/frostpunk/ice_block.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: ice_block
+
+- type: entity
+  parent: BaseWall
+  id: WallArenaFrostStone
+  components:
+  - type: Sprite
+    sprite: _Wega/Structures/Walls/frostpunk/frost_stone.rsi
+  - type: Icon
+    sprite: _Wega/Structures/Walls/frostpunk/frost_stone.rsi
+  - type: RCDDeconstructable
+    cost: 6
+    delay: 8
+    fx: EffectRCDDeconstruct8
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 300
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          Girder:
+            min: 1
+            max: 1
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+  - type: IconSmooth
+    key: walls
+    base: frost_stone

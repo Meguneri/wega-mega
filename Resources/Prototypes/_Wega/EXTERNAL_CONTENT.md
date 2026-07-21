@@ -144,6 +144,19 @@ Uplink-каталог Estação Pirata не переносился.
   стоил по альт-клику на каждую карту.
 - Локаль: ключи `cards-verb-deal`, `cards-deal-not-enough` (ru-RU и en-US).
 
+## Арена-фростпанк: стены (перекрас ванильных RSI)
+
+Стены пака (`WallArenaFrostIron`, `WallArenaIceBlock`, `WallArenaFrostStone`) — перекрас по яркости
+ванильных стен, у которых IconSmooth-геометрия и обводка уже запечены (`Tools/gen_frostpunk_pack.py`).
+Производная работа под теми же условиями `CC-BY-SA-3.0`; атрибуция продублирована в `meta.json` каждой
+`.rsi`.
+
+- `frost_iron.rsi` ← `Textures/Structures/Walls/solid.rsi` (CC-BY-SA-3.0, Taucetistation).
+- `ice_block.rsi` ← `Textures/Structures/Walls/ice.rsi` (CC-BY-SA-3.0, vgstation-coders).
+- `frost_stone.rsi` ← `Textures/Structures/Walls/cobblebrick_snow.rsi` (CC-BY-SA-3.0, TheShuEd для SS14).
+
+Полы пака (`frostpunk/*.png`) — сгенерированы с нуля тем же скриптом, отдельной атрибуции не требуют.
+
 ## Чего избегать
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.

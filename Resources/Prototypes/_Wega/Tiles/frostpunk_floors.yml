@@ -1,0 +1,55 @@
+# Arena frostpunk floor tiles (Wega). Appear in the tile spawn menu.
+# Имена несут приписку "(Arena)" через локализацию (tiles-frost-*), как у arena_cyberpunk.
+# Открытые небу полы помечены weather: true — снегопад по ним рисуется; frost_grate — пол у домны
+# (условно под навесом/в тепле), поэтому без погоды.
+
+- type: tile
+  id: FloorFrostIronDeck
+  parent: BaseStationTile
+  name: tiles-frost-iron-deck
+  sprite: /Textures/_Wega/Tiles/frostpunk/frost_iron_deck.png
+  variants: 4
+  weather: true
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorFrostGrate
+  parent: BaseStationTile
+  name: tiles-frost-grate
+  sprite: /Textures/_Wega/Tiles/frostpunk/frost_grate.png
+  variants: 4
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorPackedSnowPath
+  parent: BaseStationTile
+  name: tiles-packed-snow-path
+  sprite: /Textures/_Wega/Tiles/frostpunk/packed_snow_path.png
+  variants: 4
+  weather: true
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+- type: tile
+  id: FloorFrostConcrete
+  parent: BaseStationTile
+  name: tiles-frost-concrete
+  sprite: /Textures/_Wega/Tiles/frostpunk/frost_concrete.png
+  variants: 4
+  weather: true
+  placementVariants:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0

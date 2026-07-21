@@ -189,29 +189,66 @@ public sealed partial class LlmNpcSystem : EntitySystem
         _chat.TrySendInGameICMessage(ent, total >= 15 ? "вскрикивает от боли" : "вздрагивает и морщится от боли",
             InGameICChatType.Emote, ChatTransmitRange.Normal, ignoreActionBlocker: true);
 
+        // Обидчик — только живой моб. Урон от среды/холода/падения даёт реакцию болью, но не сдачу.
+        var attacker = args.Origin is { } o && Exists(o)
+            && HasComp<Content.Shared.Mobs.Components.MobStateComponent>(o)
+            ? o
+            : (EntityUid?)null;
+
 #pragma warning disable CS0618
         var myTotal = _damageable.GetTotalDamage(ent.Owner);
+        var attackerTotal = attacker is { } atk ? _damageable.GetTotalDamage(atk) : 0f;
 #pragma warning restore CS0618
 
-        // Сильно избита — инстинкт: бросить всё и бежать от обидчика, отлежаться в стороне.
-        if (myTotal > 55 && args.Origin is { } attacker && Exists(attacker))
-        {
-            FleeFrom(ent, attacker);
-            NoteOwnAction(ent, ent.Comp,
-                "тебе СИЛЬНО досталось — ты в панике убегаешь от обидчика, чтобы спрятаться и отлежаться");
-            return;
-        }
+        // Порог паники плавает от темперамента: трусиха ломается рано (~35), берсерк дерётся до ~75.
+        var panicAt = 55f + (ent.Comp.Aggression - 0.5f) * 40f;
+        var streak = ent.Comp.HurtStreak;
 
-        // Дать сдачи рефлекторно, не дожидаясь ответа модели: ударил живой моб и она в состоянии
-        // ответить — бьём в ответ прямо сейчас. Модель всё равно потом прокомментирует случившееся.
-        if (args.Origin is { } aggressor && Exists(aggressor)
-            && HasComp<Content.Shared.Mobs.Components.MobStateComponent>(aggressor))
+        // Лестница реакций тела + синхронный словесный регистр (mode): слова уходят в контекст модели,
+        // чтобы её реплика совпадала с тем, что уже сделало тело, а не противоречила ему.
+        string mode;
+        if (attacker == null)
         {
-            TryRetaliate(ent, aggressor);
+            mode = total >= 15
+                ? "тебе резко и больно, но врага рядом нет — ойкни, чертыхнись, схватись за ушибленное"
+                : "лёгкая боль без обидчика — поморщься, буркни что-то под нос";
+        }
+        else if (streak <= 1 && total < 8f)
+        {
+            // 1. Мелкая первая провокация — только слова, без рук.
+            mode = "лёгкий тычок, впервые — резко осади словами («эй!», «руки убрал»), но в драку не лезь";
+        }
+        else if (myTotal >= panicAt && attackerTotal < 55f)
+        {
+            // 2. Крепко избили, обидчик ещё в силе — отступаем и зовём на помощь.
+            FleeFrom(ent, attacker.Value);
+            mode = "силы кончаются, дальше терпеть нельзя — ты отступаешь, кричишь и зовёшь на помощь "
+                + "по имени, короткие рваные фразы, не геройствуй";
+        }
+        else if (attackerTotal >= 55f && myTotal < panicAt + 20f)
+        {
+            // 3. Обидчик почти готов, а ты держишься — дожать, вплоть до крита.
+            TryRetaliate(ent, attacker.Value, allowFinish: true);
+            mode = "он уже еле стоит, а ты ещё цела — в ярости дожимаешь его, зло и коротко: «получай», "
+                + "«допрыгался»";
+        }
+        else if (streak >= 4 && myTotal < panicAt)
+        {
+            // 4. Разъярена долгой серией, но силы есть — жёсткий ответ, добить не грех.
+            TryRetaliate(ent, attacker.Value, allowFinish: true);
+            mode = "тебя молотят без остановки — ты озверела и бьёшь в ответ всерьёз, угрозы сквозь зубы";
+        }
+        else
+        {
+            // 5. Обычная сдача — один ответный удар, лежачего не добиваешь.
+            TryRetaliate(ent, attacker.Value, allowFinish: false);
+            mode = streak <= 2
+                ? "дай сдачи и предупреди резко: ещё раз — и пожалеет"
+                : "бьёшь в ответ и повышаешь тон — злость и испуг разом";
         }
 
         // Обида — настроение, а не приговор: само выветрится, а извинение может снять раньше (set_mood).
-        if (args.Origin is { } offender && Exists(offender) && HasComp<Content.Shared.Mobs.Components.MobStateComponent>(offender))
+        if (attacker is { } offender)
         {
             ent.Comp.Mood = $"обижена и насторожена: {MetaData(offender).EntityName} причинил(а) тебе боль";
             ent.Comp.MoodUntil = now + TimeSpan.FromMinutes(12);
@@ -227,18 +264,7 @@ public sealed partial class LlmNpcSystem : EntitySystem
         else
             state = "пока терпимо, но обидно и страшно";
 
-        // Эмоциональный регистр по серии ударов — чтобы это не было дежурным «прекрати».
-        string mode;
-        if (ent.Comp.HurtStreak <= 1)
-            mode = "первый удар — среагируй вживую: вскрик или резкий вдох, злость и возмущение, "
-                + "а не вежливая просьба";
-        else if (ent.Comp.HurtStreak == 2)
-            mode = "бьют уже не впервые — испуг и злость разом: повысь тон, огрызнись или пригрози";
-        else
-            mode = "тебя избивают — паника: кричи, зови на помощь по имени, умоляй или угрожай, "
-                + "короткие рваные фразы, не рассуждай спокойно";
-
-        var painNote = args.Origin is { } who && Exists(who)
+        var painNote = attacker is { } who
             ? $"{hitWord} — тебя бьёт {MetaData(who).EntityName} (урон {total}); {state}. {mode}. "
                 + "Реагируй каждый раз по-новому, без повторов"
             : $"{hitWord} (урон {total}); {state}. {mode}. Реагируй каждый раз по-новому, без повторов";

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Wega frostpunk recolor of vanilla ice.rsi (CC-BY-SA-3.0)",
+  "states": [
+    {
+      "name": "full"
+    },
+    {
+      "name": "ice_block0",
+      "directions": 4
+    },
+    {
+      "name": "ice_block1",
+      "directions": 4
+    },
+    {
+      "name": "ice_block2",
+      "directions": 4
+    },
+    {
+      "name": "ice_block3",
+      "directions": 4
+    },
+    {
+      "name": "ice_block4",
+      "directions": 4
+    },
+    {
+      "name": "ice_block5",
+      "directions": 4
+    },
+    {
+      "name": "ice_block6",
+      "directions": 4
+    },
+    {
+      "name": "ice_block7",
+      "directions": 4
+    }
+  ]
+}

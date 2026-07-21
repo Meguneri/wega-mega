@@ -684,16 +684,18 @@ public sealed partial class LlmNpcSystem
 
     /// <summary>
     /// Рефлекторная сдача: бьёт обидчика сразу, не дожидаясь круга API (модель звала attack не всегда
-    /// и с задержкой — со стороны казалось, что бот «не реагирует»). Те же тормоза, что у DoAttack:
-    /// не бьём лежачих и уже сильно раненых, только в пределах досягаемости и если есть чем ударить.
+    /// и с задержкой — со стороны казалось, что бот «не реагирует»). Тормоза как у DoAttack: только в
+    /// пределах досягаемости, есть чем ударить, лежачих не трогаем. <paramref name="allowFinish"/> = true
+    /// снимает «он почти готов — отойди»: в ярости/самозащите она докручивает обидчика вплоть до крита.
     /// </summary>
-    private bool TryRetaliate(EntityUid uid, EntityUid attacker)
+    private bool TryRetaliate(EntityUid uid, EntityUid attacker, bool allowFinish = false)
     {
+        // Уже в крите/мёртв — по лежачему не бьём даже в ярости.
         if (_mobState.IsIncapacitated(attacker))
             return false;
 
 #pragma warning disable CS0618
-        if (_damageable.GetTotalDamage(attacker) > 70)
+        if (!allowFinish && _damageable.GetTotalDamage(attacker) > 70)
 #pragma warning restore CS0618
             return false;
 
@@ -707,7 +709,10 @@ public sealed partial class LlmNpcSystem
         _rotateToFace.TryFaceCoordinates(uid, _transform.GetWorldPosition(attacker));
         var hit = _melee.AttemptLightAttack(uid, weaponUid, weapon, attacker);
         NoteOwnAction(uid, Comp<LlmNpcComponent>(uid),
-            hit ? $"дала сдачи — ударила {MetaData(attacker).EntityName}" : "замахнулась в ответ, но промазала");
+            hit
+                ? (allowFinish ? $"дожимает {MetaData(attacker).EntityName} — бьёт всерьёз"
+                               : $"дала сдачи — ударила {MetaData(attacker).EntityName}")
+                : "замахнулась в ответ, но промазала");
         return hit;
     }
 
