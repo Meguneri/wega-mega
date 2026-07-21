@@ -16,6 +16,14 @@ public abstract partial class SharedGunSystem
         if (!Resolve(gunUid, ref gun, false))
             return false;
 
+        // Добивание применяем только на сервере. Единственный вызывающий — завершение execution-DoAfter,
+        // оно серверно-авторитетно; а расход патрона у револьвера на клиенте зовёт QueueDel сетевой гильзы.
+        // Во время предсказания DoAfter это переигрывается каждый тик и спамит в лог
+        // "Predicting the queued deletion of a networked entity". Клиенту хватает рапорта об успехе —
+        // фактический выстрел, расход патрона и урон наносит сервер.
+        if (_netManager.IsClient)
+            return true;
+
         var fromCoordinates = Transform(user).Coordinates;
 
         // Check if we can shoot
