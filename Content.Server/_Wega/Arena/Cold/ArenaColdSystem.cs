@@ -49,6 +49,7 @@ public sealed partial class ArenaColdSystem : EntitySystem
         _coldDamage = new DamageSpecifier(_proto.Index(ColdDamageType), FixedPoint2.New(1));
 
         SubscribeLocalEvent<ArenaColdZoneComponent, MapInitEvent>(OnZoneInit);
+        SubscribeLocalEvent<ArenaColdZoneComponent, ComponentShutdown>(OnZoneShutdown);
     }
 
     /// <summary>Tagging a grid/map as a cold zone also kicks off the snowfall over its whole map.</summary>
@@ -60,6 +61,21 @@ public sealed partial class ArenaColdSystem : EntitySystem
         var mapId = Transform(ent).MapID;
         if (mapId != MapId.Nullspace)
             _weather.TrySetWeather(mapId, weather, out _);
+    }
+
+    /// <summary>
+    /// Снимаем зону — гасим и снегопад, иначе после выключения холода снег продолжал идти вечно.
+    /// MapID читаем прямо здесь: если грид уже удаляют, трансформ мог открепиться и вернуть Nullspace —
+    /// тогда просто ничего не делаем, карта всё равно уходит целиком.
+    /// </summary>
+    private void OnZoneShutdown(Entity<ArenaColdZoneComponent> ent, ref ComponentShutdown args)
+    {
+        if (ent.Comp.Weather is null)
+            return;
+
+        var mapId = Transform(ent).MapID;
+        if (mapId != MapId.Nullspace)
+            _weather.TrySetWeather(mapId, null, out _);
     }
 
     public override void Update(float frameTime)

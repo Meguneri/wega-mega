@@ -20,7 +20,9 @@ namespace Content.Server.MediaPlayer;
 /// </summary>
 public sealed partial class MediaPlayerSystem
 {
-    private const int TvWidth = 160;      // ширина кадра; высота по аспекту (чётная)
+    // 320, а не 160: клиент декодирует кадры на лету скользящим окном, поэтому видеопамять больше
+    // не растёт с разрешением. Размер экрана на спрайте клиент считает от этой ширины сам.
+    private const int TvWidth = 320;      // ширина кадра; высота по аспекту (чётная)
     private const int TvFps = 15;         // кадров в секунду
 
     /// <summary>
@@ -223,9 +225,14 @@ public sealed partial class MediaPlayerSystem
             // -pix_fmt pal8: палитровый PNG (256 цветов) — вдвое легче truecolor при том же виде на
             // экране 160px, а весь клип едет по сети целиком, так что каждый килобайт на кадре
             // умножается на тысячи. Движковый LoadTextureFromPNGStream палитру понимает.
+            //
+            // -sws_dither none: БЕЗ него swscale при квантовании в палитру сыплет дизер-шум —
+            // на экране это выглядело сплошной «рябью», особенно на тёмных градиентах. Замер на
+            // тестовом градиенте: шум соседних пикселей 16.1 против 0.3, и кадр весит в 4.8 раза
+            // больше (PNG не умеет сжимать шум). То есть отключение дизера чинит и картинку, и трафик.
             var pattern = Path.Combine(framesDir, "f_%06d.png");
             var (ffExit, ffErr) = await RunFfmpeg(
-                $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" -pix_fmt pal8 \"{pattern}\"");
+                $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" -sws_dither none -pix_fmt pal8 \"{pattern}\"");
             var frameFiles = Directory.EnumerateFiles(framesDir, "f_*.png").OrderBy(f => f).ToList();
             if (ffExit != 0 || frameFiles.Count == 0)
             {

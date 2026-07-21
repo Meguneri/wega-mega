@@ -61,6 +61,17 @@ cmd-arenazone-no-arena = Не найдено дуэльной арены на т
 cmd-arenazone-off-result = Зона отключена: шторм — { $storm }, авиаудары — { $airstrike }.
 cmd-arenazone-on-result = Зона включена: шторм — { $storm }, авиаудары — { $airstrike }.
 
+# Команда arenacold — управление холодом на текущем гриде
+cmd-arenacold-desc = Включает или выключает холод Фростпанк-арены на текущем гриде.
+cmd-arenacold-help = Использование: { $command } <on|off>
+cmd-arenacold-invalid-args = Неверные аргументы. Использование: { $command } <on|off>
+cmd-arenacold-player-only = Команду может использовать только игрок, находящийся в игре.
+cmd-arenacold-no-grid = Вы должны находиться на гриде арены.
+cmd-arenacold-on-result = Холод включён на гриде { $grid }. Мёрзнуть будут ВСЕ, кто на этом гриде.
+cmd-arenacold-off-result = Холод выключен на гриде { $grid }. Снегопад тоже остановлен.
+cmd-arenacold-on-already = На гриде { $grid } холод уже был включён — ничего не изменилось.
+cmd-arenacold-off-already = На гриде { $grid } холода и не было — ничего не изменилось.
+
 # Команда arenaarsenal — задаёт тир арсенал-крейта, спавнящегося у спавн-маркеров каждый раунд
 cmd-arenaarsenal-desc = Задаёт тир арсенал-крейта (FullArsenal), спавнящегося у спавн-маркеров каждой арены при старте раунда. Применяется ко всем аренам и полностью заменяет прежний тир.
 cmd-arenaarsenal-help = Использование: { $command } <прототип-крейта | off>

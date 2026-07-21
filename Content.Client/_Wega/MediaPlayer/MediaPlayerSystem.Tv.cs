@@ -20,8 +20,17 @@ public sealed partial class MediaPlayerSystem
 {
     private const string TvLayerKey = "tv-screen";
 
-    /// <summary>Масштаб слоя: кадр 160px шириной → 96px на спрайте (3 тайла).</summary>
-    private const float TvLayerScale = 0.6f;
+    /// <summary>Ширина картинки на спрайте в пикселях (3 тайла). Масштаб слоя считается от неё и
+    /// фактической ширины кадра, поэтому смена TvWidth на сервере не меняет размер экрана.</summary>
+    private const float TvScreenPx = 96f;
+
+    /// <summary>
+    /// Сколько декодированных кадров держим в видеопамяти одновременно.
+    /// Раньше клип декодировался ЦЕЛИКОМ: четырёхминутный ролик занимал ~200 МБ видеопамяти на
+    /// 160px и ~800 МБ на 320px — то есть качество упиралось не в сеть, а в память. Теперь это
+    /// скользящее окно, и расход постоянен независимо от длины ролика и разрешения.
+    /// </summary>
+    private const int TvFrameCacheSize = 60;
 
     private string? _tvClipId;
     private int _tvFrameCount;
@@ -31,7 +40,13 @@ public sealed partial class MediaPlayerSystem
     private byte[]?[] _tvAudioChunks = [];
     private int _tvAudioReceived = -1; // -1 = TvStartEvent ещё не пришёл / аудио не анонсировано
 
-    private List<Texture>? _tvTextures;
+    /// <summary>Декодированные кадры (скользящее окно) и порядок их появления для вытеснения.</summary>
+    private readonly Dictionary<int, OwnedTexture> _tvFrameCache = new();
+    private readonly Queue<int> _tvFrameCacheOrder = new();
+
+    /// <summary>Масштаб слоя, посчитанный от фактической ширины кадра из TvStartEvent.</summary>
+    private float _tvLayerScale = 0.6f;
+
     private AudioResource? _tvAudioRes;
     private ResPath? _tvAudioFile;
     private float _tvClock;
@@ -108,6 +123,8 @@ public sealed partial class MediaPlayerSystem
         _tvClock = ev.Position;
         _tvPngs = new byte[]?[ev.FrameCount];
         _tvFramesReceived = 0;
+        // Держим экран одного размера при любом разрешении кадра.
+        _tvLayerScale = ev.Width > 0 ? TvScreenPx / ev.Width : 0.6f;
         _sawmill.Info($"TV clip incoming: {ev.ClipId}, {ev.FrameCount} frames {ev.Width}x{ev.Height} @ {ev.Fps} fps, pos {ev.Position:0.0}s");
         TvStateUpdated?.Invoke();
     }
@@ -174,25 +191,47 @@ public sealed partial class MediaPlayerSystem
         if (_tvFramesReceived < _tvFrameCount)
             return;
 
-        // Все кадры на месте — декодируем одним заходом.
+        // Кадры НЕ разворачиваем в текстуры заранее — это и съедало сотни мегабайт видеопамяти.
+        // PNG-байты всего клипа весят единицы МБ; декодируем по одному кадру в FrameUpdate.
+        // Готовность к показу приходит отдельно, в TvClockSyncEvent.
+        _tvLastIndex = -1;
+        _sawmill.Info($"TV clip received: {_tvFrameCount} frames (декодируются на лету)");
+    }
+
+    /// <summary>
+    /// Текстура кадра: из кэша либо декодируем прямо сейчас. Кэш — скользящее окно фиксированного
+    /// размера, поэтому видеопамять не зависит ни от длины клипа, ни от разрешения. Вытесняем
+    /// всегда самый старый кадр: он заведомо уже не висит ни на одном слое, потому что слои
+    /// переставляются на новую текстуру при каждой смене кадра (15 раз в секунду).
+    /// </summary>
+    private Texture? GetTvFrame(int index)
+    {
+        if (_tvFrameCache.TryGetValue(index, out var cached))
+            return cached;
+
+        if (index < 0 || index >= _tvPngs.Length || _tvPngs[index] is not { } png)
+            return null;
+
         try
         {
-            var textures = new List<Texture>(_tvFrameCount);
-            foreach (var png in _tvPngs)
+            using var stream = new MemoryStream(png);
+            var texture = _clyde.LoadTextureFromPNGStream(stream);
+            _tvFrameCache[index] = texture;
+            _tvFrameCacheOrder.Enqueue(index);
+
+            while (_tvFrameCacheOrder.Count > TvFrameCacheSize)
             {
-                using var stream = new MemoryStream(png!);
-                textures.Add(_clyde.LoadTextureFromPNGStream(stream));
+                var oldest = _tvFrameCacheOrder.Dequeue();
+                if (oldest != index && _tvFrameCache.Remove(oldest, out var old))
+                    old.Dispose();
             }
 
-            _tvTextures = textures;
-            _tvLastIndex = -1;
-            _tvPngs = []; // сырые байты больше не нужны
-            _sawmill.Info($"TV clip ready: {textures.Count} frames decoded");
+            return texture;
         }
         catch (Exception e)
         {
-            _sawmill.Error($"TV decode failed: {e.Message}");
-            TvReset();
+            _sawmill.Error($"TV frame {index} decode failed: {e.Message}");
+            return null;
         }
     }
 
@@ -251,7 +290,6 @@ public sealed partial class MediaPlayerSystem
         _tvPngs = [];
         _tvFramesReceived = 0;
         _tvFrameCount = 0;
-        _tvTextures = null; // текстуры освободит GC
         _tvLastIndex = -1;
         _tvReady = false;
         _tvPaused = false;
@@ -277,6 +315,13 @@ public sealed partial class MediaPlayerSystem
             if (sprite.LayerMapTryGet(TvLayerKey, out var idx))
                 sprite.LayerSetVisible(idx, false);
         }
+
+        // Освобождаем кадры ПОСЛЕ гашения слоёв: иначе слой остался бы со ссылкой на
+        // уже освобождённую текстуру.
+        foreach (var texture in _tvFrameCache.Values)
+            texture.Dispose();
+        _tvFrameCache.Clear();
+        _tvFrameCacheOrder.Clear();
     }
 
     /// <summary>Пробрасывает личную громкость плеера на все ТВ-стримы (вызов из OnVolumeChanged).</summary>
@@ -304,31 +349,34 @@ public sealed partial class MediaPlayerSystem
         // Видео: кадр по часам клипа.
         var frameChanged = false;
         var index = 0;
-        if (_tvTextures is { Count: > 0 } textures)
+        if (_tvFrameCount > 0)
         {
-            index = (int)(_tvClock * _tvFps) % textures.Count;
+            index = (int)(_tvClock * _tvFps) % _tvFrameCount;
             frameChanged = index != _tvLastIndex;
             _tvLastIndex = index;
         }
+
+        // Текущий кадр разворачиваем по требованию (кэш держит окно вокруг него).
+        var texture = _tvFrameCount > 0 ? GetTvFrame(index) : null;
 
         var query = EntityQueryEnumerator<TvScreenComponent, SpriteComponent>();
         while (query.MoveNext(out var uid, out _, out var sprite))
         {
             // Слой с кадром: создаём при первом появлении экрана, дальше только меняем текстуру.
-            if (_tvTextures is { Count: > 0 } frames2)
+            if (texture != null)
             {
                 if (!sprite.LayerMapTryGet(TvLayerKey, out var idx))
                 {
                     idx = sprite.LayerMapReserveBlank(TvLayerKey);
-                    sprite.LayerSetScale(idx, new System.Numerics.Vector2(TvLayerScale, TvLayerScale));
+                    sprite.LayerSetScale(idx, new System.Numerics.Vector2(_tvLayerScale, _tvLayerScale));
                     sprite.LayerSetOffset(idx, new System.Numerics.Vector2(0f, 0.0625f));
                     sprite.LayerSetShader(idx, "unshaded");
-                    sprite.LayerSetTexture(idx, frames2[index]);
+                    sprite.LayerSetTexture(idx, texture);
                     sprite.LayerSetVisible(idx, true);
                 }
                 else if (frameChanged)
                 {
-                    sprite.LayerSetTexture(idx, frames2[index]);
+                    sprite.LayerSetTexture(idx, texture);
                     sprite.LayerSetVisible(idx, true);
                 }
             }

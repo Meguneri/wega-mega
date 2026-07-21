@@ -37,6 +37,13 @@
         volume: 2.25
   - type: UseDelay
     delay: 0.66
+  # Верба «Казнить» — в том числе самоказнь из огнестрела (Corvax-Wega-Suicide).
+  # Ради неё же и вся затея: приставить к виску и нажать.
+  - type: Execution
+    doAfterDuration: 5.0
+    canMeleeExecute: false
+  # Z (использовать в руке) крутит барабан на случайную камору вместо шага на одну.
+  - type: RussianRoulette
   - type: ContainerContainer
     containers:
       revolver-ammo: !type:Container
