@@ -15,6 +15,8 @@ public sealed class LlmReply
     public string? Say;
     public string? Emote;
     public string? Remember;
+    /// <summary>Сказать реплику шёпотом (слышно только вплотную) вместо обычной речи.</summary>
+    public bool Whisper;
 }
 
 /// <summary>
@@ -187,6 +189,7 @@ public sealed class LlmBackend
                     Say = GetStr(root, "say"),
                     Emote = GetStr(root, "emote"),
                     Remember = GetStr(root, "remember"),
+                    Whisper = GetBool(root, "whisper"),
                 };
             }
             catch (Exception e)
@@ -375,6 +378,12 @@ public sealed class LlmBackend
         => obj.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String
             ? v.GetString()
             : null;
+
+    // Мелкие модели иногда шлют bool строкой ("true"); принимаем оба варианта.
+    private static bool GetBool(JsonElement obj, string key)
+        => obj.TryGetProperty(key, out var v)
+            && (v.ValueKind == JsonValueKind.True
+                || (v.ValueKind == JsonValueKind.String && bool.TryParse(v.GetString(), out var b) && b));
 
     /// <summary>
     /// Вытягивает JSON-объект из текста ответа: снимает markdown-ограждение (```json … ```) и берёт

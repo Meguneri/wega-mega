@@ -271,6 +271,14 @@ public sealed partial class LlmNpcComponent : Component
     [DataField]
     public float Aggression = 0.5f;
 
+    /// <summary>Даёт инструмент undress — снимать одежду с себя или (по согласию) с других.</summary>
+    [DataField]
+    public bool CanUndress;
+
+    /// <summary>Троттлинг реакции на «с тебя сняли одежду», чтобы не отмечать каждый слот в потоке.</summary>
+    [ViewVariables]
+    public TimeSpan NextUndressNote;
+
     /// <summary>Следующий тик самолечения.</summary>
     [ViewVariables]
     public TimeSpan NextRegen;

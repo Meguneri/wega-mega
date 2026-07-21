@@ -80,6 +80,26 @@ public sealed partial class LlmNpcSystem : EntitySystem
         SubscribeLocalEvent<LlmNpcComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Mobs.MobStateChangedEvent>(OnMobStateChanged);
         SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Damage.Systems.DamageChangedEvent>(OnDamaged);
+        SubscribeLocalEvent<LlmNpcComponent, Content.Shared.Inventory.Events.DidUnequipEvent>(OnSelfUnequipped);
+    }
+
+    /// <summary>
+    /// С NPC сняли предмет одежды — она это замечает и реагирует (реплика/эмоут через круг API).
+    /// Только заметные слоты (не карманы), с троттлингом, чтобы серия снятий не спамила контекст.
+    /// </summary>
+    private void OnSelfUnequipped(Entity<LlmNpcComponent> ent, ref Content.Shared.Inventory.Events.DidUnequipEvent args)
+    {
+        if (!IsNotableClothingSlot(args.Slot) || _mobState.IsIncapacitated(ent))
+            return;
+
+        var now = _timing.RealTime;
+        if (now < ent.Comp.NextUndressNote)
+            return;
+        ent.Comp.NextUndressNote = now + TimeSpan.FromSeconds(3);
+
+        NoteOwnAction(ent, ent.Comp, $"с тебя снимают одежду: {MetaData(args.Equipment).EntityName}");
+        if (ent.Comp.MuteUntil == null)
+            ent.Comp.ReplyAt = now + TimeSpan.FromSeconds(1.2);
     }
 
     /// <summary>
@@ -688,7 +708,8 @@ public sealed partial class LlmNpcSystem : EntitySystem
             }
             else
             {
-                _chat.TrySendInGameICMessage(uid, reply.Say, InGameICChatType.Speak, ChatTransmitRange.Normal);
+                _chat.TrySendInGameICMessage(uid, reply.Say,
+                    reply.Whisper ? InGameICChatType.Whisper : InGameICChatType.Speak, ChatTransmitRange.Normal);
             }
 
             // Свою реплику кладём в тот же контекст, что и чужие: собственная речь через OnSpoke
@@ -1092,6 +1113,8 @@ public sealed partial class LlmNpcSystem : EntitySystem
             "пригодится ли это через неделю? НЕ записывай сиюминутное (кто подошёл или ушёл, разовый заказ, " +
             "дежурные фразы, жесты) и не пересказывай уже запомненное. Чаще всего правильный ответ — " +
             "пустая строка. " +
+            "\"whisper\" — true, если реплику стоит сказать ШЁПОТОМ (слышно только вплотную): интимное, " +
+            "личное, на ухо. По умолчанию НЕ указывай (обычная речь). " +
             "Не выходи из роли, не описывай себя как ИИ, не пиши ничего вне JSON.");
         return sb.ToString();
     }

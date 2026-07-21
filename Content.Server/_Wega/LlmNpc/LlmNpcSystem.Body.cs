@@ -317,6 +317,14 @@ public sealed partial class LlmNpcSystem
             return;
         }
 
+        // Интимная сцена: если она сама раздета или кто-то вплотную раздет — не переминается,
+        // стоит на месте. Дешёвый признак «того самого отыгрыша», не завязанный на текст.
+        if (IsIntimateScene(uid))
+        {
+            npc.NextWander = now + TimeSpan.FromSeconds(8);
+            return;
+        }
+
         npc.NextWander = now + TimeSpan.FromSeconds(_random.NextFloat(10f, 35f));
 
         // Целевая точка: до двух тайлов от «своего места» в любую сторону — прогуляться вдоль
@@ -986,6 +994,110 @@ public sealed partial class LlmNpcSystem
 
     // --- поиск целей рядом ---
 
+    // Слоты одежды, которые NPC умеет снимать и наличие которых считает «одетостью».
+    private static readonly (string Slot, string[] Words)[] ClothingSlots =
+    {
+        ("outerClothing", new[] { "куртк", "пальто", "плащ", "верх", "outer", "jacket", "coat" }),
+        ("jumpsuit", new[] { "комбинезон", "костюм", "платье", "форм", "jumpsuit", "suit", "dress", "uniform" }),
+        ("shoes", new[] { "обув", "туфл", "ботин", "каблук", "shoe", "boot", "heel" }),
+        ("gloves", new[] { "перчат", "glove" }),
+        ("head", new[] { "шляп", "шапк", "head", "hat" }),
+        ("mask", new[] { "маск", "mask" }),
+        ("neck", new[] { "галстук", "шея", "чокер", "neck", "tie", "choker" }),
+        ("belt", new[] { "пояс", "рем", "belt" }),
+        ("back", new[] { "рюкзак", "сумк", "back" }),
+        ("eyes", new[] { "очк", "eye", "glasses" }),
+        ("socks", new[] { "носк", "чулк", "sock", "stocking" }),
+        ("underweartop", new[] { "лиф", "бра", "топ", "корсет", "bra", "top" }),
+        ("underwearbottom", new[] { "трус", "бель", "panties", "underwear" }),
+    };
+
+    // Заметный ли это слот одежды (а не карман/ID/сумка-мелочь) — чтобы реагировать на раздевание,
+    // но не на возню с карманами.
+    private static bool IsNotableClothingSlot(string slot)
+    {
+        foreach (var (s, _) in ClothingSlots)
+            if (s == slot)
+                return true;
+        return false;
+    }
+
+    private static string? MapClothingSlot(string word)
+    {
+        var w = word.Trim().ToLowerInvariant();
+        foreach (var (slot, words) in ClothingSlots)
+        {
+            if (slot == w)
+                return slot;
+            foreach (var key in words)
+                if (w.Contains(key))
+                    return slot;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Замечает наготу существа: нет комбинезона — «раздет(а)»; нет верха при комбинезоне — мелочь,
+    /// не отмечаем. null — одето, либо у существа вовсе нет слотов одежды (животное).
+    /// </summary>
+    private string? DescribeUndress(EntityUid target)
+    {
+        if (!_inventory.HasSlot(target, "jumpsuit"))
+            return null;
+        if (!_inventory.TryGetSlotEntity(target, "jumpsuit", out _))
+            return "раздет(а), в одном белье";
+        return null;
+    }
+
+    /// <summary>
+    /// Признак интимной сцены: NPC сама раздета или кто-то вплотную (≤2.5 тайла) раздет. Служит
+    /// сигналом «того самого отыгрыша», чтобы NPC переставала переминаться и стояла на месте.
+    /// </summary>
+    private bool IsIntimateScene(EntityUid uid)
+    {
+        if (DescribeUndress(uid) != null)
+            return true;
+
+        var map = Transform(uid).MapID;
+        var origin = _transform.GetWorldPosition(uid);
+        var mobs = EntityQueryEnumerator<MobStateComponent>();
+        while (mobs.MoveNext(out var mob, out _))
+        {
+            if (mob == uid || Transform(mob).MapID != map)
+                continue;
+            if ((_transform.GetWorldPosition(mob) - origin).Length() > 2.5f)
+                continue;
+            if (DescribeUndress(mob) != null)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Инструмент undress: снять предмет одежды с себя или (по согласию, задаёт персона) с другого.</summary>
+    private string DoUndress(EntityUid uid, string personName, string slotWord)
+    {
+        var self = string.IsNullOrWhiteSpace(personName)
+            || personName.Trim().ToLowerInvariant() is "себя" or "себе" or "self" or "меня";
+        var target = self ? uid : FindPerson(uid, personName);
+        if (target is not { } tgt)
+            return $"Не вижу рядом «{personName}».";
+
+        if (MapClothingSlot(slotWord) is not { } slot)
+            return "Не поняла, что снять — назови часть одежды (куртка, платье, обувь, бельё…).";
+
+        if (!_inventory.HasSlot(tgt, slot) || !_inventory.TryGetSlotEntity(tgt, slot, out var item))
+            return "Там уже пусто — снимать нечего.";
+
+        var itemName = MetaData(item.Value).EntityName;
+        if (!_inventory.TryUnequip(uid, tgt, slot, out _, checkDoafter: false))
+            return "Не поддалось.";
+
+        NoteOwnAction(uid, Comp<LlmNpcComponent>(uid), self
+            ? $"снимает с себя: {itemName}"
+            : $"снимает с {MetaData(tgt).EntityName}: {itemName}");
+        return self ? $"Снято: {itemName}." : $"Снято с {MetaData(tgt).EntityName}: {itemName}.";
+    }
+
     /// <summary>
     /// Ищет живого человека по имени рядом (тот же мир, радиус <see cref="FindRange"/>): точное имя,
     /// затем вхождение — модель может назвать «Иван», когда персонаж «Иван Петров».
@@ -1065,6 +1177,10 @@ public sealed partial class LlmNpcSystem
                     break;
             }
 
+            // Нагота: видно, если на человеке нет одежды — естественный повод отреагировать.
+            if (DescribeUndress(mob) is { } bare)
+                marks.Add(bare);
+
             // Что у гостя в руках: окровавленный топор и букет цветов — очень разные поводы
             // для реплики. Видно только вблизи, как в жизни.
             if (dist <= 5f && HasComp<Content.Shared.Hands.Components.HandsComponent>(mob))
@@ -1131,6 +1247,9 @@ public sealed partial class LlmNpcSystem
         sb.Append(". У тебя в руках: ");
         sb.Append(held.Count > 0 ? string.Join(", ", held) : "пусто");
         sb.Append('.');
+        // Собственная нагота — ты это чувствуешь и осознаёшь.
+        if (DescribeUndress(uid) is { } ownBare)
+            sb.Append($" Ты сама сейчас {ownBare}.");
         return sb.ToString();
     }
 

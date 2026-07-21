@@ -164,6 +164,28 @@ public sealed partial class LlmNpcSystem
         },
     };
 
+    private static readonly object UndressDecl = new
+    {
+        type = "function",
+        function = new
+        {
+            name = "undress",
+            description = "Снять предмет одежды. person: «себя» — с себя, либо имя другого (только по " +
+                          "его согласию). slot: что снять — куртка, платье/комбинезон, обувь, перчатки, " +
+                          "бельё, носки и т.п. Один вызов — один предмет.",
+            parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    person = new { type = "string", description = "«себя» или имя другого (с согласия)" },
+                    slot = new { type = "string", description = "часть одежды: куртка/платье/обувь/бельё…" },
+                },
+                required = new[] { "person", "slot" },
+            },
+        },
+    };
+
     private static readonly object AttackDecl = new
     {
         type = "function",
@@ -413,6 +435,19 @@ public sealed partial class LlmNpcSystem
             var person = LlmBackend.Arg(argsJson, "person");
             return string.IsNullOrWhiteSpace(person) ? "Не указано, кого." : DoAttack(uid, person!);
         }));
+
+        // Раздевание — только тем NPC, кому это по роли (флаг CanUndress).
+        if (TryComp<LlmNpcComponent>(uid, out var undressComp) && undressComp.CanUndress)
+        {
+            tools.Add(BodyTool("undress", UndressDecl, argsJson =>
+            {
+                var person = LlmBackend.Arg(argsJson, "person");
+                var slot = LlmBackend.Arg(argsJson, "slot");
+                return string.IsNullOrWhiteSpace(slot)
+                    ? "Не указано, что снять."
+                    : DoUndress(uid, person ?? "себя", slot!);
+            }));
+        }
 
         tools.Add(BodyTool("walk", WalkDecl, argsJson =>
         {

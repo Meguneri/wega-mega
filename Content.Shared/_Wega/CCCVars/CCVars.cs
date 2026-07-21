@@ -233,7 +233,7 @@ public sealed partial class WegaCVars
     /// </summary>
     public static readonly CVarDef<string> LlmNpcPrices =
         CVarDef.Create("wega.llm_npc_prices",
-            "anthropic/claude-haiku-4.5=1.00/5.00/0.10;openai/gpt-4o-mini=0.15/0.60;openai/gpt-5-mini=0.25/2.00/0.025",
+            "anthropic/claude-haiku-4.5=1.00/5.00/0.10;openai/gpt-4o-mini=0.15/0.60;openai/gpt-5-mini=0.25/2.00/0.025;deepseek/deepseek-v3.2=0.28/0.42/0.028",
             CVar.SERVERONLY);
 
     /// <summary>
