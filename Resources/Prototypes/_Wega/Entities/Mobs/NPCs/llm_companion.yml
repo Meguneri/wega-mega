@@ -177,6 +177,9 @@
   components:
   - type: LlmNpc
     memoryFile: dancer
+    apiKeyCvar: wega.llm_npc_api_key2
+    endpointOverride: https://openrouter.ai/api/v1/chat/completions
+    modelOverride: deepseek/deepseek-v3.2
     hearingRange: 7
     contextLines: 36
     sex: Female
