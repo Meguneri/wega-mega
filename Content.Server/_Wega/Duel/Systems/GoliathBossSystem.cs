@@ -10,6 +10,7 @@ using Content.Shared.Mobs.Systems;
 using Content.Shared.NPC;
 using Content.Shared.Physics;
 using Content.Shared.Stunnable;
+using Content.Shared.SSDIndicator;
 using Content.Shared.Weapons.Melee;
 using Robust.Server.Audio;
 using Robust.Shared.Player;
@@ -48,9 +49,16 @@ public sealed partial class GoliathBossSystem : EntitySystem
         base.Initialize();
         SubscribeLocalEvent<GoliathBossComponent, DamageModifyEvent>(OnDamageModify);
         SubscribeLocalEvent<GoliathBossComponent, Content.Shared.Interaction.Events.AttackAttemptEvent>(OnAttackAttempt);
+        SubscribeLocalEvent<GoliathBossComponent, MapInitEvent>(OnMapInit);
         // Босса могут удалить, не убив (админский деспавн, уборка арены, конец раунда) — тогда
         // Update до восстановления пола уже не дойдёт. Возвращаем плитки и на удалении.
         SubscribeLocalEvent<GoliathBossComponent, ComponentShutdown>((ent, comp, _) => RestoreTiles(ent, comp));
+    }
+
+    private void OnMapInit(Entity<GoliathBossComponent> ent, ref MapInitEvent args)
+    {
+        // Это NPC: SSD-индикатор игрока не должен показывать «Zzz» во время выключения ИИ на кастах.
+        RemComp<SSDIndicatorComponent>(ent);
     }
 
     /// <summary>

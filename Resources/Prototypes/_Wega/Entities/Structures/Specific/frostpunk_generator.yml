@@ -1,0 +1,46 @@
+# Фростпанк-Генератор арены — оригинальная процедурная графика (Tools/gen_frostpunk_generator.py).
+# Приземистая индустриальная домна: раскалённое сердце зимней арены.
+
+- type: entity
+  parent: BaseStructure
+  id: FrostpunkGeneratorWega
+  # имя/описание — в ftl (ent-FrostpunkGeneratorWega), ru-RU + en-US
+  suffix: Arena
+  components:
+  # высокий спрайт становится полупрозрачным, когда игрок заходит за него — как у генератора аномалий
+  - type: SpriteFade
+    alwaysFade: true
+  - type: Sprite
+    noRot: true
+    drawdepth: Mobs
+    sprite: _Wega/Structures/Specific/frostpunk_generator.rsi
+    # спрайт 4x5 тайлов; смещаем вверх, чтобы основание село на тайл (может потребовать тонкой правки в редакторе)
+    offset: 0,1.5
+    layers:
+      - state: on
+  # греет всё в радиусе 20 тайлов — сдерживает арена-холод (ArenaColdSystem)
+  - type: HeatSource
+    radius: 20
+  - type: PointLight
+    radius: 7
+    energy: 4
+    color: "#FF8A3C"
+  - type: AmbientSound
+    volume: -4
+    range: 6
+    sound:
+      path: /Audio/Ambience/Objects/fireplace.ogg
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-1.6,-0.5,1.6,0.4"
+        density: 200
+        mask:
+        - MachineMask
+        layer:
+        - MidImpassable
+        - LowImpassable
+        - HighImpassable
+        - BulletImpassable

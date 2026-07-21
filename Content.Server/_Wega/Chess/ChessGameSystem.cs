@@ -205,8 +205,25 @@ public sealed partial class ChessGameSystem : EntitySystem
             Winner = chess.Winner,
             LastFrom = chess.LastFrom,
             LastTo = chess.LastTo,
+            // Съеденные фигуры раскладываем по тому, КТО их съел: чёрные фигуры — добыча белых.
+            CapturedByWhite = chess.Position.Captured
+                .Where(c => c.Color == ChessColor.Black).Select(c => c.Type).ToList(),
+            CapturedByBlack = chess.Position.Captured
+                .Where(c => c.Color == ChessColor.White).Select(c => c.Type).ToList(),
+            MaterialBalance = chess.Position.Captured.Sum(c =>
+                c.Color == ChessColor.Black ? PieceValue(c.Type) : -PieceValue(c.Type)),
         };
 
         _ui.SetUiState(uid, ChessUiKey.Key, state);
     }
+
+    /// <summary>Классические ценности фигур в пешках — для перевеса по материалу.</summary>
+    private static int PieceValue(ChessPieceType type) => type switch
+    {
+        ChessPieceType.Pawn => 1,
+        ChessPieceType.Knight or ChessPieceType.Bishop => 3,
+        ChessPieceType.Rook => 5,
+        ChessPieceType.Queen => 9,
+        _ => 0,
+    };
 }

@@ -51,6 +51,18 @@ public sealed class ChessBuiState : BoundUserInterfaceState
     /// <summary>Последний сделанный ход — подсвечиваем клетки «откуда/куда».</summary>
     public int LastFrom = -1;
     public int LastTo = -1;
+
+    /// <summary>Чёрные фигуры, съеденные белыми (показываем рядом с белым игроком).</summary>
+    public List<ChessPieceType> CapturedByWhite = new();
+
+    /// <summary>Белые фигуры, съеденные чёрными.</summary>
+    public List<ChessPieceType> CapturedByBlack = new();
+
+    /// <summary>
+    /// Перевес по материалу в пешках: положительный — у белых, отрицательный — у чёрных.
+    /// Считается по классическим ценностям (пешка 1, конь и слон 3, ладья 5, ферзь 9).
+    /// </summary>
+    public int MaterialBalance;
 }
 
 /// <summary>Клиент просит сделать ход. Легальность проверяет сервер.</summary>

@@ -171,6 +171,43 @@ public sealed class ChessRulesTest
         });
     }
 
+    /// <summary>
+    /// Учёт съеденных фигур: обычное взятие и взятие на проходе, где съеденная пешка стоит
+    /// НЕ на клетке назначения — там легко записать не ту фигуру или не записать вовсе.
+    /// </summary>
+    [Test]
+    public void CapturedPiecesTracked()
+    {
+        var pos = new ChessPosition();
+        Assert.That(pos.Captured, Is.Empty, "в начале партии никого не съели");
+
+        // 1.e4 d5 2.exd5 — белые забирают пешку.
+        Play(pos, "e2e4", "d7d5", "e4d5");
+        Assert.That(pos.Captured, Has.Count.EqualTo(1));
+        Assert.That(pos.Captured[0], Is.EqualTo((ChessColor.Black, ChessPieceType.Pawn)));
+
+        // Взятие на проходе: чёрная пешка бьёт белую, стоящую сбоку от клетки назначения.
+        var ep = ChessPosition.FromFen("4k3/8/8/8/4pP2/8/8/4K3 b - f3 0 1");
+        Play(ep, "e4f3");
+        Assert.That(ep.Captured, Has.Count.EqualTo(1), "взятие на проходе должно учитываться");
+        Assert.That(ep.Captured[0], Is.EqualTo((ChessColor.White, ChessPieceType.Pawn)));
+
+        // Тихий ход ничего не добавляет.
+        var quiet = new ChessPosition();
+        Play(quiet, "g1f3");
+        Assert.That(quiet.Captured, Is.Empty, "ход без взятия не должен попадать в список");
+    }
+
+    private static void Play(ChessPosition pos, params string[] moves)
+    {
+        foreach (var uci in moves)
+        {
+            var from = ChessSquare.Of(uci[0] - 'a', uci[1] - '1');
+            var to = ChessSquare.Of(uci[2] - 'a', uci[3] - '1');
+            Assert.That(pos.TryMakeMove(new ChessMove(from, to)), Is.True, $"ход {uci} должен быть легален");
+        }
+    }
+
     /// <summary>FEN должен переживать круговой обход без потерь.</summary>
     [Test]
     public void FenRoundTrip()

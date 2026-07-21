@@ -34,6 +34,10 @@
     radius: 3
     energy: 3
     color: "#FF6F00"
+  # Corvax-Wega-start: греет в арена-холоде (ArenaColdSystem)
+  - type: HeatSource
+    radius: 4
+  # Corvax-Wega-end
   - type: Damageable
     damageModifierSet: Metallic
   - type: Injurable

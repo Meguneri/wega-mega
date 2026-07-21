@@ -34,6 +34,9 @@ public sealed class ChessWindow : DefaultWindow
     /// <summary>Клетка короля, стоящего под шахом.</summary>
     private static readonly Color CheckTint = Color.FromHex("#E03131");
 
+    /// <summary>Цифра перевеса по материалу («+3») у того, кто впереди.</summary>
+    private static readonly Color AdvantageColor = Color.FromHex("#8FD14F");
+
     private readonly IPlayerManager _player;
     private readonly SpriteSystem _sprites;
 
@@ -45,6 +48,10 @@ public sealed class ChessWindow : DefaultWindow
     private readonly Label _status;
     private readonly Label _whiteLabel;
     private readonly Label _blackLabel;
+
+    /// <summary>Ряды съеденных фигур («кладбище») под именем каждого игрока.</summary>
+    private readonly BoxContainer _whiteCaptured;
+    private readonly BoxContainer _blackCaptured;
     private readonly Button _sitWhite;
     private readonly Button _sitBlack;
     private readonly OptionButton _clockChoice;
@@ -130,6 +137,8 @@ public sealed class ChessWindow : DefaultWindow
         root.AddChild(side);
 
         _status = new Label { Text = string.Empty, Margin = new Thickness(0, 0, 0, 8) };
+        _whiteCaptured = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
+        _blackCaptured = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
         _blackLabel = new Label { Text = string.Empty };
         _whiteLabel = new Label { Text = string.Empty };
         _sitBlack = new Button { Text = Loc.GetString("chess-sit-black") };
@@ -150,9 +159,11 @@ public sealed class ChessWindow : DefaultWindow
 
         side.AddChild(_status);
         side.AddChild(_blackLabel);
+        side.AddChild(_blackCaptured);
         side.AddChild(_sitBlack);
         side.AddChild(new Control { MinHeight = 12 });
         side.AddChild(_whiteLabel);
+        side.AddChild(_whiteCaptured);
         side.AddChild(_sitWhite);
         side.AddChild(new Control { MinHeight = 16 });
         side.AddChild(new Label { Text = Loc.GetString("chess-clock-label") });
@@ -189,12 +200,64 @@ public sealed class ChessWindow : DefaultWindow
             ("name", string.IsNullOrEmpty(state.BlackName) ? Loc.GetString("chess-seat-free") : state.BlackName),
             ("clock", state.ClockEnabled ? FormatTime(state.BlackTime) : "—"));
 
+        // Перевес показываем только тому, у кого он есть, — как на Lichess.
+        FillCaptured(_whiteCaptured, state.CapturedByWhite, state.MaterialBalance);
+        FillCaptured(_blackCaptured, state.CapturedByBlack, -state.MaterialBalance);
+
         // Своё место можно освободить (кнопка становится «Встать»), чужое — занять нельзя.
         _sitWhite.Disabled = !string.IsNullOrEmpty(state.WhiteName) && myColor != ChessColor.White;
         _sitBlack.Disabled = !string.IsNullOrEmpty(state.BlackName) && myColor != ChessColor.Black;
         _sitWhite.Text = Loc.GetString(myColor == ChessColor.White ? "chess-stand-up" : "chess-sit-white");
         _sitBlack.Text = Loc.GetString(myColor == ChessColor.Black ? "chess-stand-up" : "chess-sit-black");
     }
+
+    /// <summary>
+    /// Ряд съеденных фигур: мелкие иконки от дешёвых к дорогим (как на Lichess) и перевес «+N».
+    /// Перевес подписываем только тому, кто впереди, — иначе на доске две противоречащие цифры.
+    /// </summary>
+    private void FillCaptured(BoxContainer row, List<ChessPieceType> captured, int advantage)
+    {
+        row.RemoveAllChildren();
+
+        // Цвет иконок противоположен цвету едока: белые едят чёрные фигуры.
+        var color = row == _whiteCaptured ? ChessColor.Black : ChessColor.White;
+
+        foreach (var type in captured.OrderBy(PieceOrder))
+        {
+            row.AddChild(new TextureRect
+            {
+                Texture = GetPieceTexture(color, type),
+                TextureScale = new Vector2(0.7f, 0.7f),
+                VerticalAlignment = VAlignment.Center,
+                MouseFilter = MouseFilterMode.Ignore,
+            });
+        }
+
+        if (advantage > 0)
+        {
+            // Счёт выделен цветом: это не подпись к иконкам, а самостоятельная цифра перевеса.
+            row.AddChild(new Label
+            {
+                Text = "+" + advantage,
+                Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VAlignment.Center,
+                FontColorOverride = AdvantageColor,
+            });
+        }
+
+        // Пустой ряд не должен занимать высоту и рвать вёрстку боковой панели.
+        row.Visible = row.ChildCount > 0;
+    }
+
+    private static int PieceOrder(ChessPieceType type) => type switch
+    {
+        ChessPieceType.Pawn => 0,
+        ChessPieceType.Knight => 1,
+        ChessPieceType.Bishop => 2,
+        ChessPieceType.Rook => 3,
+        ChessPieceType.Queen => 4,
+        _ => 5,
+    };
 
     private static string FormatTime(float seconds)
     {

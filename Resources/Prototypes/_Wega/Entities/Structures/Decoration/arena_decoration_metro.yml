@@ -17,6 +17,9 @@
     radius: 5
     energy: 3
     color: "#FFC90C"
+  # Вторичный очаг арена-холода: маленький островок тепла, который можно расстрелять.
+  - type: HeatSource
+    radius: 5
   - type: Destructible
     thresholds:
       - trigger:

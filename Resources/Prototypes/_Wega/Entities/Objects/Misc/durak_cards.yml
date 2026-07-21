@@ -1,0 +1,55 @@
+# Колода 36 карт под русские карточные игры (дурак, тысяча, переводной).
+# Переиспользует карты Nanotrasen из EstacaoPirata: 6..10, валет, дама, король, туз
+# в четырёх мастях. Без двоек-пятёрок и без джокера.
+
+- type: entity
+  parent: CardDeckBase
+  id: CardDeckDurakWega
+  suffix: 36 cards
+  components:
+  - type: Sprite
+    sprite: EstacaoPirata/Objects/Misc/cards.rsi
+    state: deck_nanotrasen_full
+    drawdepth: SmallObjects
+  - type: CardStack
+    content:
+    # Clubs / трефы
+    - CardSc6OfClubsNanotrasen
+    - CardSc7OfClubsNanotrasen
+    - CardSc8OfClubsNanotrasen
+    - CardSc9OfClubsNanotrasen
+    - CardSc10OfClubsNanotrasen
+    - CardScJackOfClubsNanotrasen
+    - CardScQueenOfClubsNanotrasen
+    - CardScKingOfClubsNanotrasen
+    - CardScAceOfClubsNanotrasen
+    # Diamonds / бубны
+    - CardSc6OfDiamondsNanotrasen
+    - CardSc7OfDiamondsNanotrasen
+    - CardSc8OfDiamondsNanotrasen
+    - CardSc9OfDiamondsNanotrasen
+    - CardSc10OfDiamondsNanotrasen
+    - CardScJackOfDiamondsNanotrasen
+    - CardScQueenOfDiamondsNanotrasen
+    - CardScKingOfDiamondsNanotrasen
+    - CardScAceOfDiamondsNanotrasen
+    # Hearts / червы
+    - CardSc6OfHeartsNanotrasen
+    - CardSc7OfHeartsNanotrasen
+    - CardSc8OfHeartsNanotrasen
+    - CardSc9OfHeartsNanotrasen
+    - CardSc10OfHeartsNanotrasen
+    - CardScJackOfHeartsNanotrasen
+    - CardScQueenOfHeartsNanotrasen
+    - CardScKingOfHeartsNanotrasen
+    - CardScAceOfHeartsNanotrasen
+    # Spades / пики
+    - CardSc6OfSpadesNanotrasen
+    - CardSc7OfSpadesNanotrasen
+    - CardSc8OfSpadesNanotrasen
+    - CardSc9OfSpadesNanotrasen
+    - CardSc10OfSpadesNanotrasen
+    - CardScJackOfSpadesNanotrasen
+    - CardScQueenOfSpadesNanotrasen
+    - CardScKingOfSpadesNanotrasen
+    - CardScAceOfSpadesNanotrasen

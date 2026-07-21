@@ -162,4 +162,8 @@ public sealed partial class DancerBossComponent : Component
     /// <summary>Вторая жизнь активна: короче кулдауны, злее клинки, вращения поджигают пол.</summary>
     [ViewVariables]
     public bool SecondLife;
+
+    /// <summary>Godmode был добавлен системой на время стазиса и должен быть снят при подъёме.</summary>
+    [ViewVariables]
+    public bool StasisGodmodeAdded;
 }

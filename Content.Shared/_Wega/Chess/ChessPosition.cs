@@ -36,6 +36,9 @@ public sealed class ChessPosition
     /// <summary>Партия в нотации SAN, по полуходам.</summary>
     public List<string> MoveLog { get; } = new();
 
+    /// <summary>Съеденные фигуры в порядке взятия — для «кладбища» рядом с игроками.</summary>
+    public List<(ChessColor Color, ChessPieceType Type)> Captured { get; } = new();
+
     public ChessPosition()
     {
         SetupInitial();
@@ -92,6 +95,7 @@ public sealed class ChessPosition
         copy.FullmoveNumber = FullmoveNumber;
         copy._history.AddRange(_history);
         copy.MoveLog.AddRange(MoveLog);
+        copy.Captured.AddRange(Captured);
         return copy;
     }
 
@@ -409,8 +413,11 @@ public sealed class ChessPosition
         if (!legal.Any(m => m.From == move.From && m.To == move.To && m.Promotion == move.Promotion))
             return false;
 
-        // SAN считаем ДО применения — нужна исходная позиция (для уточнений «Nbd2» и т.п.).
+        // SAN и съеденную фигуру определяем ДО применения — нужна исходная позиция
+        // (для уточнений «Nbd2» и чтобы знать, кого именно сняли с доски).
         var san = ToSan(move, legal);
+        if (GetVictim(move) is { } victim)
+            Captured.Add(victim);
         ApplyRaw(move);
         _history.Add(PositionKey());
 
@@ -422,6 +429,21 @@ public sealed class ChessPosition
             san += "+";
         MoveLog.Add(san);
         return true;
+    }
+
+    /// <summary>
+    /// Кого снимет с доски этот ход (null — тихий ход). Отдельный метод, потому что при взятии
+    /// на проходе съеденная пешка стоит НЕ на клетке назначения, а сбоку.
+    /// </summary>
+    private (ChessColor Color, ChessPieceType Type)? GetVictim(ChessMove move)
+    {
+        if (!IsEmpty(move.To))
+            return (ColorAt(move.To), TypeAt(move.To));
+
+        if (TypeAt(move.From) == ChessPieceType.Pawn && move.To == EnPassant)
+            return (Opposite(SideToMove), ChessPieceType.Pawn);
+
+        return null;
     }
 
     /// <summary>Применяет ход без проверок (внутреннее: для отсева легальности и TryMakeMove).</summary>

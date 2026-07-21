@@ -4,12 +4,14 @@ using Content.Server.Chat.Systems;
 using Content.Shared.Administration.Systems;
 using Content.Shared.Chat;
 using Content.Shared.Damage;
+using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
 using Content.Shared.NPC;
 using Content.Shared.Stunnable;
+using Content.Shared.SSDIndicator;
 using Content.Shared.Weapons.Melee;
 using Robust.Server.Audio;
 using Robust.Shared.Player;
@@ -47,6 +49,14 @@ public sealed partial class DancerBossSystem : EntitySystem
         base.Initialize();
         SubscribeLocalEvent<DancerBossComponent, DamageModifyEvent>(OnDamageModify);
         SubscribeLocalEvent<DancerBossComponent, MobStateChangedEvent>(OnMobStateChanged);
+        SubscribeLocalEvent<DancerBossComponent, MapInitEvent>(OnMapInit);
+        SubscribeLocalEvent<DancerBossComponent, ComponentShutdown>(OnShutdown);
+    }
+
+    private void OnMapInit(Entity<DancerBossComponent> ent, ref MapInitEvent args)
+    {
+        // Это NPC: SSD-индикатор игрока не должен показывать «Zzz» во время выключения ИИ на кастах.
+        RemComp<SSDIndicatorComponent>(ent);
     }
 
     /// <summary>На коленях — неуязвима (пауза для всех); в усталости — двойной урон.</summary>
@@ -79,6 +89,9 @@ public sealed partial class DancerBossSystem : EntitySystem
         FreezeMovement(uid);
         dancer.State = DancerState.Kneeling;
         dancer.StateEndsAt = _timing.CurTime + TimeSpan.FromSeconds(dancer.KneelDuration);
+        dancer.StasisGodmodeAdded = !HasComp<GodmodeComponent>(uid);
+        if (dancer.StasisGodmodeAdded)
+            EnsureComp<GodmodeComponent>(uid);
         dancer.ExhaustedUntil = null;
         dancer.ComboCount = 0;
         Spawn(dancer.StasisProto, Transform(uid).Coordinates);
@@ -244,6 +257,7 @@ public sealed partial class DancerBossSystem : EntitySystem
     /// <summary>Подъём после второго дыхания: 40% ХП, злее и быстрее.</summary>
     private void Rise(EntityUid uid, DancerBossComponent dancer)
     {
+        RemoveStasisGodmode(uid, dancer);
         dancer.State = DancerState.Idle;
         dancer.SecondLife = true;
         EnsureComp<ActiveNPCComponent>(uid);
@@ -258,6 +272,20 @@ public sealed partial class DancerBossSystem : EntitySystem
             if (TryComp<MeleeWeaponComponent>(held, out var melee))
                 melee.Damage *= dancer.SecondLifeDamageMultiplier;
         }
+    }
+
+    private void OnShutdown(Entity<DancerBossComponent> ent, ref ComponentShutdown args)
+    {
+        RemoveStasisGodmode(ent, ent.Comp);
+    }
+
+    private void RemoveStasisGodmode(EntityUid uid, DancerBossComponent dancer)
+    {
+        if (!dancer.StasisGodmodeAdded)
+            return;
+
+        dancer.StasisGodmodeAdded = false;
+        RemComp<GodmodeComponent>(uid);
     }
 
     /// <summary>Телеграф-плитки кольца [inner..outer] вокруг босса.</summary>

@@ -47,6 +47,10 @@
     temperature: 700
     ignited: true
   - type: RequireProjectileTarget
+  # Corvax-Wega-start: греет в арена-холоде (ArenaColdSystem)
+  - type: HeatSource
+    radius: 5
+  # Corvax-Wega-end
 
 - type: entity
   parent: BaseBonfire

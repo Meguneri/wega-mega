@@ -1,0 +1,50 @@
+# Револьвер для русской рулетки на базе «Питона».
+# Собран отдельной сущностью БЕЗ AmmoCounter: барабан-виджет в HUD не строится,
+# поэтому не видно, какая камора заряжена. Прокрутка (ПКМ) честно рандомит камору
+# серверным SpinRevolver. Стартует пустым — заряжать патроны .45 магнум вручную.
+
+- type: entity
+  parent: BaseItem
+  id: WeaponRevolverRussianRouletteWega
+  suffix: Russian Roulette
+  components:
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Revolvers/python.rsi
+    state: icon
+  - type: Clothing
+    sprite: Objects/Weapons/Guns/Revolvers/python.rsi
+    quickEquip: false
+    slots:
+    - suitStorage
+    - Belt
+  - type: Item
+    size: Small
+    storedOffset: 0,-2
+    shape:
+    - 0,0,1,0
+    - 0,1,0,1
+  - type: Tag
+    tags:
+    - Sidearm
+  - type: Gun
+    selectedMode: SemiAuto
+    fireRate: 2
+    availableModes:
+    - SemiAuto
+    soundGunshot:
+      path: /Audio/Weapons/Guns/Gunshots/revolver.ogg
+      params:
+        volume: 2.25
+  - type: UseDelay
+    delay: 0.66
+  - type: ContainerContainer
+    containers:
+      revolver-ammo: !type:Container
+  # Без AmmoCounter — намеренно: игрок не должен видеть, где патрон.
+  - type: RevolverAmmoProvider
+    whitelist:
+      tags:
+      - CartridgeMagnum
+      - SpeedLoaderMagnum
+    proto: null            # стартует пустым; заряжается настоящими патронами
+    capacity: 6
