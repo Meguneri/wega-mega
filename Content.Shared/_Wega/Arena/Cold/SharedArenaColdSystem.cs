@@ -7,10 +7,8 @@ namespace Content.Shared._Wega.Arena.Cold;
 /// Runs on both sides so the slowdown is predicted; the actual cold accumulation and damage live in the
 /// server-side <c>ArenaColdSystem</c>.
 /// </summary>
-public sealed class SharedArenaColdSystem : EntitySystem
+public sealed partial class SharedArenaColdSystem : EntitySystem
 {
-    [Dependency] private MovementSpeedModifierSystem _speed = default!;
-
     public override void Initialize()
     {
         base.Initialize();

@@ -23,8 +23,10 @@ namespace Content.Server._Wega.Arena.Cold;
 /// (client), a gradual movement slow (<see cref="SharedArenaColdSystem"/>) and, past a threshold, a small
 /// damage tick. Leaving the cold — or reaching warmth — lets the cold recede and everything fades back.
 /// </summary>
-public sealed class ArenaColdSystem : EntitySystem
+public sealed partial class ArenaColdSystem : EntitySystem
 {
+    private static readonly ProtoId<DamageTypePrototype> ColdDamageType = "Cold";
+
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IPrototypeManager _proto = default!;
     [Dependency] private DamageableSystem _damageable = default!;
@@ -44,7 +46,7 @@ public sealed class ArenaColdSystem : EntitySystem
     public override void Initialize()
     {
         base.Initialize();
-        _coldDamage = new DamageSpecifier(_proto.Index<DamageTypePrototype>("Cold"), FixedPoint2.New(1));
+        _coldDamage = new DamageSpecifier(_proto.Index(ColdDamageType), FixedPoint2.New(1));
 
         SubscribeLocalEvent<ArenaColdZoneComponent, MapInitEvent>(OnZoneInit);
     }

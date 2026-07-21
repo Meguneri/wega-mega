@@ -25,20 +25,40 @@ step() {
     fi
 }
 
+# ВАЖНО: судим по КОДУ ВОЗВРАТА, а не по грепу вывода.
+# Раньше здесь был `grep -qE "error (CS|MSB)"` — и он пропускал ошибки анализаторов
+# (RA0049 «[Dependency]-поля требуют partial», RA0033 и прочие). Из-за этого Release-сборка
+# падала, а precheck рапортовал «всё чисто».
 build() {
-    dotnet build "$1" -c Release 2>&1 | grep -qE "error (CS|MSB)" && return 1
+    local out
+    if ! out=$(dotnet build "$1" -c Release 2>&1); then
+        echo "$out" | grep -E "error" | head -20
+        return 1
+    fi
     return 0
 }
 
 lint_yaml() {
-    local out
-    out=$(dotnet run --project Content.YAMLLinter 2>&1 | tail -1)
-    echo "    $out"
-    [[ "$out" == *"No errors found"* ]]
+    local out rc
+    out=$(dotnet run --project Content.YAMLLinter 2>&1); rc=$?
+    echo "    $(echo "$out" | tail -1)"
+    [[ $rc -eq 0 ]] && echo "$out" | grep -q "No errors found"
 }
 
+# Тоже по коду возврата: иначе ошибка компиляции тест-проекта, падение тест-хоста
+# и «ни один тест не подошёл под фильтр» тихо считались успехом.
 run_tests() {
-    dotnet test "$1" --filter "$2" 2>&1 | grep -qE "^Не пройден|Не пройден!" && return 1
+    local out rc
+    out=$(dotnet test "$1" --filter "$2" 2>&1); rc=$?
+    if [[ $rc -ne 0 ]]; then
+        echo "$out" | grep -iE "error|Не пройден|Failed" | head -20
+        return 1
+    fi
+    # Строки проверены эмпирически: dotnet test при пустом фильтре возвращает 0 и пишет это.
+    if echo "$out" | grep -qiE "Нет тестов, соответствующих|No test matches|No test is available"; then
+        echo "    ВНИМАНИЕ: фильтр «$2» не нашёл ни одного теста — это не успех"
+        return 1
+    fi
     return 0
 }
 

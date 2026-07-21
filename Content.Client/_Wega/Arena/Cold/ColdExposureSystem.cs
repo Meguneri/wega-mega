@@ -9,7 +9,7 @@ namespace Content.Client._Wega.Arena.Cold;
 /// Shows/hides <see cref="ColdExposureOverlay"/> while the local player carries a
 /// <see cref="ColdExposureComponent"/> (added/removed by the server as they enter/leave the arena cold).
 /// </summary>
-public sealed class ColdExposureSystem : EntitySystem
+public sealed partial class ColdExposureSystem : EntitySystem
 {
     [Dependency] private IPlayerManager _player = default!;
     [Dependency] private IOverlayManager _overlay = default!;
