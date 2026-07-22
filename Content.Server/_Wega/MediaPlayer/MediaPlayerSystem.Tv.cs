@@ -31,6 +31,12 @@ public sealed partial class MediaPlayerSystem
     /// </summary>
     private const int TvChunkSize = 32 * 1024;
 
+    /// <summary>Файл-флаг «нарезка кадров дошла до конца» — без него частичный кэш не отличить от полного.</summary>
+    private const string FramesDoneMarker = ".done";
+
+    /// <summary>Сколько клипов держим нарезанными на диске (кадры весят десятки МБ на клип).</summary>
+    private const int FrameCacheKeep = 3;
+
     private string? _tvClipId;
     private List<byte[]> _tvFrames = new();
     private byte[]? _tvAudio;
@@ -217,10 +223,13 @@ public sealed partial class MediaPlayerSystem
             // IClyde.LoadTextureFromPNGStream (Image.Load из ImageSharp в вайтлисте нет).
             // %06d — до миллиона кадров (полное видео на 15 fps): 4 цифры хватило бы лишь на ~11 мин.
             SendStatus(session, Loc.GetString("media-player-status-broadcasting"));
-            var framesDir = Path.Combine(cacheDir, $"tvframes_{id}");
-            if (Directory.Exists(framesDir))
-                Directory.Delete(framesDir, recursive: true);
-            Directory.CreateDirectory(framesDir);
+
+            // Кадры кэшируются на диске: нарезка — самая тяжёлая операция во всём режиме, и без кэша
+            // каждый повторный показ того же клипа гонял полный проход ffmpeg (минуты 100% CPU).
+            // Ширина и fps — в имени папки: меняем константы — старый кэш просто не находится.
+            var framesDir = Path.Combine(cacheDir, $"tvframes_{id}_{TvWidth}x{TvFps}");
+            var framesCached = Directory.Exists(framesDir)
+                               && File.Exists(Path.Combine(framesDir, FramesDoneMarker));
 
             // -pix_fmt pal8: палитровый PNG (256 цветов) — вдвое легче truecolor при том же виде на
             // экране 160px, а весь клип едет по сети целиком, так что каждый килобайт на кадре
@@ -230,13 +239,31 @@ public sealed partial class MediaPlayerSystem
             // на экране это выглядело сплошной «рябью», особенно на тёмных градиентах. Замер на
             // тестовом градиенте: шум соседних пикселей 16.1 против 0.3, и кадр весит в 4.8 раза
             // больше (PNG не умеет сжимать шум). То есть отключение дизера чинит и картинку, и трафик.
-            var pattern = Path.Combine(framesDir, "f_%06d.png");
-            var (ffExit, ffErr) = await RunFfmpeg(
-                $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" -sws_dither none -pix_fmt pal8 \"{pattern}\"");
-            var frameFiles = Directory.EnumerateFiles(framesDir, "f_*.png").OrderBy(f => f).ToList();
-            if (ffExit != 0 || frameFiles.Count == 0)
+            if (!framesCached)
             {
-                _sawmill.Error($"ffmpeg tv frames failed: {ffErr}");
+                // Недорезанный кэш (сервер упал/перезапустился посреди прохода) переиспользовать
+                // нельзя — клип оборвётся на середине. Начинаем с чистой папки.
+                if (Directory.Exists(framesDir))
+                    Directory.Delete(framesDir, recursive: true);
+                Directory.CreateDirectory(framesDir);
+
+                var pattern = Path.Combine(framesDir, "f_%06d.png");
+                var (ffExit, ffErr) = await RunFfmpeg(
+                    $"-i \"{videoPath}\" -vf \"fps={TvFps},scale={TvWidth}:-2\" -sws_dither none -pix_fmt pal8 \"{pattern}\"");
+                if (ffExit != 0 || !Directory.EnumerateFiles(framesDir, "f_*.png").Any())
+                {
+                    _sawmill.Error($"ffmpeg tv frames failed: {ffErr}");
+                    SendStatus(session, Loc.GetString("media-player-error-tv-frames"), isError: true);
+                    return;
+                }
+
+                await File.WriteAllTextAsync(Path.Combine(framesDir, FramesDoneMarker), string.Empty);
+                PruneFrameCache(cacheDir, framesDir);
+            }
+
+            var frameFiles = Directory.EnumerateFiles(framesDir, "f_*.png").OrderBy(f => f).ToList();
+            if (frameFiles.Count == 0)
+            {
                 SendStatus(session, Loc.GetString("media-player-error-tv-frames"), isError: true);
                 return;
             }
@@ -244,7 +271,6 @@ public sealed partial class MediaPlayerSystem
             var frames = new List<byte[]>(frameFiles.Count);
             foreach (var f in frameFiles)
                 frames.Add(await File.ReadAllBytesAsync(f));
-            Directory.Delete(framesDir, recursive: true);
 
             // Размер кадра берём из первого PNG (scale=-2 мог слегка подогнать высоту).
             using (var img = SixLabors.ImageSharp.Image.Load<Rgba32>(frames[0]))
@@ -256,21 +282,25 @@ public sealed partial class MediaPlayerSystem
             // Звуковая дорожка того же отрезка — ogg-vorbis. Клиент привяжет её к сущностям
             // телевизоров (позиционный звук), а не к глобальному плееру.
             var audioPath = Path.Combine(cacheDir, $"tvfull_{id}.ogg");
-            // -ac 1: ОБЯЗАТЕЛЬНО моно — позиционный источник движка не умеет позиционировать
-            // стерео (assert «Make sure the audio is MONO» и краш клиента).
-            var (aExit, aErr) = await RunFfmpeg(
-                $"-i \"{videoPath}\" -vn -ac 1 -c:a libvorbis -b:a 96k -f ogg \"{audioPath}\"");
-            if (aExit != 0 && aErr.Contains("Encoder not found"))
+            // Готовый ogg переиспользуем — перекодировать его на каждый показ незачем.
+            if (!File.Exists(audioPath))
             {
-                _sawmill.Warning("libvorbis missing, retrying TV audio with the native vorbis encoder");
-                (aExit, aErr) = await RunFfmpeg(
-                    $"-i \"{videoPath}\" -vn -ac 1 -c:a vorbis -strict -2 -f ogg \"{audioPath}\"");
-            }
-            if (aExit != 0 || !File.Exists(audioPath))
-            {
-                _sawmill.Error($"ffmpeg tv audio failed: {aErr}");
-                SendStatus(session, Loc.GetString("media-player-error-tv-audio"), isError: true);
-                return;
+                // -ac 1: ОБЯЗАТЕЛЬНО моно — позиционный источник движка не умеет позиционировать
+                // стерео (assert «Make sure the audio is MONO» и краш клиента).
+                var (aExit, aErr) = await RunFfmpeg(
+                    $"-i \"{videoPath}\" -vn -ac 1 -c:a libvorbis -b:a 96k -f ogg \"{audioPath}\"");
+                if (aExit != 0 && aErr.Contains("Encoder not found"))
+                {
+                    _sawmill.Warning("libvorbis missing, retrying TV audio with the native vorbis encoder");
+                    (aExit, aErr) = await RunFfmpeg(
+                        $"-i \"{videoPath}\" -vn -ac 1 -c:a vorbis -strict -2 -f ogg \"{audioPath}\"");
+                }
+                if (aExit != 0 || !File.Exists(audioPath))
+                {
+                    _sawmill.Error($"ffmpeg tv audio failed: {aErr}");
+                    SendStatus(session, Loc.GetString("media-player-error-tv-audio"), isError: true);
+                    return;
+                }
             }
 
             _tvClipId = id;
@@ -425,6 +455,29 @@ public sealed partial class MediaPlayerSystem
         TvBroadcast(Filter.SinglePlayer(session));
     }
 
+    /// <summary>
+    /// Оставляет на диске <see cref="FrameCacheKeep"/> самых свежих нарезок, остальные сносит.
+    /// Кадры клипа — это десятки мегабайт, так что кэш без потолка съел бы диск VPS.
+    /// </summary>
+    private void PruneFrameCache(string cacheDir, string keepDir)
+    {
+        try
+        {
+            var stale = Directory.EnumerateDirectories(cacheDir, "tvframes_*")
+                .Where(d => !string.Equals(Path.GetFullPath(d), Path.GetFullPath(keepDir)))
+                .OrderByDescending(d => Directory.GetLastWriteTimeUtc(d))
+                .Skip(FrameCacheKeep - 1);
+
+            foreach (var dir in stale)
+                Directory.Delete(dir, recursive: true);
+        }
+        catch (Exception e)
+        {
+            // Не повод валить показ клипа — просто останется лишний мусор.
+            _sawmill.Warning($"TV frame cache prune failed: {e.Message}");
+        }
+    }
+
     /// <summary>Запускает ffmpeg с теми же правилами поиска бинарника, что и yt-dlp-провижн.</summary>
     private async Task<(int ExitCode, string Stderr)> RunFfmpeg(string arguments)
     {
@@ -432,10 +485,15 @@ public sealed partial class MediaPlayerSystem
             ? Path.Combine(_resolvedFfmpegDir, FfmpegFileName)
             : FfmpegFileName; // на PATH
 
+        // -threads: без лимита ffmpeg забирает все ядра хоста на всё время транскода, и хостер видит
+        // устойчивую загрузку >70% (у HOSTKEY это нарушение ToS с урезанием CPU). 0 = не ограничивать.
+        var threads = _cfg.GetCVar(WegaCVars.MediaPlayerFfmpegThreads);
+        var threadArg = threads > 0 ? $"-threads {threads} " : string.Empty;
+
         var psi = new ProcessStartInfo
         {
             FileName = fileName,
-            Arguments = "-y -hide_banner -loglevel error " + arguments,
+            Arguments = "-y -hide_banner -loglevel error " + threadArg + arguments,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,

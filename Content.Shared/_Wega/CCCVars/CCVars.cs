@@ -58,6 +58,14 @@ public sealed partial class WegaCVars
         CVarDef.Create("wega.media_player_ffmpeg_path", "", CVar.SERVERONLY);
 
     /// <summary>
+    /// Number of threads ffmpeg is allowed to use. Transcoding a TV clip otherwise saturates every
+    /// core of the host for minutes at a time, which VPS providers flag as sustained CPU abuse.
+    /// 0 = let ffmpeg decide (all cores).
+    /// </summary>
+    public static readonly CVarDef<int> MediaPlayerFfmpegThreads =
+        CVarDef.Create("wega.media_player_ffmpeg_threads", 1, CVar.SERVERONLY);
+
+    /// <summary>
     /// If yt-dlp/ffmpeg aren't found, auto-download them into the server's data folder on first use.
     /// </summary>
     public static readonly CVarDef<bool> MediaPlayerAutoDownload =

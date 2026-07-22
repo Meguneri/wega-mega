@@ -527,14 +527,22 @@ public sealed partial class MediaPlayerSystem : EntitySystem
             var baseArgs = $"--no-playlist -f bestaudio -x --audio-format vorbis --audio-quality 96K " +
                            $"--max-filesize 100M -o \"{outTemplate}\" --no-warnings -- \"{Sanitize(id)}\"";
 
-            var (exitCode, _, stderr) = await RunYtdlp(baseArgs);
+            // Лимит потоков уходит внутрь ffmpeg-постпроцессора yt-dlp: иначе извлечение звука
+            // тоже забирает все ядра хоста (см. MediaPlayerFfmpegThreads).
+            var threads = _cfg.GetCVar(WegaCVars.MediaPlayerFfmpegThreads);
+            var ppThreads = threads > 0 ? $"-threads {threads}" : string.Empty;
+
+            var (exitCode, _, stderr) = await RunYtdlp(
+                ppThreads.Length > 0
+                    ? $"--postprocessor-args \"ExtractAudio:{ppThreads}\" {baseArgs}"
+                    : baseArgs);
 
             // Some ffmpeg builds ship without libvorbis; retry with the native experimental encoder.
             if (exitCode != 0 && stderr.Contains("Encoder not found"))
             {
                 _sawmill.Warning("libvorbis missing, retrying with the native vorbis encoder");
                 (exitCode, _, stderr) = await RunYtdlp(
-                    $"--postprocessor-args \"ExtractAudio:-c:a vorbis -strict -2\" {baseArgs}");
+                    $"--postprocessor-args \"ExtractAudio:-c:a vorbis -strict -2 {ppThreads}\" {baseArgs}");
             }
 
             if (exitCode != 0 || !File.Exists(oggPath))
