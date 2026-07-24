@@ -59,8 +59,6 @@
       collection: MonkeyScreeches
     RobotBeep:
       collection: RobotBeeps
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Honk:
@@ -131,8 +129,6 @@
       collection: FemaleGasp
     DefaultDeathgasp:
       collection: DeathGasp
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Sigh:
@@ -187,8 +183,6 @@
       collection: FemaleLaugh
     Cough:
       collection: FemaleCoughs
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Sigh:
@@ -273,8 +267,6 @@
       collection: FemaleLaugh
     Cough:
       collection: FemaleCoughs
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Sigh:
@@ -375,8 +367,6 @@
       collection: MonkeyScreeches
     RobotBeep:
       collection: RobotBeeps
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Honk:

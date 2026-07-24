@@ -48,8 +48,6 @@
       path: /Audio/Corvax/Effects/Tajaran/purr.ogg
     Cough:
       collection: FemaleCoughs
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Sigh:

@@ -35,6 +35,13 @@ public sealed partial class StorageSystem : SharedStorageSystem
         if (args.Current is not StorageComponentState state)
             return;
 
+        // Grid может меняться в рантайме: у MOD-скафандров установка/снятие storage-модуля расширяет или
+        // сужает встроенную сетку (ModularSuitStorageModuleSystem). Запоминаем, изменилась ли сетка, ещё до
+        // её перезаписи — иначе открытое окно (оно перестраивается только по uiDirty) продолжит показывать
+        // старую сетку, а вставка в «лишние» клетки отскочит в руки. У ванильных контейнеров сетка статична,
+        // так что для них это ничего не меняет.
+        var gridChanged = !component.Grid.SequenceEqual(state.Grid);
+
         component.Grid.Clear();
         component.Grid.AddRange(state.Grid);
         component.MaxItemSize = state.MaxItemSize;
@@ -70,7 +77,7 @@ public sealed partial class StorageSystem : SharedStorageSystem
 
         UpdateOccupied((uid, component));
 
-        var uiDirty = !component.StoredItems.SequenceEqual(_oldStoredItems);
+        var uiDirty = gridChanged || !component.StoredItems.SequenceEqual(_oldStoredItems);
 
         if (uiDirty && UI.TryGetOpenUi<StorageBoundUserInterface>(uid, StorageComponent.StorageUiKey.Key, out var storageBui))
         {

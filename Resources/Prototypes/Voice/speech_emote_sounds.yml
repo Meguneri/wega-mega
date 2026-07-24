@@ -66,8 +66,6 @@
       collection: MonkeyScreeches
     RobotBeep:
       collection: RobotBeeps
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Honk:
@@ -240,8 +238,6 @@
       collection: MonkeyScreeches
     RobotBeep:
       collection: RobotBeeps
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Honk:
@@ -414,8 +410,6 @@
       collection: MonkeyScreeches
     RobotBeep:
       collection: RobotBeeps
-    Yawn:
-      collection: FemaleYawn
     Snore:
       collection: Snores
     Sigh:

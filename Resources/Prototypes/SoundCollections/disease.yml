@@ -47,12 +47,6 @@
   - /Audio/Voice/Human/male_yawn_1.ogg
 
 - type: soundCollection
-  id: FemaleYawn
-  files:
-  # Wega: смягчённая версия (-7 dB + lowpass 3.5 кГц) — оригинал резко бил по ушам.
-  - /Audio/_Wega/Voice/Human/female_yawn_soft.ogg
-
-- type: soundCollection
   id: Snores
   files:
   - /Audio/Voice/Human/snore1.ogg
