@@ -8,7 +8,7 @@ using Content.Shared.Item;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Tag;
 using Content.Shared.Stacks;
-using Content.Shared.Ghost;
+using Content.Shared.Ghost.Components;
 
 namespace Content.Server.StationEvents.Events;
 
@@ -32,7 +32,7 @@ public sealed partial class RadiationOutburstRuleSystem : StationEventSystem<Rad
     protected override void Started(EntityUid uid, RadiationOutburstRuleComponent component,
         GameRuleComponent gameRule, GameRuleStartedEvent args)
     {
-        if (!TryGetRandomStation(out var station))
+        if (!Station.TryGetRandomStation(out var station))
             return;
 
         var candidates = new List<EntityUid>();
@@ -41,7 +41,7 @@ public sealed partial class RadiationOutburstRuleSystem : StationEventSystem<Rad
         while (query.MoveNext(out var targetUid, out _, out var xform))
         {
             // не на обломке каком-нибудь
-            if (StationSystem.GetOwningStation(targetUid, xform) != station)
+            if (Station.GetOwningStation(targetUid, xform) != station.Value.Owner)
                 continue;
 
             // анти вещи плееров
@@ -91,8 +91,6 @@ public sealed partial class RadiationOutburstRuleSystem : StationEventSystem<Rad
     private void SetRadiation(EntityUid target, float rads)
     {
         var radiationComp = EnsureComp<RadiationSourceComponent>(target);
-        Dirty(target, radiationComp);
-
         Log.Debug($"RadiationOutburst: {target} теперь излучает +{rads} (всего: {radiationComp.Intensity})");
     }
 }

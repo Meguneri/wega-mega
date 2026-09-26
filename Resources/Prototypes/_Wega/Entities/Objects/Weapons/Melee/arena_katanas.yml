@@ -349,9 +349,6 @@
     - ActionRengokuFirstForm
     - ActionRengokuNinthForm
   - type: ItemActionGrant
-    actions:
-    - ActionRengokuFirstForm
-    - ActionRengokuNinthForm
     activeIfWorn: false
   - type: StaticPrice
     price: 30000

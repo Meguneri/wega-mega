@@ -2,7 +2,6 @@ using Content.Server.Antag;
 using Content.Server.Objectives;
 using Content.Server.Popups;
 using Content.Shared._Wega.Implants.Components;
-using Content.Shared.Bed.Sleep;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Emp;
@@ -24,7 +23,7 @@ public sealed partial class MindControlSystem : EntitySystem
     [Dependency] private ObjectivesSystem _objectives = default!;
     [Dependency] private SharedMindSystem _mind = default!;
     [Dependency] private StatusEffectsSystem _status = default!;
-    [Dependency] private AntagSelectionSystem _antag = default!;
+    [Dependency] private ServerAntagSelectionSystem _antag = default!;
     [Dependency] private SharedStaminaSystem _stamina = default!;
 
     public override void Initialize()

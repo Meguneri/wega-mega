@@ -1,5 +1,6 @@
 using System.Numerics;
 using Content.Server.Body.Systems;
+using Content.Shared.Body.Systems;
 using Content.Server.Fluids.EntitySystems;
 using Content.Shared._Wega.Magic.BloodRitual;
 using Content.Shared.Chemistry.Components;

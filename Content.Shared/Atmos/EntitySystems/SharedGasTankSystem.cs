@@ -2,7 +2,7 @@ using Content.Shared.Actions;
 using Content.Shared.Atmos.Components;
 using Content.Shared.Body.Systems;
 using Content.Shared.Examine;
-using Content.Shared.Timing;
+using Content.Shared.Timing.Systems;
 using Content.Shared.Toggleable;
 using Content.Shared.UserInterface;
 using Content.Shared.Verbs;
@@ -67,6 +67,9 @@ public abstract partial class SharedGasTankSystem : GasMaxPressureSystem<GasTank
     {
         if (component.ToggleAction == null) // Corvax-Wega-Add
             return; // Corvax-Wega-Add
+
+        if (!HasComp<InternalsComponent>(args.User))
+            return;
 
         args.AddAction(ref component.ToggleActionEntity, component.ToggleAction);
         Dirty(uid, component);

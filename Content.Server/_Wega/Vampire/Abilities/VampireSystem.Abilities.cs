@@ -7,12 +7,12 @@ using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Prototypes;
 using Content.Shared.Flash.Components;
-using Content.Server.Bible.Components;
 using Robust.Shared.Timing;
 using Content.Shared.Movement.Systems;
+using Content.Shared.Silicons.Borgs.Components;
+using Content.Shared.Surgery.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Flash;
-using Content.Shared.StatusEffectNew;
 using Content.Shared.Stunnable;
 using Content.Shared.Damage;
 using Content.Shared.Mobs.Systems;
@@ -21,16 +21,15 @@ using Content.Shared.Stealth;
 using Content.Server.Polymorph.Systems;
 using Content.Server.Surgery;
 using Content.Shared.Surgery;
+using Content.Shared.Bible.Components;
 
 namespace Content.Server.Vampire;
 
 public sealed partial class VampireSystem
 {
-    [Dependency] private IPrototypeManager _proto = default!;
     [Dependency] private MobThresholdSystem _threshold = default!;
     [Dependency] private MovementSpeedModifierSystem _speed = default!;
     [Dependency] private SharedStaminaSystem _stamina = default!;
-    [Dependency] private StatusEffectsSystem _status = default!;
     [Dependency] private SharedStealthSystem _stealth = default!;
     [Dependency] private SharedFlashSystem _flash = default!;
     [Dependency] private MovementModStatusSystem _movementMod = default!;
@@ -39,6 +38,7 @@ public sealed partial class VampireSystem
 
     private static readonly ProtoId<InternalDamagePrototype> InternalBleeding = "ArterialBleeding";
     private static readonly EntProtoId ForceSleeping = "StatusEffectForcedSleeping";
+    private static readonly EntProtoId Muted = "StatusEffectMuted";
 
     private void InitializePowers()
     {
@@ -69,8 +69,15 @@ public sealed partial class VampireSystem
         if (args.Advanced || ent.Comp.CurrentBlood >= args.BloodCost)
         {
             ExecuteRejuvenateHealTick(args.Performer, 0, args);
-            if (TryComp<VampireDiablerieComponent>(ent, out var diablerie) && diablerie.DiablerieLevel >= 3)
+
+            if (TryComp<VampireDiablerieComponent>(ent, out var diablerie) && diablerie.DiablerieLevel >= 1)
                 _surgery.TryRemoveInternalDamage(ent, InternalBleeding);
+			
+            if (TryComp<VampireDiablerieComponent>(ent, out var diea) && diea.DiablerieLevel >= 3)
+			{
+				if (TryComp<OperatedComponent>(ent, out var oper))
+					oper.InternalDamages.Clear();
+			}
         }
 
         args.Handled = true;
@@ -79,13 +86,13 @@ public sealed partial class VampireSystem
     private void OnVampireGlare(Entity<VampireComponent> ent, ref VampireGlareActionEvent args)
     {
         var target = args.Target;
-        if (HasComp<VampireComponent>(target) || HasComp<FlashImmunityComponent>(target))
-            return;
+		if (HasComp<VampireComponent>(target) || (HasComp<FlashImmunityComponent>(target) && !HasComp<BorgChassisComponent>(target)))
+			return;
 
         if (HasComp<BibleUserComponent>(target) && !HasTruePower(ent))
         {
             _stun.TryUpdateParalyzeDuration(args.Performer, TimeSpan.FromSeconds(5f));
-            _chat.TryEmoteWithoutChat(args.Performer, _proto.Index(Scream), true);
+            _chat.TryEmoteWithoutChat(args.Performer, ProtoMan.Index(Scream), true);
             _damage.TryChangeDamage(args.Performer, ent.Comp.HolyDamage);
             return;
         }
@@ -94,12 +101,15 @@ public sealed partial class VampireSystem
 
         var ev = new FlashAttemptEvent(target, args.Performer, null);
         RaiseLocalEvent(target, ref ev, true);
-        if (ev.Cancelled)
-            return;
-
+		if (!HasComp<BorgChassisComponent>(target))
+		{
+			if ((ev.Cancelled && TryComp<VampireDiablerieComponent>(ent, out var dieal) && dieal.DiablerieLevel < 2) || (ev.Cancelled && !HasComp<VampireDiablerieComponent>(ent)))
+				return;
+		}
+		
         _stun.TryUpdateParalyzeDuration(target, TimeSpan.FromSeconds(5f));
         _flash.Flash(target, args.Performer, null, TimeSpan.FromSeconds(3f), 0.8f);
-        _status.TryAddStatusEffectDuration(target, "Muted", TimeSpan.FromSeconds(8f));
+        _status.TryAddStatusEffectDuration(target, Muted, TimeSpan.FromSeconds(8f));
     }
 
     #endregion

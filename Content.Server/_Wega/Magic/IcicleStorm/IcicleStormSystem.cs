@@ -16,7 +16,7 @@ public sealed partial class IcicleStormSystem : EntitySystem
     [Dependency] private TransformSystem _xform = default!;
     [Dependency] private EntityLookupSystem _lookup = default!;
     [Dependency] private IRobustRandom _random = default!;
-    [Dependency] private IMapManager _mapManager = default!;
+    [Dependency] private MapSystem _mapManager = default!;
     [Dependency] private GunSystem _gunSystem = default!;
     [Dependency] private SharedMapSystem _map = default!;
     [Dependency] private AudioSystem _audio = default!;

@@ -5,66 +5,58 @@
   completetime: 5
   result: AntimovCircuitBoard
   materials:
-    Steel: 1500
-    Glass: 1500
+    XenoborgCrystal: 300
 
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
   id: XenoborgModuleCommonRepeir
   result: XenoborgModuleCommonRepeir
   materials:
-    Steel: 1500
-    Glass: 1500
+    XenoborgCrystal: 50
 
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
   id: BorgModuleNightVisoXenoborg
   result: BorgModuleNightVisoXenoborg
   materials:
-    Steel: 1500
-    Glass: 1500
+    XenoborgCrystal: 50
   
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
   id: XenoborgModuleCommonSpeed
   result: XenoborgModuleCommonSpeed
   materials:
-    Steel: 1500
-    Glass: 1500
+    XenoborgCrystal: 50
     
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
   id: XenoborgModuleEMP
   result: XenoborgModuleEMP
   materials:
-    Steel: 1500
-    Glass: 1500
-
-- type: latheRecipe
-  parent: BaseXenoborgModulesRecipe
-  id: XenoborgModuleTileGun
-  result: XenoborgModuleTileGun
-  materials:
-    Steel: 1500
-    Glass: 1500
+    XenoborgCrystal: 300
 
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
   id: ModuleXenoborgModule
   result: ModuleXenoborgModule
   materials:
-    Steel: 1500
-    Glass: 1500
+    XenoborgCrystal: 200
+
+- type: latheRecipe
+  parent: BaseXenoborgModulesRecipe
+  id: XenoborgModuleLexorinHypo
+  result: XenoborgModuleLexorinHypo
+  materials:
+    XenoborgCrystal: 300
 
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
   categories:
   - Robotics
   id: XPositronicBrain
-  result: PositronicBrain
+  result: UpgradeKitBrain
   materials:
-    PrintBrain: 100
-    Steel: 1500
+    XenoborgCrystal: 1
 
 - type: latheRecipe
   parent: BaseXenoborgModulesRecipe
@@ -73,4 +65,4 @@
   id: ClothingHeadHatChameleonXenoborg
   result: ClothingHeadHatChameleonXenoborg
   materials:
-    Steel: 10
+    Steel: 1

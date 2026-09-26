@@ -1,6 +1,7 @@
 using System.Linq;
 using Content.Shared.Armor;
 using Content.Shared.Blocking;
+using Content.Shared.Blocking.Components;
 using Content.Shared.Clothing;
 using Content.Shared.Hands;
 using Content.Shared.Hands.EntitySystems;

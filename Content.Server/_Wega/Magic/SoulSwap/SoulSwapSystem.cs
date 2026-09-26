@@ -1,6 +1,7 @@
 using System.Numerics;
 using Content.Shared._Wega.Magic.SoulSwap;
 using Content.Server.Body.Systems;
+using Content.Shared.Body.Systems;
 using Content.Shared.Body.Components;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Systems;

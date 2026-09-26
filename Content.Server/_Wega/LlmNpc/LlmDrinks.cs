@@ -94,7 +94,7 @@ public sealed class LlmDrinks
                 _proto.TryIndex<Content.Shared.Chemistry.Reagent.ReagentPrototype>(id, out var r)
                 && r.Group == DrinkGroup);
 
-            if (productId == null
+            if (productId.Id == null
                 || !_proto.TryIndex<Content.Shared.Chemistry.Reagent.ReagentPrototype>(productId, out var product))
                 continue;
 
@@ -103,16 +103,16 @@ public sealed class LlmDrinks
             {
                 var ing = _proto.TryIndex<Content.Shared.Chemistry.Reagent.ReagentPrototype>(kv.Key, out var ir)
                     ? ir.LocalizedName
-                    : kv.Key;
+                    : kv.Key.Id;
                 return $"{ing} {kv.Value.Amount}";
             }));
 
             var reactants = reaction.Reactants
-                .Select(kv => (kv.Key, kv.Value.Amount.Int()))
+                .Select(kv => (kv.Key.Id, kv.Value.Amount.Int()))
                 .ToList();
             var productAmount = reaction.Products[productId].Int();
 
-            var entry = new DrinkRecipe(productId, name, recipe, reactants, productAmount);
+            var entry = new DrinkRecipe(productId.Id, name, recipe, reactants, productAmount);
             // Первая реакция на имя побеждает; ключим по нормализованному имени и по id реагента.
             _byName.TryAdd(Normalize(name), entry);
             _byName.TryAdd(Normalize(productId), entry);

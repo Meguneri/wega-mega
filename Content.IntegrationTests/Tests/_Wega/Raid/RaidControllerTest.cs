@@ -5,6 +5,7 @@ using Content.IntegrationTests.Fixtures;
 using Content.Server._Wega.Raid.Components;
 using Content.Server._Wega.Raid.Systems;
 using Content.Server.GameTicking;
+using Content.Shared.GameTicking;
 using Content.Shared._Wega.Raid.Components;
 using Content.Shared.Damage;
 using Content.Shared.FixedPoint;
@@ -62,8 +63,7 @@ public sealed class RaidControllerTest : GameTest
         var ticker = Pair.Server.System<GameTicker>();
         await Pair.Server.WaitAssertion(() =>
         {
-            var ruleEnt = ticker.AddGameRule(RaidGameRule);
-            ticker.StartGameRule(ruleEnt);
+            ticker.StartGameRule(RaidGameRule);
         });
         await Pair.RunTicksSync(5);
     }

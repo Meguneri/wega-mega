@@ -4,6 +4,7 @@ using Content.Shared.Actions;
 using Content.Shared.Actions.Components;
 using Content.Shared.Blood.Cult.Components;
 using Content.Shared.Magic.Components;
+using Content.Shared.GameTicking;
 
 namespace Content.Server._Wega.GameTicking;
 

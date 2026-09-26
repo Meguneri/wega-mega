@@ -1,5 +1,5 @@
 using Content.Shared.DeviceLinking;
-using Robust.Shared.Serialization.TypeSerializers.Implementations.Custom.Prototype;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Localization;
 
 namespace Content.Shared._Wega.Spawners.Components;
@@ -18,8 +18,8 @@ public sealed partial class SpawnerSignalControlComponent : Component
     /// <summary>
     /// Sink port name that toggles the spawner on/off when a signal is received.
     /// </summary>
-    [DataField(customTypeSerializer: typeof(PrototypeIdSerializer<SinkPortPrototype>))]
-    public string TogglePort = "Toggle";
+    [DataField]
+    public ProtoId<SinkPortPrototype> TogglePort = "Toggle";
 
     /// <summary>
     /// Sender name shown in the chat announcement (e.g. "Арена").

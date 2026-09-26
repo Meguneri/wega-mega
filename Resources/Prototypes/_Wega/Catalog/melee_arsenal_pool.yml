@@ -2416,7 +2416,7 @@
   id: MeleeArsenalArmBlade
   name: full-arsenal-arm-blade-name
   description: full-arsenal-arm-blade-desc
-  productEntity: ArmBlade
+  productEntity: Armblade
   cost:
     Telecrystal: 8
   categories:

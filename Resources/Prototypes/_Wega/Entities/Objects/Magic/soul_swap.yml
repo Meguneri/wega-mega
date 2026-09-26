@@ -9,9 +9,9 @@
     useDelay: 45
     sound: !type:SoundPathSpecifier
       path: /Audio/Magic/Eldritch/voidblink.ogg
-    icon:
-      sprite: Objects/Magic/Eldritch/eldritch_actions.rsi
-      state: voidblink
+  - type: Sprite
+    sprite: Objects/Magic/Eldritch/eldritch_actions.rsi
+    state: voidblink
   - type: TargetAction
     range: 10
     checkCanAccess: false

@@ -1,10 +1,11 @@
 - type: entity
+  parent: [ BaseStructure, StructureHealthFurnitureStrong ]
   id: Fireplace
-  parent: BaseStructure
   name: fireplace
   description: A place that has fire. Cozy!
   components:
   - type: Sprite
+    noRot: true
     sprite: Structures/Decoration/fireplace.rsi
     layers:
       - state: fireplace
@@ -39,17 +40,16 @@
     radius: 4
   # Corvax-Wega-end
   - type: Damageable
-    damageModifierSet: Metallic
-  - type: Injurable
-    damageContainer: StructuralInorganic
+    damageModifierSet: RockMod
   - type: Destructible
     thresholds:
     - trigger:
         !type:DamageTrigger
-        damage: 200
+        damage: 80
       behaviors:
-      - !type:DoActsBehavior
-        acts: [ "Destruction" ]
+      - !type:PlaySoundBehavior
+        sound:
+          path: /Audio/Effects/break_stone.ogg
   - type: AlwaysHot
   - type: IgnitionSource
     temperature: 700

@@ -47,6 +47,7 @@
     - id: ZombieOutbreak
     - id: LoneOpsSpawn
     # - id: WizardSpawn # Corvax-Wega-Edit
+    - id: SpaceChangelingSpawn
     - !type:NestedSelector
       tableId: DerelictBorgEventTable
 
@@ -159,6 +160,10 @@
     duration: 1
     minimumPlayers: 15
   - type: BreakerFlipRule
+    blacklist:
+      components:
+        - ProtectedGrid
+
 
 - type: entity
   id: BureaucraticError
@@ -195,6 +200,7 @@
   - type: StationEvent
     weight: 5
     duration: 1
+    occursDuringRoundEnd: false
     minimumPlayers: 10
   - type: RandomEntityStorageSpawnRule
     prototype: MobSkeletonCloset
@@ -209,6 +215,7 @@
     reoccurrenceDelay: 30 # Corvax-MRP # 20
     minimumPlayers: 20
     duration: null
+    occursDuringRoundEnd: false
   - type: SpaceSpawnRule
     spawnDistance: 0
   - type: AntagSpawner
@@ -228,11 +235,45 @@
 
 - type: entity
   parent: BaseAntagGhostRoleRule
+  id: SpaceChangelingSpawn
+  components:
+  - type: StationEvent
+    weight: 6
+    earliestStart: 20 # can start early since lings need time to start doing stuff
+    reoccurrenceDelay: 40
+    minimumPlayers: 20
+    duration: null
+    occursDuringRoundEnd: false
+  - type: SpaceSpawnRule
+    spawnDistance: 80
+  - type: AntagSpawner
+    prototype: MobHeadSlugElder
+  - type: ChangelingRule
+  - type: AntagRandomObjectives
+    sets:
+    - groups: ChangelingObjectiveGroupDevourDummy
+      maxPicks: 1
+    - groups: ChangelingObjectiveGroupEscapeDummy
+      maxPicks: 1
+    - groups: ChangelingObjectiveGroupKillDummy
+      maxPicks: 1
+    maxDifficulty: 8
+  - type: AntagSelection
+    agentName: changeling-round-end-agent-name
+    antags:
+    - !type:FixedAntagCount
+      proto: SpaceChangeling
+  - type: DynamicRuleCost
+    cost: 75
+
+- type: entity
+  parent: BaseAntagGhostRoleRule
   id: NinjaSpawn
   components:
   - type: StationEvent
     weight: 4 # Corvax-Wega-Edit
     duration: null
+    occursDuringRoundEnd: false
     earliestStart: 30
     reoccurrenceDelay: 20
     minimumPlayers: 30
@@ -261,6 +302,7 @@
   - type: StationEvent
     weight: 5
     duration: null
+    occursDuringRoundEnd: false
     earliestStart: 20
     reoccurrenceDelay: 20
     minimumPlayers: 15
@@ -288,12 +330,13 @@
   - type: StationEvent
     weight: 4 # Corvax-Wega-Edit
     duration: 1
+    occursDuringRoundEnd: false
     earliestStart: 45
     minimumPlayers: 30 # Corvax-MRP # 20
   - type: RandomSpawnRule
     prototype: MobRevenant
 
-# Corvax-Wega-Edit / Пшел нахуй
+# Corvax-Wega-Edit-start / Пшел нахуй
 # - type: entity
 #   parent: [ BaseAntagGhostRoleRule, BaseWizardRule ]
 #   id: WizardSpawn
@@ -301,9 +344,11 @@
 #   - type: StationEvent
 #     weight: 1 # rare
 #     duration: null
+#     occursDuringRoundEnd: false
 #     earliestStart: 30
 #     reoccurrenceDelay: 60
 #     minimumPlayers: 30
+# Corvax-Wega-Edit-end
 
 # disabled until event is rewritten to be more interesting
 #- type: entity
@@ -356,8 +401,8 @@
       path: /Audio/Announcements/power_off.ogg
       params:
         volume: -4
-    duration: 60
-    maxDuration: 120
+    duration: 50
+    maxDuration: 100
   - type: PowerGridCheckRule
 
 - type: entity
@@ -493,9 +538,9 @@
   parent: BaseGameRule
   components:
   - type: StationEvent
-    earliestStart: 90
+    earliestStart: 45
     minimumPlayers: 40
-    weight: 1 # Zombies was happening basically every single survival round, so now it's super rare
+    weight: 1
     duration: 1
     occursDuringRoundEnd: false
   - type: ZombieRule
@@ -514,10 +559,11 @@
   id: LoneOpsSpawn
   components:
   - type: StationEvent
-    earliestStart: 40 # Corax-MRP # 30
+    earliestStart: 40 # Corvax-MRP # 30
     weight: 3 # Corvax-Wega-Edit
     minimumPlayers: 20
     duration: null # LoneOpsSpawn needs an infinite duration so that it inherits the NukeOpsRule things of an actually appropriate end screen (not always "Neutral outcome!") and... ending the game if the station is nuked.
+    occursDuringRoundEnd: false
   - type: RuleGrids
   - type: LoadMapRule
     gridPath: /Maps/Shuttles/ShuttleEvent/striker.yml
@@ -624,6 +670,7 @@
     reoccurrenceDelay: 20
     minimumPlayers: 4
     duration: null
+    occursDuringRoundEnd: false
   - type: SpaceSpawnRule
     spawnDistance: 0
 

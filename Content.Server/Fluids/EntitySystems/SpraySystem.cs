@@ -5,7 +5,6 @@ using Content.Shared.CCVar;
 using Content.Shared.Chemistry.EntitySystems;
 using Content.Shared.Fluids;
 using Content.Shared.Interaction;
-using Content.Shared.Timing;
 using Robust.Server.GameObjects;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Configuration;
@@ -13,7 +12,9 @@ using Robust.Shared.Physics.Components;
 using System.Numerics;
 using Content.Shared.Fluids.EntitySystems;
 using Content.Shared.Fluids.Components;
+using Content.Shared.Timing.Systems;
 using Robust.Server.Containers;
+using Robust.Shared.Audio;
 using Robust.Shared.Map;
 // Corvax-Wega-Add-start
 using Content.Shared.Item;
@@ -138,7 +139,7 @@ public sealed partial class SpraySystem : SharedSpraySystem
         _audio.PlayPvs(entity.Comp.SpraySound, entity, entity.Comp.SpraySound.Params.WithVariation(0.125f));
         _popupSystem.PopupEntity(Loc.GetString("spray-self-message", ("user", user)), user, user);
 
-        _useDelay.TryResetDelay(entity);
+        _useDelay.TryResetDelay(entity.Owner);
     }
 
     private void CreateSelfVapor(Entity<SprayComponent> entity, EntityUid user, Solution selfSolution)
@@ -288,8 +289,10 @@ public sealed partial class SpraySystem : SharedSpraySystem
             }
         }
 
-        _audio.PlayPvs(entity.Comp.SpraySound, entity, entity.Comp.SpraySound.Params.WithVariation(0.125f));
+        var audioParams = entity.Comp.SpraySound?.Params ?? AudioParams.Default;
+        audioParams = audioParams.WithVariation(0.125f);
+        _audio.PlayPvs(entity.Comp.SpraySound, entity, audioParams);
 
-        _useDelay.TryResetDelay(entity);
+        _useDelay.TryResetDelay(entity.Owner);
     }
 }

@@ -26,8 +26,7 @@
   - type: FireProtection
     reduction: 0.65
   - type: TemperatureProtection
-    heatingCoefficient: 0.6
-    coolingCoefficient: 0.8
+    coefficient: 0.7
   - type: GroupExamine
   - type: ToggleableClothing
     clothingPrototype: ClothingHeadHelmetClockworkCuirass
@@ -58,8 +57,7 @@
   - type: FireProtection
     reduction: 0.75
   - type: TemperatureProtection
-    heatingCoefficient: 0.7
-    coolingCoefficient: 0.7
+    coefficient: 0.7
   - type: Enchantable
     enchants:
     - ClothingOuterVeilCultRobesCamouflageArena
@@ -83,7 +81,7 @@
   - type: FireProtection
     reduction: 0.95
   - type: TemperatureProtection
-    heatingCoefficient: 0.9
+    coefficient: 0.9
   - type: Sprite
     sprite: _Wega/Clothing/Hands/clockwork_gauntlets.rsi
     state: icon
@@ -262,8 +260,6 @@
     actions:
     - ActionVeilCultActivateHaste
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateHaste
     activeIfWorn: true
 
 - type: entity
@@ -284,8 +280,6 @@
     actions:
     - ActionVeilCultActivateCamouflage
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateCamouflage
     activeIfWorn: true
 
 # --- Кираса ---
@@ -307,8 +301,6 @@
     actions:
     - ActionVeilCultActivateSmoke
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateSmoke
     activeIfWorn: true
 
 - type: entity
@@ -329,8 +321,6 @@
     actions:
     - ActionVeilCultActivateAbsorb
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateAbsorb
     activeIfWorn: true
 
 - type: entity
@@ -351,8 +341,6 @@
     actions:
     - ActionVeilCultActivateReflection
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateReflection
     activeIfWorn: true
 
 - type: entity
@@ -373,8 +361,6 @@
     actions:
     - ActionVeilCultActivateHardenPlates
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateHardenPlates
     activeIfWorn: true
 
 # --- Перчатки ---
@@ -396,8 +382,6 @@
     actions:
     - ActionVeilCultActivateNorthStar
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateNorthStar
     activeIfWorn: true
 
 - type: entity
@@ -418,8 +402,6 @@
     actions:
     - ActionVeilCultActivateRedFlame
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateRedFlame
     activeIfWorn: true
 
 - type: entity
@@ -459,8 +441,6 @@
     actions:
     - ActionVeilCultActivateSwordsmen
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateSwordsmen
     activeIfWorn: false
 
 - type: entity
@@ -480,8 +460,6 @@
     actions:
     - ActionVeilCultActivateBloodshed
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateBloodshed
     activeIfWorn: false
 
 # --- Копьё ---
@@ -502,8 +480,6 @@
     actions:
     - ActionVeilCultActivateConfusion
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateConfusion
     activeIfWorn: false
 
 - type: entity
@@ -540,8 +516,6 @@
     actions:
     - ActionVeilCultActivateKnockback
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateKnockback
     activeIfWorn: false
 
 - type: entity
@@ -561,8 +535,6 @@
     actions:
     - ActionVeilCultActivateCrusher
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateCrusher
     activeIfWorn: false
 
 - type: entity
@@ -582,6 +554,4 @@
     actions:
     - ActionVeilCultActivateDismantling
   - type: ItemActionGrant
-    actions:
-    - ActionVeilCultActivateDismantling
     activeIfWorn: false

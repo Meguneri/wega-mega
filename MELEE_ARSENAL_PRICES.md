@@ -390,7 +390,7 @@
 | Молот сингулярности | `SingularityHammer` | 12 TC |
 | Потусторонний клинок | `EldritchBlade` | 4 TC |
 | Нечестивая алебарда | `UnholyHalberd` | 5 TC |
-| Лезвие руки | `ArmBlade` | 8 TC |
+| Лезвие руки | `Armblade` | 8 TC |
 | Двойной энергетический меч | `EnergySwordDouble` | 16 TC |
 | Энергетическая сабля | `EnergyCutlass` | 7 TC |
 | Энергетический кинжал (видимый) | `EnergyDaggerLoud` | 6 TC |

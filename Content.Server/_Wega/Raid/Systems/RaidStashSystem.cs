@@ -13,6 +13,7 @@ using Content.Server.GameTicking;
 using Content.Shared.FixedPoint;
 using Content.Shared.GameTicking;
 using Content.Shared.Ghost;
+using Content.Shared.Ghost.Components;
 using Content.Shared.Mind;
 using Content.Shared.Store;
 using Robust.Server.GameObjects;

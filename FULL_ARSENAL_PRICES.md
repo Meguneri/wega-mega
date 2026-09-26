@@ -87,7 +87,7 @@
 | Энергетическая сабля | `EnergyCutlass` | 7 TC |
 | Клинок смерти (арена) | `WeaponDeathBladeArena` | 7 TC |
 | Ритуальный кинжал смерти (арена) | `WeaponDeathDaggerArena` | 3 TC |
-| Лезвие руки | `ArmBlade` | 8 TC |
+| Лезвие руки | `Armblade` | 8 TC |
 | Молот сингулярности | `SingularityHammer` | 12 TC |
 | Мьёльнир | `Mjollnir` | 18 TC |
 | Ратварианское копьё | `WeaponRatvarianSpearArena` | 4 TC |

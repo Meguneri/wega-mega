@@ -75,7 +75,7 @@ namespace Content.Server.Storage.EntitySystems
             if (component.Uses <= 0)
                 return;
 
-            var coords = Transform(args.User).Coordinates;
+            var xform = Transform(args.User);
             var spawnEntities = GetSpawns(component.Items, _random);
             EntityUid? entityToPlaceInHands = null;
             EntityUid? weaponForHands = null;
@@ -83,7 +83,7 @@ namespace Content.Server.Storage.EntitySystems
 
             foreach (var proto in spawnEntities)
             {
-                var item = Spawn(proto, coords);
+                var item = Spawn(proto, xform.Coordinates);
                 spawned.Add(item);
                 _adminLogger.Add(LogType.EntitySpawn, LogImpact.Low, $"{ToPrettyString(args.User)} used {ToPrettyString(uid)} which spawned {ToPrettyString(item)}");
 
@@ -108,7 +108,7 @@ namespace Content.Server.Storage.EntitySystems
 
             // The entity is often deleted, so play the sound at its position rather than parenting
             if (component.Sound != null)
-                _audio.PlayPvs(component.Sound, coords);
+                _audio.PlayPvs(component.Sound, xform.Coordinates);
 
             component.Uses--;
 

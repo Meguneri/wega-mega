@@ -9,9 +9,9 @@
     useDelay: 8
     # Звук каста играется в IcicleStormSystem (серверный обработчик), не здесь —
     # иначе кастер его не слышит (предсказание Action.sound не доходит).
-    icon:
-      sprite: Structures/Specific/Anomalies/ice_anom.rsi
-      state: bullet
+  - type: Sprite
+    sprite: Structures/Specific/Anomalies/ice_anom.rsi
+    state: bullet
   - type: TargetAction
     range: 20
     checkCanAccess: false
@@ -33,9 +33,9 @@
     useDelay: 5
     sound: !type:SoundPathSpecifier
       path: /Audio/_Wega/Magic/ice_explosion.ogg
-    icon:
-      sprite: Structures/Specific/Anomalies/ice_anom.rsi
-      state: bullet
+  - type: Sprite
+    sprite: Structures/Specific/Anomalies/ice_anom.rsi
+    state: bullet
   - type: TargetAction
     range: 20
     checkCanAccess: false
@@ -57,9 +57,9 @@
     itemIconStyle: BigAction
     useDelay: 30
     # Звук каста играется в IcicleStormSystem (серверный обработчик), не здесь.
-    icon:
-      sprite: Structures/Specific/Anomalies/ice_anom.rsi
-      state: pulse
+  - type: Sprite
+    sprite: Structures/Specific/Anomalies/ice_anom.rsi
+    state: pulse
   - type: InstantAction
     event: !type:IcicleStormSpellEvent
   - type: SpeakOnAction

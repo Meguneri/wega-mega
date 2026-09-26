@@ -33,6 +33,22 @@
     sprite: Objects/Fun/Tabletop/chessboard_tabletop.rsi
     state: chessboard_tabletop
 
+# Виртуальная доска нужна админ-действию, обычная ChessBoard использует ChessGame.
+- type: entity
+  parent: BaseBoardEntity
+  id: ChessBoardAdminSmite
+  name: chessboard
+  categories: [HideSpawnMenu]
+  components:
+  - type: Sprite
+    sprite: Objects/Fun/Tabletop/chessboard.rsi
+    state: chessboard
+  - type: TabletopGame
+    boardName: tabletop-chess-board-name
+    size: 338, 274
+    setup: !type:TabletopChessSetup
+      boardPrototype: ChessBoardTabletop
+
 # White pieces
 - type: entity
   parent: BaseTabletopPiece

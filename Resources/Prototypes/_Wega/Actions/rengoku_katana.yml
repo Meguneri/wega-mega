@@ -8,9 +8,9 @@
     itemIconStyle: BigAction
     priority: -10
     useDelay: 8
-    icon:
-      sprite: _Wega/Objects/Weapons/Melee/rengoku_katana.rsi
-      state: action-first
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Melee/rengoku_katana.rsi
+    state: action-first
   - type: InstantAction
     event: !type:RengokuFirstFormActionEvent
 
@@ -24,8 +24,8 @@
     itemIconStyle: BigAction
     priority: -9
     useDelay: 30
-    icon:
-      sprite: _Wega/Objects/Weapons/Melee/rengoku_katana.rsi
-      state: action-ninth
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Melee/rengoku_katana.rsi
+    state: action-ninth
   - type: InstantAction
     event: !type:RengokuNinthFormActionEvent

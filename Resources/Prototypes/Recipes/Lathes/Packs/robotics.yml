@@ -75,10 +75,18 @@
   - BorgModuleKinetic
   - BorgModuleGardening
   - BorgModuleClowning
-  - BorgModuleSheild
+  - ModuleSelectorSheild
   - BorgModuleGranader
   - ModuleCommand
   - BorgModuleDNA
+  - BorgModuleCommonHand
+  - BorgModuleSecRare
+  - BorgModuleCargoRare
+  - BorgModuleEngenerRare
+  - BorgModuleCleanerRare
+  - BorgModuleMedicalRare
+  - BorgModuleServiceRare
+  - BorgModuleScienceRND
  # Corvax-Wega-end
 
 - type: latheRecipePack

@@ -24,7 +24,7 @@
     size: Normal
     shape:
     - 0,0,2,1
-    - 1,2,1,1
+    - 1,1,2,2
   - type: MeleeWeapon
     wideAnimationRotation: -135
     attackRate: 1

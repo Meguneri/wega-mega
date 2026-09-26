@@ -1,7 +1,22 @@
 - type: entity
-  id: ChemistryBottleStabilizingSerumP
-  suffix: stabilizing serum
   parent: BaseChemistryBottleFilled
+  id: ChemistryBottleFormaldehyde
+  suffix: formaldehyde
+  components:
+  - type: Label
+    currentLabel: reagent-name-formaldehyde
+  - type: SolutionContainerManager
+    solutions:
+      drink:
+        maxVol: 30
+        reagents:
+        - ReagentId: Formaldehyde
+          Quantity: 30
+
+- type: entity
+  parent: BaseChemistryBottleFilled
+  id: ChemistryBottleStabilizingSerumPotion
+  suffix: stabilizing serum potion
   components:
   - type: Label
     currentLabel: reagent-name-stabilizing-serum-potion

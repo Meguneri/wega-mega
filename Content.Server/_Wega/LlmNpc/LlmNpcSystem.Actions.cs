@@ -7,6 +7,7 @@ using Content.Shared.CCVar;
 using Content.Shared.Chat;
 using Content.Shared.FixedPoint;
 using Content.Shared.NPC;
+using Content.Shared.VendingMachines.Components;
 using Robust.Shared.GameObjects;
 
 namespace Content.Server._Wega.LlmNpc;
@@ -838,7 +839,7 @@ public sealed partial class LlmNpcSystem
             }
         }
 
-        var vendors = EntityQueryEnumerator<Content.Shared.VendingMachines.VendingMachineComponent>();
+        var vendors = EntityQueryEnumerator<VendingMachineComponent>();
         while (vendors.MoveNext(out var vend, out var machine))
         {
             if (Transform(vend).MapID != map || (_transform.GetWorldPosition(vend) - origin).Length() > FindRange)
@@ -957,7 +958,7 @@ public sealed partial class LlmNpcSystem
         }
 
         // Вендинг-автоматы (АлкоМат/СодоМат) — равноправные кандидаты: у многих баров только они.
-        var vendors = EntityQueryEnumerator<Content.Shared.VendingMachines.VendingMachineComponent>();
+        var vendors = EntityQueryEnumerator<VendingMachineComponent>();
         while (vendors.MoveNext(out var vend, out var machine))
         {
             if (Transform(vend).MapID != map)
@@ -1032,7 +1033,7 @@ public sealed partial class LlmNpcSystem
 
         // Раздатчиков не хватило — открываем бутылки из вендинг-автоматов (АлкоМат/СодоМат):
         // счётчик бутылок реально уменьшается, как будто бармен купил и разлил бутылку.
-        var vendors = EntityQueryEnumerator<Content.Shared.VendingMachines.VendingMachineComponent>();
+        var vendors = EntityQueryEnumerator<VendingMachineComponent>();
         while (vendors.MoveNext(out var vend, out var machine))
         {
             if (taken >= needed)

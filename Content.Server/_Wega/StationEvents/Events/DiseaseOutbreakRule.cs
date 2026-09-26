@@ -6,6 +6,7 @@ using Content.Shared.Mobs.Components;
 using Content.Shared.Mobs.Systems;
 using Robust.Shared.Random;
 using Content.Shared.Disease.Components;
+using Content.Shared.Station.Systems;
 
 namespace Content.Server.StationEvents.Events;
 /// <summary>
@@ -16,6 +17,7 @@ public sealed partial class DiseaseOutbreakRule : StationEventSystem<DiseaseOutb
 {
     [Dependency] private DiseaseSystem _diseaseSystem = default!;
     [Dependency] private MobStateSystem _mobStateSystem = default!;
+    [Dependency] private StationSystem _station = default!;
 
     /// <summary>
     /// Finds 2-5 random, alive entities that can host diseases
@@ -42,7 +44,7 @@ public sealed partial class DiseaseOutbreakRule : StationEventSystem<DiseaseOutb
 
         var diseaseName = RobustRandom.Pick(component.NotTooSeriousDiseases);
 
-        if (!PrototypeManager.TryIndex(diseaseName, out DiseasePrototype? disease))
+        if (!ProtoMan.TryIndex(diseaseName, out DiseasePrototype? disease))
             return;
 
         // Now we give it to people in the list of living disease carriers earlier
@@ -53,8 +55,10 @@ public sealed partial class DiseaseOutbreakRule : StationEventSystem<DiseaseOutb
 
             _diseaseSystem.TryAddDisease(entity, disease, target);
 
-            var station = StationSystem.GetOwningStation(entity);
-            if (station == null) continue;
+            var station = _station.GetOwningStation(entity);
+            if (station == null)
+                continue;
+
             stationsToNotify.Add((EntityUid)station);
         }
     }

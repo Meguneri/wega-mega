@@ -1,4 +1,5 @@
 - type: entity
+  parent: SolutionGinormous
   id: Shower
   name: shower
   description: "Caution: wet floor and wet people. Not designed for firefighting or escaping security guards."
@@ -8,7 +9,8 @@
   - type: Clickable
   - type: InteractionOutline
   - type: Physics
-    bodyType: Dynamic
+    bodyType: Static
+    canCollide: False
   - type: Sprite
     noRot: true
     sprite: _Wega/Structures/Furniture/shower.rsi
@@ -56,6 +58,6 @@
       reagents:
       - ReagentId: Water
         Quantity: 100
-  - type: DrainableSolution
+  - type: DumpableSolution
     solution: shower
   - type: Appearance

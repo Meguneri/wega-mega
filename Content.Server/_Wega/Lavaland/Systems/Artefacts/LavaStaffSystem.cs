@@ -3,7 +3,7 @@ using Content.Server.Tiles;
 using Content.Shared.Interaction;
 using Content.Shared.Lavaland.Artefacts.Components;
 using Content.Shared.Maps;
-using Content.Shared.Timing;
+using Content.Shared.Timing.Systems;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Map;
 
@@ -11,7 +11,6 @@ namespace Content.Server.Lavaland.Artefacts.Systems;
 
 public sealed partial class LavaStaffSystem : EntitySystem
 {
-    [Dependency] private IMapManager _mapManager = default!;
     [Dependency] private ITileDefinitionManager _tileDefManager = default!;
     [Dependency] private SharedMapSystem _map = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
@@ -46,7 +45,7 @@ public sealed partial class LavaStaffSystem : EntitySystem
         var comp = ent.Comp;
         var clickLocation = args.ClickLocation;
 
-        if (!_mapManager.TryFindGridAt(_transform.ToMapCoordinates(clickLocation), out var gridUid, out var mapGrid))
+        if (!_map.TryFindGridAt(_transform.ToMapCoordinates(clickLocation), out var gridUid, out var mapGrid))
             return false;
 
         var tileRef = _map.GetTileRef(gridUid, mapGrid, clickLocation);

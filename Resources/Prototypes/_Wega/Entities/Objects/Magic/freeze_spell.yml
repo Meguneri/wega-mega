@@ -9,9 +9,9 @@
     useDelay: 25
     sound: !type:SoundCollectionSpecifier
       collection: AnomalyIceSupercritical
-    icon:
-      sprite: Structures/Specific/Anomalies/ice_anom.rsi
-      state: anom
+  - type: Sprite
+    sprite: Structures/Specific/Anomalies/ice_anom.rsi
+    state: anom
   - type: TargetAction
     range: 8
     checkCanAccess: false

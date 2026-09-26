@@ -20,6 +20,8 @@
     storageRemoveSound: /Audio/Items/toolbox_remove.ogg
   - type: Item
     size: Ginormous
+    shape:
+    - 0,0,7,4
   - type: MeleeWeapon
     damage:
       types:
@@ -92,6 +94,7 @@
       - !type:DoActsBehavior
         acts: [ "Destruction" ]
       - !type:SpawnEntitiesBehavior # todo this is not a good way to be doing this. Should probably use a construction graph
+        offset: 0
         spawn:
           WeaponTurretSyndicateDisposable:
             min: 1
@@ -113,7 +116,7 @@
 
 - type: entity
   name: suspicious toolbox
-  parent: [ToolboxBase, BaseSyndicateContraband]
+  parent: [ToolboxBase] # Corvax-Contraband BaseSyndicateContraband
   id: ToolboxSyndicate
   description: A sinister looking toolbox filled with elite syndicate tools.
   components:

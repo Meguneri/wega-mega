@@ -23,7 +23,6 @@ public sealed partial class ArenaArsenalCommand : IConsoleCommand
     [Dependency] private IPrototypeManager _prototype = default!;
     [Dependency] private IComponentFactory _factory = default!;
 
-    [ValidatePrototypeId<EntityPrototype>]
     private const string RemoteProto = "ArenaArsenalRemote";
 
     public string Command => "arenaarsenal";

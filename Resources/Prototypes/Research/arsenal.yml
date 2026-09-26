@@ -50,13 +50,14 @@
   recipeUnlocks:
   - WeaponLaserCarbine
   - PortableRecharger # Corvax-Wega-Arsenal
+  - WeaponDominator # Corvax-Wega-Arsenal
 
 - type: technology
   id: NonlethalAmmunition
   name: research-technology-nonlethal-ammunition
   icon:
-    sprite: _Wega/Objects/Weapons/Melee/exmflash.rsi # Corvax-Wega-Arsenal-edit
-    state: flash
+    sprite: Objects/Weapons/Guns/Battery/disabler_smg.rsi
+    state: icon
   discipline: Arsenal
   tier: 1
   cost: 5000
@@ -65,6 +66,7 @@
   - BoxShellTranquilizer
   - BoxBeanbag
   - WeaponDisabler
+  - WeaponDisablerSMG
   - ExmFlash # Corvax-Wega-Arsenal
 
 - type: technology
@@ -87,22 +89,6 @@
   - MagazineBoxLightRifleUranium
   - MagazineBoxRifleUranium
   - BoxShotgunUranium
-
-- type: technology
-  id: AdvancedRiotControl
-  name: research-technology-advanced-riot-control
-  icon:
-    sprite: Objects/Weapons/Melee/truncheon.rsi
-    state: icon
-  discipline: Arsenal
-  tier: 1
-  cost: 8000
-  recipeUnlocks:
-  - Truncheon
-  - TelescopicShield
-  - HoloprojectorSecurity
-  - WeaponDisablerSMG
-  - BorgModuleSheild # Corvax-Wega
 
 - type: technology
   id: ExplosiveTechnology
@@ -143,6 +129,21 @@
 # Corvax-Wega-End
 
 # Tier 2
+
+- type: technology
+  id: AdvancedRiotControl
+  name: research-technology-advanced-riot-control
+  icon:
+    sprite: Objects/Weapons/Melee/truncheon.rsi
+    state: icon
+  discipline: Arsenal
+  tier: 2
+  cost: 8000
+  recipeUnlocks:
+  - Truncheon
+  - TelescopicShield
+  - HoloprojectorSecurity
+  - ModuleSelectorSheild # Corvax-Wega
 
 # Corvax-Wega-Arsenal-start
 # - type: technology
@@ -231,7 +232,7 @@
   cost: 15000
   recipeUnlocks:
   - WeaponAdvancedLaser
-  - WeaponTemperatureGun # Corvax-Wega-Arsenal
+  - BorgModuleSecRare # Corvax-Wega-Arsenal
   - PortableRechargerTurboBag # Corvax-Wega-Arsenal
 
 # Corvax-Wega-Arsenal-start

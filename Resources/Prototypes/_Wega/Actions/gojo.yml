@@ -1,5 +1,5 @@
 # Приёмы Сатору Годжо. Построены на ванильной системе магии (MagicSystem):
-# ProjectileSpellEvent кидает снаряд, TeleportSpellEvent телепортирует — нового C# не нужно.
+# ProjectileSpellEvent кидает снаряд, TeleportActionEvent телепортирует — нового C# не нужно.
 # Снаряды/иконки — placeholder из ванильных магических ассетов.
 
 # Лиловое — мощный взрывной снаряд.
@@ -16,9 +16,9 @@
     raiseOnUser: true
     sound: !type:SoundPathSpecifier
       path: /Audio/Effects/singularity_form.ogg
-    icon:
-      sprite: Objects/Magic/magicactions.rsi
-      state: fireball
+  - type: Sprite
+    sprite: Objects/Magic/magicactions.rsi
+    state: fireball
   - type: TargetAction
     range: 60
     checkCanAccess: false
@@ -40,9 +40,9 @@
     raiseOnUser: true
     sound: !type:SoundPathSpecifier
       path: /Audio/Magic/forcewall.ogg
-    icon:
-      sprite: Objects/Magic/magicactions.rsi
-      state: blink
+  - type: Sprite
+    sprite: Objects/Magic/magicactions.rsi
+    state: blink
   - type: TargetAction
     range: 40
     checkCanAccess: false
@@ -64,9 +64,9 @@
     raiseOnUser: true
     sound: !type:SoundPathSpecifier
       path: /Audio/Magic/forcewall.ogg
-    icon:
-      sprite: Objects/Magic/magicactions.rsi
-      state: fireball
+  - type: Sprite
+    sprite: Objects/Magic/magicactions.rsi
+    state: fireball
   - type: TargetAction
     range: 40
     checkCanAccess: false
@@ -88,11 +88,11 @@
     raiseOnUser: true
     sound: !type:SoundPathSpecifier
       path: /Audio/Magic/blink.ogg
-    icon:
-      sprite: Objects/Magic/magicactions.rsi
-      state: blink
+  - type: Sprite
+    sprite: Objects/Magic/magicactions.rsi
+    state: blink
   - type: TargetAction
     range: 16
     checkCanAccess: false
   - type: WorldTargetAction
-    event: !type:TeleportSpellEvent
+    event: !type:TeleportActionEvent

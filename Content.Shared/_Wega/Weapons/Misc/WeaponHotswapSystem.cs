@@ -3,7 +3,7 @@ using Content.Shared.Hands.EntitySystems;
 using Content.Shared.IdentityManagement;
 using Content.Shared.Interaction.Events;
 using Content.Shared.Popups;
-using Content.Shared.Timing;
+using Content.Shared.Timing.Systems;
 using Content.Shared.Weapons.Marker;
 using Content.Shared.Weapons.Melee.Events;
 using Content.Shared.Weapons.Misc.Components;
@@ -68,9 +68,6 @@ public sealed partial class WeaponHotswapSystem : EntitySystem
 
         _container.Insert(alternate, container);
         ent.Comp.PairedWeapon = alternate;
-
-        Dirty(ent.Owner, ent.Comp);
-        Dirty(alternate, altHotswap);
     }
 
     private void OnUseInHand(Entity<WeaponHotswapComponent> ent, ref UseInHandEvent args)

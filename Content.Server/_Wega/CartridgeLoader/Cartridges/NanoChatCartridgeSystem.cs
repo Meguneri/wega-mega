@@ -28,6 +28,7 @@ public sealed partial class NanoChatCartridgeSystem : SharedNanoChatCartridgeSys
 
     private readonly Dictionary<string, EntityUid> _activeChats = new();
     private readonly Dictionary<string, ChatGroupData> _groups = new();
+    private const string ProgramContainer = "preinstalled-program-container";
     private const int MessageRange = 2000;
 
     public override void Initialize()
@@ -51,7 +52,7 @@ public sealed partial class NanoChatCartridgeSystem : SharedNanoChatCartridgeSys
 
     private void OnOwnerNameChanged(Entity<PdaComponent> ent, ref OwnerNameChangedEvent args)
     {
-        var container = _container.GetContainer(ent, "program-container");
+        var container = _container.GetContainer(ent, ProgramContainer);
         if (container.ContainedEntities.Count == 0)
             return;
 
@@ -362,13 +363,11 @@ public sealed partial class NanoChatCartridgeSystem : SharedNanoChatCartridgeSys
 
         if (TryComp<CartridgeComponent>(recipientEntity, out var cartridge)
             && cartridge.LoaderUid.HasValue && !recipientComp.MutedSound)
-			{
-				_audio.PlayPvs(recipientComp.Sound, recipientEntity);
-				_cartridgeLoader.SendNotification(
-					cartridge.LoaderUid.Value,
-					Loc.GetString("nanochat-pda-notification-header"),
-					Loc.GetString("nanochat-pda-notification-fromwho", ("user", sender.Comp.OwnerName)));
-			}
+        {
+            _audio.PlayPvs(recipientComp.Sound, recipientEntity);
+            _cartridgeLoader.SendNotification(cartridge.LoaderUid.Value, Loc.GetString("nanochat-pda-notification-header"),
+                Loc.GetString("nanochat-pda-notification-fromwho", ("user", sender.Comp.OwnerName)));
+        }
 
         UpdateUiState((recipientEntity, recipientComp));
         UpdateUiState(sender);
@@ -528,9 +527,9 @@ public sealed partial class NanoChatCartridgeSystem : SharedNanoChatCartridgeSys
         isSolar = false;
 
         var powerGridQuery = EntityQueryEnumerator<PowerGridCheckRuleComponent, GameRuleComponent>();
-        while (powerGridQuery.MoveNext(out var ev, out _, out var gameRuleComp))
+        while (powerGridQuery.MoveNext(out _, out _, out var gameRuleComp))
         {
-            if (gameRuleComp.ActivatedAt <= _timing.CurTime && !HasComp<EndedGameRuleComponent>(ev))
+            if (gameRuleComp.ActivatedAt <= _timing.CurTime)
             {
                 isPower = true;
                 return true;
@@ -538,9 +537,9 @@ public sealed partial class NanoChatCartridgeSystem : SharedNanoChatCartridgeSys
         }
 
         var solarFlareQuery = EntityQueryEnumerator<SolarFlareRuleComponent, GameRuleComponent>();
-        while (solarFlareQuery.MoveNext(out var ev, out _, out var gameRuleComp))
+        while (solarFlareQuery.MoveNext(out _, out _, out var gameRuleComp))
         {
-            if (gameRuleComp.ActivatedAt <= _timing.CurTime && !HasComp<EndedGameRuleComponent>(ev))
+            if (gameRuleComp.ActivatedAt <= _timing.CurTime)
             {
                 isSolar = true;
                 return true;

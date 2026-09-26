@@ -29,6 +29,3 @@
     drawdepth: Effects
   - type: Occluder
   - type: Airtight
-  - type: Tag
-    tags:
-    - Wall

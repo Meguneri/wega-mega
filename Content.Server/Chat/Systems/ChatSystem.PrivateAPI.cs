@@ -44,11 +44,11 @@ public sealed partial class ChatSystem
             RaiseLocalEvent(source, nameEv);
             name = nameEv.VoiceName;
             // Check for a speech verb override
-            if (nameEv.SpeechVerb != null && _prototypeManager.Resolve(nameEv.SpeechVerb, out var proto))
+            if (nameEv.SpeechVerb != null && ProtoMan.Resolve(nameEv.SpeechVerb, out var proto))
                 speech = proto;
         }
 
-        name = FormattedMessage.EscapeText(name);
+        name = ChatNameLinks ? $"[textlink=\"{FormattedMessage.EscapeStringParameter(name)}\" entity=\"{GetNetEntity(source)}\" entitynamecolor=\"true\"]" : FormattedMessage.EscapeText(name);
 
         var wrappedMessage = Loc.GetString(speech.Bold ? "chat-manager-entity-say-bold-wrap-message" : "chat-manager-entity-say-wrap-message",
             ("entityName", name),
@@ -118,7 +118,7 @@ public sealed partial class ChatSystem
             RaiseLocalEvent(source, nameEv);
             name = nameEv.VoiceName;
         }
-        name = FormattedMessage.EscapeText(name);
+        name = ChatNameLinks ? $"[textlink=\"{FormattedMessage.EscapeStringParameter(name)}\" entity=\"{GetNetEntity(source)}\" entitynamecolor=\"true\"]" : FormattedMessage.EscapeText(name);
 
         // Corvax-Wega-SoundInsolation-Edit-start
         var baseWrappedMessage = Loc.GetString("chat-manager-entity-whisper-wrap-message",
@@ -241,7 +241,7 @@ public sealed partial class ChatSystem
     private void SendLOOC(EntityUid source, ICommonSession player, string message, bool hideChat)
     {
         var name = FormattedMessage.EscapeText(Identity.Name(source, EntityManager));
-
+        name = ChatNameLinks ? $"[textlink=\"{FormattedMessage.EscapeStringParameter(name)}\" entity=\"{GetNetEntity(source)}\" color=\"{ChatChannel.LOOC.TextColor().ToHex()}\"]": FormattedMessage.EscapeText(name);
         if (_adminManager.IsAdmin(player))
         {
             if (!_adminLoocEnabled) return;
@@ -262,22 +262,26 @@ public sealed partial class ChatSystem
 
     private void SendDeadChat(EntityUid source, ICommonSession player, string message, bool hideChat)
     {
+        if (!_adminManager.IsAdmin(player) && !_deadChatEnabled)
+            return;
+
         if (HasComp<BloodCultGhostComponent>(source)) // Corvax-Wega-Blood-Cult-Add
             return; // Corvax-Wega-Blood-Cult-Add
 
         var clients = GetDeadChatClients();
-        var playerName = Name(source);
         string wrappedMessage;
         if (_adminManager.IsAdmin(player))
         {
+            var userName = ChatNameLinks ? $"[textlink=\"{FormattedMessage.EscapeStringParameter(player.Channel.UserName)}\" entity=\"{GetNetEntity(source)}\" color=\"{ChatChannel.Dead.TextColor().ToHex()}\"]" : FormattedMessage.EscapeText(player.Channel.UserName);
             wrappedMessage = Loc.GetString("chat-manager-send-admin-dead-chat-wrap-message",
                 ("adminChannelName", Loc.GetString("chat-manager-admin-channel-name")),
-                ("userName", player.Channel.UserName),
+                ("userName", (userName)),
                 ("message", FormattedMessage.EscapeText(message)));
             _adminLogger.Add(LogType.Chat, LogImpact.Low, $"Admin dead chat from {source}: {message}");
         }
         else
         {
+            var playerName = ChatNameLinks ? $"[textlink=\"{FormattedMessage.EscapeStringParameter(Name(source))}\" entity=\"{GetNetEntity(source)}\" color=\"{ChatChannel.Dead.TextColor().ToHex()}\"]" : FormattedMessage.EscapeText(Name(source));
             wrappedMessage = Loc.GetString("chat-manager-send-dead-chat-wrap-message",
                 ("deadChannelName", Loc.GetString("chat-manager-dead-channel-name")),
                 ("playerName", (playerName)),

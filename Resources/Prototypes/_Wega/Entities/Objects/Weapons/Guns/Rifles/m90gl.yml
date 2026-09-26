@@ -1,0 +1,42 @@
+- type: entity
+  id: WeaponRifleM90GrenadeLauncher
+  parent: [BaseWeaponRifle, BaseSyndicateContraband]
+  name: M90 GL
+  description: An older bullpup carbine model with an attached underbarrel grenade launcher. Feeds from .20 rifle magazines.
+  components:
+  - type: Sprite
+    sprite: _Wega/Objects/Weapons/Guns/Rifles/m-90gl.rsi
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-0
+      map: ["enum.GunVisualLayers.Mag"]
+  - type: Clothing
+    sprite: _Wega/Objects/Weapons/Guns/Rifles/m-90gl.rsi
+  - type: ItemSlots
+    slots:
+      gun_magazine:
+        name: Magazine
+        startingItem: MagazineRifle
+        insertSound: /Audio/Weapons/Guns/MagIn/batrifle_magin.ogg
+        ejectSound: /Audio/Weapons/Guns/MagOut/batrifle_magout.ogg
+        priority: 2
+        whitelist:
+          tags:
+          - MagazineRifle
+        whitelistFailPopup: gun-magazine-whitelist-fail
+      gun_chamber:
+        name: Chamber
+        priority: 1
+        whitelist:
+          tags:
+          - CartridgeRifle
+  - type: ContainerContainer
+    containers:
+      gun_magazine: !type:ContainerSlot
+      gun_chamber: !type:ContainerSlot
+  - type: MagazineVisuals
+    magState: mag
+    steps: 1
+    zeroVisible: true
+  - type: Appearance

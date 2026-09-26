@@ -1,8 +1,8 @@
 using System.Linq;
-using Content.Server.Body.Systems;
 using Content.Shared.Bed.Sleep;
 using Content.Shared.Body;
 using Content.Shared.Body.Components;
+using Content.Shared.Body.Systems;
 using Content.Shared.Chemistry.Components;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
@@ -14,7 +14,6 @@ using Content.Shared.Implants;
 using Content.Shared.Implants.Components;
 using Content.Shared.Movement.Systems;
 using Content.Shared.Popups;
-using Content.Shared.Random.Helpers;
 using Content.Shared.Silicons.Borgs.Components;
 using Content.Shared.Surgery;
 using Content.Shared.Surgery.Components;
@@ -147,7 +146,7 @@ public sealed partial class SurgerySystem
         // Any action without anesthesia will cause pain.
         if (!HasComp<SleepingComponent>(patient) && !HasComp<PainNumbnessStatusEffectComponent>(patient) && !comp.OperatedPart
             && !_mobState.IsDead(patient) && !HasComp<SyntheticOperatedComponent>(patient))
-            _chat.TryEmoteWithoutChat(patient, _proto.Index(Scream), true);
+            _chat.TryEmoteWithoutChat(patient, ProtoMan.Index(Scream), true);
     }
 
     #region Organic
@@ -527,7 +526,7 @@ public sealed partial class SurgerySystem
             {
                 if (!HasComp<SleepingComponent>(patient) && !HasComp<PainNumbnessStatusEffectComponent>(patient)
                     && !patient.Comp.OperatedPart && !_mobState.IsDead(patient) && !HasComp<SyntheticOperatedComponent>(patient))
-                    _chat.TryEmoteWithoutChat(patient, _proto.Index(Scream), true);
+                    _chat.TryEmoteWithoutChat(patient, ProtoMan.Index(Scream), true);
 
                 _jittering.DoJitter(patient, TimeSpan.FromSeconds(4), true);
             }
@@ -546,7 +545,7 @@ public sealed partial class SurgerySystem
         {
             if (!HasComp<SleepingComponent>(patient) && !HasComp<PainNumbnessStatusEffectComponent>(patient)
                 && !patient.Comp.OperatedPart && !_mobState.IsDead(patient) && !HasComp<SyntheticOperatedComponent>(patient))
-                _chat.TryEmoteWithoutChat(patient, _proto.Index(Scream), true);
+                _chat.TryEmoteWithoutChat(patient, ProtoMan.Index(Scream), true);
 
             _jittering.DoJitter(patient, TimeSpan.FromSeconds(6), true);
         }
@@ -602,7 +601,7 @@ public sealed partial class SurgerySystem
                 {
                     if (!HasComp<SleepingComponent>(patient) && !HasComp<PainNumbnessStatusEffectComponent>(patient) && !patient.Comp.OperatedPart
                         && !_mobState.IsDead(patient) && !HasComp<SyntheticOperatedComponent>(patient))
-                        _chat.TryEmoteWithoutChat(patient, _proto.Index(Scream), true);
+                        _chat.TryEmoteWithoutChat(patient, ProtoMan.Index(Scream), true);
 
                     _jittering.DoJitter(patient, TimeSpan.FromSeconds(5), true);
                     break;
@@ -610,8 +609,8 @@ public sealed partial class SurgerySystem
         }
 
         if (effect != SurgeryFailedType.Empty && !_mobState.IsDead(patient))
-            _popup.PopupPredicted(Loc.GetString($"surgery-handle-failed-{effect.ToString().ToLower()}", ("patient", Identity.Entity(patient, EntityManager))),
-                patient, null, PopupType.MediumCaution);
+            _popup.PopupEntity(Loc.GetString($"surgery-handle-failed-{effect.ToString().ToLower()}", ("patient", Identity.Entity(patient, EntityManager))),
+                patient, PopupType.MediumCaution);
     }
 
     #endregion

@@ -9,9 +9,9 @@
     useDelay: 20
     sound: !type:SoundPathSpecifier
       path: /Audio/Magic/blink.ogg
-    icon:
-      sprite: Objects/Magic/magicactions.rsi
-      state: spell_default
+  - type: Sprite
+    sprite: Objects/Magic/magicactions.rsi
+    state: spell_default
   - type: TargetAction
     range: 8
     checkCanAccess: false
@@ -37,9 +37,9 @@
     useDelay: 1
     sound: !type:SoundPathSpecifier
       path: /Audio/Effects/gen_hit.ogg
-    icon:
-      sprite: Objects/Magic/magicactions.rsi
-      state: repulse
+  - type: Sprite
+    sprite: Objects/Magic/magicactions.rsi
+    state: repulse
   - type: TargetAction
     range: 20
     checkCanAccess: false

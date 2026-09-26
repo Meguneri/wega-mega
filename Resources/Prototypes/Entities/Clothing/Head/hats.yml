@@ -38,8 +38,8 @@
     sprite: Clothing/Head/Hats/beret_french.rsi
   - type: Clothing
     sprite: Clothing/Head/Hats/beret_french.rsi
-  - type: AddAccentClothing
-    accent: FrenchAccent
+  - type: FrenchAccent
+    relayAccent: true
   - type: Tag
     tags:
     - PetWearable
@@ -49,7 +49,7 @@
     - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBaseBeret # Corvax-Wega-Dirtable
+  parent: [BaseCorvaxContraband431JobsSecurityOfficerSeniorOfficer, ClothingHeadBaseBeret] # Corvax-Contraband + Corvax-Wega-Dirtable
   id: ClothingHeadHatBeretSecurity
   name: security beret
   description: A beret with the security department's insignia. For officers that are more inclined towards style than safety.
@@ -68,7 +68,7 @@
     - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBase
+  parent: [BaseCorvaxContraband431JobsSecurityOfficer, ClothingHeadBase] # Corvax-Contraband
   id: ClothingHeadHatSecurityTrooper
   name: trooper hat
   description: A campaign hat for the Nanotrasen Troopers. It's supposed to come with a case, too...
@@ -122,6 +122,12 @@
   name: engineering beret
   description: A beret with the engineering department's insignia. For engineers that are more inclined towards style than safety.
   components:
+  # Corvax-Contraband-start
+  - type: Contraband
+    severity: Corvax431
+    allowedDepartments: []
+    allowedJobs: [ChiefEngineer, SeniorEngineer, StationEngineer]
+  # Corvax-Contraband-end
   - type: Sprite
     sprite: Clothing/Head/Hats/beret_engineering.rsi
   - type: Clothing
@@ -136,7 +142,7 @@
     - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBaseBeret # Corvax-Wega-Dirtable
+  parent: [BaseCorvaxContraband431JobsQuartermaster, ClothingHeadBaseBeret] # Corvax-Contraband + Corvax-Wega-Dirtable
   id: ClothingHeadHatBeretQM
   name: quartermaster's beret
   description: A beret with the cargo department's insignia.
@@ -155,7 +161,7 @@
     - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBaseBeret # Corvax-Wega-Dirtable
+  parent: [BaseCorvaxContraband431JobsHeadOfSecurity, ClothingHeadBaseBeret] # Corvax-Contraband + Corvax-Wega-Dirtable
   id: ClothingHeadHatBeretHoS
   name: head of security's beret
   description: A black beret with a commander's rank emblem. For officers that are more inclined towards style than safety.
@@ -174,7 +180,7 @@
     - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBaseBeret # Corvax-Wega-Dirtable
+  parent: [BaseCorvaxContraband431JobsWarden, ClothingHeadBaseBeret] # Corvax-Contraband + Corvax-Wega-Dirtable
   id: ClothingHeadHatBeretWarden
   name: warden's beret
   description: A corporate-blue beret with a warden's rank emblem. For officers that are more inclined towards style than safety.
@@ -187,6 +193,7 @@
     tags:
     - PetWearable
     - CorgiWearable
+    - WhitelistChameleon
 
 - type: entity
   parent: ClothingHeadBaseBeret # Corvax-Wega-Dirtable
@@ -202,9 +209,10 @@
     tags:
     - PetWearable
     - CorgiWearable
+    - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBaseBeret # Corvax-Wega-Dirtable
+  parent: [BaseCorvaxContraband431JobsBrigmedic, ClothingHeadBaseBeret] # Corvax-Contraband + Corvax-Wega-Dirtable
   id: ClothingHeadHatBeretBrigmedic
   name: brigmedical beret
   description: A white beret for brigmedics.
@@ -265,9 +273,10 @@
     tags:
     - PetWearable
     - CorgiWearable
+    - WhitelistChameleon
 
 - type: entity
-  parent: [ClothingHeadBase, BaseCommandContraband]
+  parent: [BaseCorvaxContraband431DepartmentsCommandJobsCaptain, ClothingHeadBase, BaseCommandContraband] # Corvax-Contraband
   id: ClothingHeadHatCaptain
   name: captain's hardhat
   description: Feels good being the king.
@@ -306,7 +315,7 @@
   - type: IngestionBlocker
 
 - type: entity
-  parent: [ ClothingHeadBase, BaseCentcommContraband ]
+  parent: [BaseCorvaxContraband431DepartmentsCentralCommandJobsCentralCommandOfficial, ClothingHeadBase, BaseCentcommContraband] # Corvax-Contraband
   id: ClothingHeadHatCentcom
   name: CentComm brand hat
   description: Feels good being the king's boss.
@@ -319,9 +328,10 @@
     tags:
     - PetWearable
     - CorgiWearable
+    - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBase
+  parent: [BaseCorvaxContraband431JobsChef, ClothingHeadBase] # Corvax-Contraband
   id: ClothingHeadHatChef
   name: chef's hat
   description: A hat used by chefs to keep their hair out of your food. Judging by the food in the mess, they don't work.
@@ -434,7 +444,7 @@
   # Corvax-Wega-Dirtable-end
 
 - type: entity
-  parent: [ClothingHeadBase, BaseCommandContraband]
+  parent: [BaseCorvaxContraband431DepartmentsCommandJobsHeadOfSecurity, ClothingHeadBase, BaseCommandContraband] # Corvax-Contraband
   id: ClothingHeadHatHoshat
   name: head of security cap
   description: A stylish cap worn by the Head of Security. Shows the officers who's in charge.
@@ -518,12 +528,12 @@
     tags:
     - PetWearable
     - CorgiWearable
-  - type: AddAccentClothing
-    accent: ReplacementAccent
-    replacement: pirate
+  - type: ReplacementAccent
+    accent: pirate
+    relayAccent: true
 
 - type: entity
-  parent: ClothingHeadBase
+  parent: [ClothingHeadBase]
   id: ClothingHeadHatPlaguedoctor
   name: plague doctor hat
   description: These were once used by plague doctors.
@@ -567,7 +577,6 @@
   components:
   - type: Clothing
     sprite: Clothing/Head/Hats/santahat.rsi
-  - type: Appearance
   - type: HideLayerClothing
     layers:
       Hair: HEAD
@@ -604,8 +613,8 @@
     sprite: Clothing/Head/Hats/sombrero.rsi
   - type: Clothing
     sprite: Clothing/Head/Hats/sombrero.rsi
-  - type: AddAccentClothing
-    accent: SpanishAccent
+  - type: SpanishAccent
+    relayAccent: true
   - type: Tag
     tags:
     - PetWearable
@@ -695,9 +704,8 @@
   components:
   - type: Clothing
     sprite: Clothing/Head/Hats/ushanka.rsi
-  - type: Appearance
-  - type: AddAccentClothing
-    accent: RussianAccent
+  - type: RussianAccent
+    relayAccent: true
   - type: Foldable
     canFoldInsideContainer: true
   - type: FoldableClothing
@@ -711,9 +719,11 @@
     - state: icon-up
       map: ["foldedLayer"]
       visible: false
+  # Corvax-Wega-Add-start
   - type: Tag
     tags:
-    - Ushanka  # Corvax-Wega
+    - Ushanka
+  # Corvax-Wega-Add-end
 
 - type: entity
   parent: ClothingHeadBase
@@ -770,7 +780,7 @@
     - WhitelistChameleon
 
 - type: entity
-  parent: ClothingHeadBase
+  parent: [BaseCorvaxContraband431JobsWarden, ClothingHeadBase] # Corvax-Contraband
   id: ClothingHeadHatWarden
   name: warden's cap
   description: This hat emphasizes that you are THE LAW.
@@ -785,6 +795,7 @@
     tags:
     - PetWearable
     - CorgiWearable
+    - WhitelistChameleon
   # Corvax-Wega-Dirtable-start
   - type: Dirtable
     dirtState: hat
@@ -877,7 +888,7 @@
     sprite: Clothing/Head/Hats/truckershat.rsi
 
 - type: entity
-  parent: [ ClothingHeadBase, BaseSyndicateContraband ]
+  parent: [ ClothingHeadBase] # Corvax-Contraband BaseSyndicateContraband
   id: ClothingHeadPyjamaSyndicateBlack
   name: syndicate black pyjama hat
   description: For keeping that traitor head of yours warm.
@@ -893,7 +904,7 @@
       HeadSide : HEAD
 
 - type: entity
-  parent: [ ClothingHeadBase, BaseSyndicateContraband ]
+  parent: [ ClothingHeadBase] # Corvax-Contraband BaseSyndicateContraband
   id: ClothingHeadPyjamaSyndicatePink
   name: syndicate pink pyjama hat
   description: For keeping that traitor head of yours warm.
@@ -909,7 +920,7 @@
       HeadSide : HEAD
 
 - type: entity
-  parent: [ ClothingHeadBase, BaseSyndicateContraband ]
+  parent: [ ClothingHeadBase] # Corvax-Contraband BaseSyndicateContraband
   id: ClothingHeadPyjamaSyndicateRed
   name: syndicate red pyjama hat
   description: For keeping that traitor head of yours warm.
@@ -1050,7 +1061,7 @@
         HeadSide : HEAD
 
 - type: entity
-  parent: [ClothingHeadBase, BaseCommandContraband]
+  parent: [BaseCorvaxContraband431DepartmentsCommandJobsChiefMedicalOfficer, ClothingHeadBase, BaseCommandContraband] # Corvax-Contraband
   id: ClothingHeadHatBeretCmo
   name: chief medical officer's beret
   description: A turquoise beret with a cross on the front. The sight of it calms you down and makes it clear that you will be cured.
@@ -1078,9 +1089,9 @@
     sprite: Clothing/Head/Hats/piratetricord.rsi
   - type: Clothing
     sprite: Clothing/Head/Hats/piratetricord.rsi
-  - type: AddAccentClothing
-    accent: ReplacementAccent
-    replacement: pirate
+  - type: ReplacementAccent
+    accent: pirate
+    relayAccent: true
 
 - type: entity
   parent: ClothingHeadBase
@@ -1113,7 +1124,7 @@
         Caustic: 0.95
 
 - type: entity
-  parent: [ClothingHeadBase, BaseSyndicateContraband]
+  parent: [ClothingHeadBase] # Corvax-Contraband BaseSyndicateContraband
   id: ClothingHeadHatSyndie
   name: syndicate hat
   description: A souvenir hat from "Syndieland", their production has already been closed.
@@ -1379,9 +1390,9 @@
       sprite: Clothing/Head/Hats/cowboyhatbrown.rsi
     - type: Clothing
       sprite: Clothing/Head/Hats/cowboyhatbrown.rsi
-    - type: AddAccentClothing
-      accent: ReplacementAccent
-      replacement: cowboy
+    - type: ReplacementAccent
+      accent: cowboy
+      relayAccent: true
     - type: Tag
       tags:
       - PetWearable
@@ -1517,7 +1528,7 @@
         acts: [ "Destruction" ]
 
 - type: entity
-  parent: ClothingHeadBase
+  parent: [BaseCorvaxContraband431JobsMedicalDoctor, ClothingHeadBase] # Corvax-Contraband
   id: ClothingHeadHatBeretMedic
   name: medical beret
   description: A sterile white beret.
@@ -1530,6 +1541,7 @@
     tags:
     - PetWearable
     - CorgiWearable
+    - WhitelistChameleon
 
 - type: entity
   parent: ClothingHeadBase
@@ -1593,3 +1605,19 @@
     sprite: Clothing/Head/Hats/mitre_clown.rsi
   - type: Clothing
     sprite: Clothing/Head/Hats/mitre_clown.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: ClothingHeadHatTramDriver
+  name: tram driver hat
+  description: It smells like confidence.
+  components:
+  - type: Sprite
+    sprite: Clothing/Head/Hats/tramdriver.rsi
+  - type: Clothing
+    sprite: Clothing/Head/Hats/tramdriver.rsi
+  - type: Tag
+    tags:
+    - ClothMade
+    - Recyclable
+    - WhitelistChameleon

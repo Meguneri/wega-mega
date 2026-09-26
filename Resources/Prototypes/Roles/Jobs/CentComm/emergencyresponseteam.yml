@@ -12,6 +12,7 @@
   - AllAccess
   access:
   - CentralCommand
+  - BlueShieldOfficer # Corwax-Wega-BSO-Access
   special:
   - !type:AddImplantSpecial
     implants: [ MindShieldImplant, DeathRattleImplantCentcomm, BluespaceLifelineImplant ] # Corvax-Wega-Add
@@ -25,6 +26,7 @@
     outerClothing: ClothingOuterArmorBasic
     pocket2: FlashlightSeclite
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
+  # Corvax-Wega-ERT-start
   storage:
     back:
     - WeaponDisabler
@@ -33,6 +35,7 @@
     - BoxZiptie
     - CombatCrowbar # Corvax-Wega-CombatCrowbar
     - MagazineMagnum
+  # Corvax-Wega-ERT-end
 
 - type: startingGear
   id: ERTLeaderGearEVA
@@ -53,6 +56,7 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
+    # Corvax-Wega-ERT-start
     - WeaponDisabler
     - MedicatedSuture
     - RegenerativeMesh
@@ -60,6 +64,7 @@
     - CombatCrowbar # Corvax-Wega-CombatCrowbar
     - MagazineMagnum
     - EmergencyMedipen
+    # Corvax-Wega-ERT-end
 
 - type: startingGear
   parent: ERTLeaderGearEVA
@@ -70,6 +75,7 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
+    # Corvax-Wega-ERT-start
     - WeaponDisabler
     - MedicatedSuture
     - RegenerativeMesh
@@ -77,6 +83,7 @@
     - CombatCrowbar # Corvax-Wega-CombatCrowbar
     - MagazineMagnum
     - EmergencyMedipen
+    # Corvax-Wega-ERT-end
 
 - type: chameleonOutfit
   id: ERTLeaderChameleonOutfit
@@ -100,6 +107,7 @@
   - AllAccess
   access:
   - CentralCommand
+  - BlueShieldOfficer # Corwax-Wega-BSO-Access
   special:
   - !type:AddComponentSpecial
     components:
@@ -114,22 +122,23 @@
     shoes: ClothingShoesBootsJackFilled
     head: ClothingHeadHatFez
     neck: ClothingNeckStoleChaplain
-    gloves: ClothingHandsGlovesCombat # Corvax-Wega
     outerClothing: ClothingOuterArmorBasicSlim # Corvax-Wega
+    gloves: ClothingHandsGlovesCombat # Corvax-Wega
     id: ERTChaplainPDA # Corvax-Wega
     ears: ClothingHeadsetAltCentCom # Corvax-Wega
     belt: ClothingBeltSheathChaplinFilledERT # Corvax-Wega
     pocket1: WeaponPistolMk58 # Corvax-Wega
     pocket2: DrinkWaterBottleFull # Corvax-Wega
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
+  # Corvax-Wega-ERT-start
   storage:
     back:
     - BoxCandle
-    - DrinkWaterBottleFull # Corvax-Wega
-    - DrinkWaterBottleFull # Corvax-Wega
-    - HolyWaterGrenade # Corvax-Wega
-    - HolyWaterGrenade # Corvax-Wega
-    - HolyWaterGrenade # Corvax-Wega
+    - DrinkWaterBottleFull
+    - DrinkWaterBottleFull
+    - HolyWaterGrenade
+    - HolyWaterGrenade
+    - HolyWaterGrenade
     - Lantern
     - Lantern
     - Bible
@@ -139,6 +148,7 @@
     - FoodBakedBunHotX
     - FoodBakedBunHotX
     - Lighter
+  # Corvax-Wega-ERT-end
 
 - type: startingGear
   id: ERTChaplainGearEVA
@@ -158,12 +168,13 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
+    # Corvax-Wega-ERT-start
     - BoxCandle
-    - DrinkWaterBottleFull # Corvax-Wega
-    - DrinkWaterBottleFull # Corvax-Wega
-    - HolyWaterGrenade # Corvax-Wega
-    - HolyWaterGrenade # Corvax-Wega
-    - HolyWaterGrenade # Corvax-Wega
+    - DrinkWaterBottleFull
+    - DrinkWaterBottleFull
+    - HolyWaterGrenade
+    - HolyWaterGrenade
+    - HolyWaterGrenade
     - Lantern
     - Lantern
     - Bible
@@ -173,6 +184,7 @@
     - FoodBakedBunHotX
     - FoodBakedBunHotX
     - Lighter
+    # Corvax-Wega-ERT-end
 
 - type: chameleonOutfit
   id: ERTChaplainChameleonOutfit
@@ -198,6 +210,7 @@
   - AllAccess
   access:
   - CentralCommand
+  - BlueShieldOfficer # Corwax-Wega-BSO-Access
   special:
   - !type:AddImplantSpecial
     implants: [ MindShieldImplant, DeathRattleImplantCentcomm, BluespaceLifelineImplant ] # Corvax-Wega-Add
@@ -208,21 +221,22 @@
   equipment:
     shoes: ClothingShoesBootsJackFilled
     head: ClothingHeadHelmetERTEngineer
+    outerClothing: ClothingOuterArmorBasicSlim # Corvax-Wega
     eyes: ClothingERTHud # Corvax-Wega-ERT
     gloves: ClothingHandsGlovesCombat # Corvax-Wega
-    outerClothing: ClothingOuterArmorBasicSlim # Corvax-Wega
     id: ERTEngineerPDA # Corvax-Wega
     ears: ClothingHeadsetAltCentCom # Corvax-Wega
     belt: ClothingBeltChiefEngineerFilled # Corvax-Wega
     pocket1: WeaponPistolMk58 # Corvax-Wega
     pocket2: GasAnalyzer # Corvax-Wega
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
+  # Corvax-Wega-ERT-start
   storage:
     back:
     - trayScanner
-    - CombatRCDExperimental # Corvax-Wega
-    - BorgGeneratorMaterialSteal # Corvax-Wega
-    - BorgGeneratorMaterialPlasteel # Corvax-Wega
+    - CombatRCDExperimental
+    - BorgGeneratorMaterialSteal
+    - BorgGeneratorMaterialPlasteel
     - RCDAmmo
     - RCDAmmo
     - CableMVStack
@@ -231,6 +245,7 @@
     - SheetPlasteel
     - SheetSteel
     - SheetGlass
+  # Corvax-Wega-ERT-end
 
 - type: startingGear
   id: ERTEngineerGearEVA
@@ -250,16 +265,18 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
+    # Corvax-Wega-ERT-start
     - trayScanner
-    - CombatRCDExperimental # Corvax-Wega
-    - BorgGeneratorMaterialSteal # Corvax-Wega
-    - BorgGeneratorMaterialPlasteel # Corvax-Wega
+    - CombatRCDExperimental
+    - BorgGeneratorMaterialSteal
+    - BorgGeneratorMaterialPlasteel
     - RCDAmmo
     - RCDAmmo
     - RCDAmmo
     - RCDAmmo
     - MetalFoamGrenade
     - AirGrenade
+    # Corvax-Wega-ERT-end
 
 - type: startingGear
   parent: ERTEngineerGearEVA
@@ -303,6 +320,7 @@
   - AllAccess
   access:
   - CentralCommand
+  - BlueShieldOfficer # Corwax-Wega-BSO-Access
   special:
   - !type:AddImplantSpecial
     implants: [ MindShieldImplant, DeathRattleImplantCentcomm, BluespaceLifelineImplant ] # Corvax-Wega-Add
@@ -316,6 +334,7 @@
     outerClothing: ClothingOuterArmorBasic
     pocket2: FlashlightSeclite
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
+  # Corvax-Wega-ERT-start
   storage:
     back:
     - WeaponDisabler
@@ -323,6 +342,7 @@
     - RegenerativeMesh
     - CombatCrowbar # Corvax-Wega-CombatCrowbar
     - MagazinePistol # Corvax-Wega-ERT
+  # Corvax-Wega-ERT-end
 
 - type: startingGear
   id: ERTSecurityGearEVA
@@ -342,12 +362,14 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
+    # Corvax-Wega-ERT-start
     - WeaponDisabler
     - MedicatedSuture
     - RegenerativeMesh
     - CombatCrowbar # Corvax-Wega-CombatCrowbar
     - MagazinePistol # Corvax-Wega-ERT
     - EmergencyMedipen
+    # Corvax-Wega-ERT-end
 
 - type: startingGear
   id: ERTSecurityGearArmedRifle
@@ -365,6 +387,7 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
+    # Corvax-Wega-ERT-start
     - WeaponDisabler
     - MedicatedSuture
     - RegenerativeMesh
@@ -373,6 +396,90 @@
     - MagazineRifle
     - CombatCrowbar # Corvax-Wega-CombatCrowbar
     - MagazinePistol # Corvax-Wega-ERT
+    - EmergencyMedipen
+    # Corvax-Wega-ERT-end
+
+- type: startingGear
+  parent: ERTSecurityGearEVA
+  id: ERTSecurityGearArmedGrenade
+  equipment:
+    pocket2: WeaponDisabler
+    suitstorage: WeaponLauncherHydraLethal
+  storage:
+    back:
+    - GrenadeBlast
+    - GrenadeBlast
+    - GrenadeBlast
+    - GrenadeBlast
+    - GrenadeBlast
+    - GrenadeBlast
+    - GrenadeFlash
+    - GrenadeFlash # End of first line
+    - GrenadeEMP
+    - GrenadeEMP
+    - GrenadeEMP
+    - MagazinePistol
+    - Truncheon
+    belt:
+    - Handcuffs
+    - CrowbarRed
+    - EmergencyMedipen
+    - WeaponPistolMk58
+    - MagazinePistol
+    - MagazinePistol
+    - MedkitCombatFilled
+
+- type: startingGear
+  parent: ERTSecurityGearEVA
+  id: ERTSecurityGearArmedVanguard
+  equipment:
+    pocket2: WeaponDisabler
+    suitstorage: WeaponSubMachineGunWt550
+  storage:
+    back:
+    - ExGrenade
+    - SmokeGrenade
+    - EmpGrenade
+    - TelescopicShield
+    - TelescopicShield # End of first line
+    - MedkitCombatFilled
+    - MagazinePistolSubMachineGunTopMounted
+    - MagazinePistolSubMachineGunTopMounted
+    - MagazinePistolSubMachineGunTopMounted
+    - MagazinePistolSubMachineGunTopMounted
+    - Truncheon
+    belt:
+    - Handcuffs
+    - Handcuffs
+    - CrowbarRed
+    - WeaponPistolMk58
+    - MagazinePistol
+    - EmergencyMedipen
+    - HoloprojectorSecurity
+
+- type: startingGear
+  parent: ERTSecurityGearEVA
+  id: ERTSecurityGearArmedShotgun
+  equipment:
+    pocket2: WeaponDisabler
+    suitstorage: WeaponShotgunEnforcer
+  storage:
+    back:
+    - SmokeGrenade
+    - BoxLethalshot
+    - BoxShotgunSlug
+    - BoxShotgunIncendiary
+    - MedkitCombatFilled # End of first line
+    - ExGrenade
+    - CableDetStack
+    - BoxDetonator
+    - Truncheon
+    belt:
+    - Handcuffs
+    - Handcuffs
+    - CrowbarRed
+    - WeaponPistolMk58
+    - MagazinePistol
     - EmergencyMedipen
 
 - type: chameleonOutfit
@@ -397,6 +504,7 @@
   - AllAccess
   access:
   - CentralCommand
+  - BlueShieldOfficer # Corwax-Wega-BSO-Access
   special:
   - !type:AddImplantSpecial
     implants: [ MindShieldImplant, DeathRattleImplantCentcomm, BluespaceLifelineImplant ] # Corvax-Wega-Add
@@ -407,24 +515,26 @@
   equipment:
     shoes: ClothingShoesBootsJackFilled
     head: ClothingHeadHelmetERTMedic
+    outerClothing: ClothingOuterArmorBasicSlim # Corvax-Wega
     eyes: ClothingERTHud # Corvax-Wega-ERT
     gloves: ClothingHandsGlovesLatexSurgeon # Corvax-Wega-Surgery
-    outerClothing: ClothingOuterArmorBasicSlim # Corvax-Wega
     id: ERTMedicPDA # Corvax-Wega
     ears: ClothingHeadsetAltCentCom # Corvax-Wega
     belt: ClothingBeltMedicalFilled # Corvax-Wega
     pocket1: WeaponPistolMk58 # Corvax-Wega
     pocket2: Hypospray # Corvax-Wega-ERT
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
+  # Corvax-Wega-ERT-start
   storage:
     back:
-    - SurgerykitFilledPro # Corvax-Wega-Surgery
-    - SyringeBluespace # Corvax-Wega-ERT
-    - MedkitAdvancedFilled # Corvax-Wega-ERT
-    - CombatCrowbar # Corvax-Wega-CombatCrowbar
+    - SurgerykitFilledPro
+    - SyringeBluespace
+    - MedkitAdvancedFilled
+    - CombatCrowbar
     - ChemistryBottleOmnizine
     - ChemistryBottleEpinephrine
     - ChemistryBottleEpinephrine
+  # Corvax-Wega-ERT-end
 
 - type: startingGear
   id: ERTMedicalGearEVA
@@ -444,13 +554,43 @@
     underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
   storage:
     back:
-    - SurgerykitFilledPro # Corvax-Wega-Surgery
-    - SyringeBluespace # Corvax-Wega-ERT
+    # Corvax-Wega-ERT-start
+    - SurgerykitFilledPro
+    - SyringeBluespace
     - MedkitCombatFilled
-    - CombatCrowbar # Corvax-Wega-CombatCrowbar
+    - CombatCrowbar
     - ChemistryBottleOmnizine
     - ChemistryBottleEpinephrine
     - ChemistryBottleEpinephrine
+    # Corvax-Wega-ERT-end
+
+- type: startingGear
+  parent: ERTMedicalGearEVA
+  id: ERTMedicalGearArmed
+  equipment:
+    suitstorage: WeaponRifleLecter
+    pocket2: WeaponDisabler
+  storage:
+    back:
+    - Hypospray
+    - JugPunctTranex
+    - JugPyraDerma
+    - JugDexPlusSaline
+    - JugTrico # End of first line
+    - BeakerSmallArith
+    - DefibrillatorCompact
+    - MedkitCombatFilled
+    - ClothingEyesGlassesChemical
+    - ChemistryBottleOmnizine
+    - Truncheon
+    belt:
+    - Zipties
+    - CrowbarRed
+    - MagazineRifle
+    - MagazineRifle
+    - MagazineRifleIncendiary
+    - MagazineRifleUranium # End of first line
+    - Zipties
 
 - type: chameleonOutfit
   id: ERTMedicalChameleonOutfit
@@ -474,6 +614,7 @@
   - AllAccess
   access:
   - CentralCommand
+  - BlueShieldOfficer # Corwax-Wega-BSO-Access
   special:
   - !type:AddImplantSpecial
     implants: [ MindShieldImplant, DeathRattleImplantCentcomm, BluespaceLifelineImplant ] # Corvax-Wega-Add
@@ -484,57 +625,47 @@
   equipment:
     shoes: ClothingShoesGaloshes
     head: ClothingHeadHelmetERTJanitor
-    gloves: ClothingHandsGlovesColorPurple # Corvax-Wega
-    outerClothing: ClothingOuterArmorBasicSlim # Corvax-Wega
-    id: ERTJanitorPDA # Corvax-Wega
-    ears: ClothingHeadsetAltCentCom # Corvax-Wega
-    belt: ClothingBeltJanitorFilled # Corvax-Wega
-    pocket1: WeaponPistolMk58 # Corvax-Wega
-    pocket2: Holoprojector # Corvax-Wega
-    underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
-  storage:
-    back:
-    - LightReplacerBorg # Corvax-Wega
-    - BoxTrashbag # Corvax-Wega
-    - CombatCrowbar # Corvax-Wega-CombatCrowbar
-    - WeaponLauncherHydra
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - AdvMopItem
+    outerClothing: ClothingOuterArmorBasic
+    pocket2: FlashlightSeclite
 
 - type: startingGear
   id: ERTJanitorGearEVA
   equipment:
     jumpsuit: ClothingUniformJumpsuitERTJanitor
     back: ClothingBackpackERTJanitor
-    shoes: ClothingShoesBootsMagCombat # Corvax-Wega-MagCombat
+    shoes: ClothingShoesBootsMagERT
     mask: ClothingMaskGasERT
-    eyes: ClothingERTHud # Corvax-Wega-ERT
+    eyes: ClothingEyesGlassesChemical
     gloves: ClothingHandsGlovesCombat
     outerClothing: ClothingOuterHardsuitERTJanitor
     id: ERTJanitorPDA
     ears: ClothingHeadsetAltCentCom
-    belt: ClothingBeltJanitorFilled # Corvax-Wega
-    pocket1: WeaponPistolMk58 # Corvax-Wega
-    pocket2: Holoprojector # Corvax-Wega
-    underwearbottom: ClothingUnderBottomHearts # Corvax-Wega
+    belt: ClothingBeltMilitaryWebbingERT
+    pocket2: CombatKnife
+    suitstorage: WeaponLauncherHydra
   storage:
     back:
-    - LightReplacerBorg # Corvax-Wega
-    - BoxTrashbag # Corvax-Wega
-    - CombatCrowbar # Corvax-Wega-CombatCrowbar
-    - WeaponLauncherHydra
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
-    - GrenadeCleanade # Corvax-Wega
+    - SoapNT
+    - Plunger
+    - Screwdriver
     - AdvMopItem
+    - GrenadeCleanade
+    - GrenadeCleanade # End of first line
+    - GrenadeCleanade
+    - GrenadeCleanade
+    - GrenadeCleanade
+    - GrenadeCleanade
+    belt:
+    - MegaSprayBottleSpaceCleaner
+    - Holoprojector
+    - LightReplacerFilled
+    - WireBrush
+    - CrowbarRed
+    - WeaponPistolMk58
+    - MagazinePistol
+    - EmergencyMedipen
+  inhand:
+  - TrashBag
 
 - type: chameleonOutfit
   id: ERTJanitorChameleonOutfit

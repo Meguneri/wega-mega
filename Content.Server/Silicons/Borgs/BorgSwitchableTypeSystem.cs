@@ -1,4 +1,4 @@
-﻿using Content.Server.Inventory;
+using Content.Server.Inventory;
 using Content.Shared.Inventory;
 using Content.Shared.Radio.Components;
 using Content.Shared.Silicons.Borgs;
@@ -18,7 +18,7 @@ public sealed partial class BorgSwitchableTypeSystem : SharedBorgSwitchableTypeS
 
     protected override void SelectBorgModule(Entity<BorgSwitchableTypeComponent> ent, ProtoId<BorgTypePrototype> borgType)
     {
-        var prototype = Prototypes.Index(borgType);
+        var prototype = ProtoMan.Index(borgType);
 
         // Assign radio channels
         string[] radioChannels = [.. ent.Comp.InherentRadioChannels, .. prototype.RadioChannels];
@@ -59,8 +59,13 @@ public sealed partial class BorgSwitchableTypeSystem : SharedBorgSwitchableTypeS
             }
         }
 
+        // Corvax-Wega-start
+        if (prototype.Lawset is { } law)
+            ChangeLaw(ent, law);
+        // Corvax-Wega-end
+
         // Configure special components
-        if (Prototypes.Resolve(ent.Comp.SelectedBorgType, out var previousPrototype))
+        if (ProtoMan.Resolve(ent.Comp.SelectedBorgType, out var previousPrototype))
         {
             if (previousPrototype.AddComponents is { } removeComponents)
                 EntityManager.RemoveComponents(ent, removeComponents);

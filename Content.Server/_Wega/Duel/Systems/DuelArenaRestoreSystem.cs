@@ -46,7 +46,7 @@ public sealed partial class DuelArenaRestoreSystem : EntitySystem
     [Dependency] private PoweredLightSystem _poweredLight = default!;
     [Dependency] private DecalSystem _decals = default!;
     [Dependency] private SharedContainerSystem _container = default!;
-    [Dependency] private IMapManager _mapManager = default!;
+    [Dependency] private MapSystem _mapManager = default!;
 
     /// <summary>
     /// Заякоренная сущность — восстанавливаемая конструкция карты (её можно пересоздать по снимку).

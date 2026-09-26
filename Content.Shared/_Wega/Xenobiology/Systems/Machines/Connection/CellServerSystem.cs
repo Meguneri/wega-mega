@@ -25,8 +25,13 @@ public sealed partial class CellServerSystem : EntitySystem
         // ToArray: UnregisterClient удаляет из Clients — нельзя итерировать список, меняя его.
         foreach (var client in ent.Comp.Clients.ToArray())
         {
-            UnregisterClient((ent, ent), client);
+            if (Exists(client) && HasComp<CellClientComponent>(client))
+            {
+                UnregisterClient((ent.Owner, ent.Comp), (client, null));
+            }
         }
+
+        ent.Comp.Clients.Clear();
     }
 
     public IEnumerable<Entity<CellServerComponent>> GetServers()

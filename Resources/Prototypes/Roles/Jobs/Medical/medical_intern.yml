@@ -11,6 +11,7 @@
   startingGear: MedicalInternGear
   icon: "JobIconMedicalIntern"
   supervisors: job-supervisors-medicine
+  guides: [ Medical ] # TODO: should have a more specific guidebook page instead of using the department itself
   access:
   - Medical
   - Maintenance
@@ -18,7 +19,7 @@
 - type: startingGear
   id: MedicalInternGear
   equipment:
-    shoes: ClothingShoesColorWhite
+    # shoes: ClothingShoesColorWhite # Corvax-Wega-Edit
     id: MedicalInternPDA
     ears: ClothingHeadsetMedical
     pocket2: BookMedicalReferenceBook

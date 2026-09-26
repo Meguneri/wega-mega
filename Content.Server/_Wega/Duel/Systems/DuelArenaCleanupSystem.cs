@@ -1,7 +1,6 @@
 using System.Linq;
 using Content.Server._Wega.Duel.Components;
 using Content.Shared._Wega.Duel.Components;
-using Content.Server.Botany.Components;
 using Content.Server.Chat.Managers;
 using Content.Server.Construction.Components;
 using Content.Server.Spawners.Components;
@@ -38,6 +37,7 @@ using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
 using Robust.Shared.Placement;
 using Robust.Shared.Prototypes;
+using Robust.Server.GameObjects;
 
 namespace Content.Server._Wega.Duel.Systems;
 
@@ -58,7 +58,7 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
     [Dependency] private SpawnerSystem _spawner = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private TagSystem _tag = default!;
-    [Dependency] private IMapManager _mapManager = default!;
+    [Dependency] private MapSystem _mapManager = default!;
 
     private static readonly ProtoId<TagPrototype> SheetTag = "Sheet";
     private static readonly ProtoId<TagPrototype> SoapTag = "Soap";
@@ -300,7 +300,7 @@ public sealed partial class DuelArenaCleanupSystem : EntitySystem
 
     /// <summary>
     /// Стоит ли сущность над гридом активной арены (весь грид, а не радиус). Грид определяется по
-    /// мировой позиции цели через <see cref="IMapManager.TryFindGridAt"/>, поэтому не зависит от
+    /// мировой позиции цели через <see cref="MapSystem.TryFindGridAt"/>, поэтому не зависит от
     /// её собственного GridUid — нужно для предметов, заспавненных по MapCoordinates (обмылки
     /// кластерного мыла), у которых грид на момент старта ещё не разрешён. В космосе (у арены нет
     /// грида) откатываемся на радиус <see cref="DuelArenaComponent.ScanRange"/>.

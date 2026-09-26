@@ -1,4 +1,4 @@
-﻿- type: antagSpecifier
+- type: antagSpecifier
   abstract: true
   id: BaseAntagSpecifier
   jobBlacklist:
@@ -79,3 +79,5 @@
   abstract: true
   parent: [ MindshieldRestrictedAntag, CyborgBlacklistedAntag, InternBlacklistedAntag ]
   id: RestrictedAntag
+  jobBlacklist:
+  - TramDriver

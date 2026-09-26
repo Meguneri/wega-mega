@@ -1,4 +1,16 @@
 - type: latheRecipe
+  id: BaseCommandModule
+  abstract: true
+  categories:
+    - Modules
+  materials:
+    Steel: 750
+    Glass: 300
+    Plastic: 300
+    Gold: 300
+    Diamond: 100
+
+- type: latheRecipe
   parent: BaseGoldBorgModuleRecipe
   id: BorgModuleSurgery
   result: BorgModuleSurgery
@@ -87,6 +99,11 @@
   parent: BaseBorgModuleRecipe
   id: BorgModuleCommonSpeed
   result: BorgModuleCommonSpeed
+  materials:
+    Steel: 500
+    Glass: 500
+    Plastic: 250
+    Diamond: 50
 
 - type: latheRecipe
   parent: BaseBorgModuleRecipe
@@ -120,13 +137,53 @@
 
 - type: latheRecipe
   parent: BaseGoldBorgModuleRecipe
-  id: BorgModuleSheild
-  result: BorgModuleSheild
+  id: ModuleSelectorSheild
+  result: ModuleSelectorSheild
 
 - type: latheRecipe
   parent: BaseGoldBorgModuleRecipe
   id: BorgModuleGranader
   result: BorgModuleGranader
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleCommonHand
+  result: BorgModuleCommonHand
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleServiceRare
+  result: BorgModuleServiceRare
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleCleanerRare
+  result: BorgModuleCleanerRare
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleCargoRare
+  result: BorgModuleCargoRare
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleEngenerRare
+  result: BorgModuleEngenerRare
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleSecRare
+  result: BorgModuleSecRare
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleScienceRND
+  result: BorgModuleScienceRND
+
+- type: latheRecipe
+  parent: BaseCommandModule
+  id: BorgModuleMedicalRare
+  result: BorgModuleMedicalRare
 
 - type: latheRecipe
   id: ModuleCommand

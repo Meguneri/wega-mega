@@ -15,12 +15,14 @@ using Robust.Shared.Random;
 using Content.Shared.Blood.Brother;
 using Content.Server.Roles;
 using Content.Server.Objectives.Systems;
+using Content.Shared.Antag;
+using Content.Shared.GameTicking.Rules;
 
 namespace Content.Server.GameTicking.Rules;
 
 public sealed partial class BloodBrotherRuleSystem : GameRuleSystem<BloodBrotherRuleComponent>
 {
-    [Dependency] private AntagSelectionSystem _antag = default!;
+    [Dependency] private ServerAntagSelectionSystem _antag = default!;
     [Dependency] private SharedJobSystem _jobs = default!;
     [Dependency] private MindSystem _mindSystem = default!;
     [Dependency] private NpcFactionSystem _npcFaction = default!;
@@ -165,6 +167,12 @@ public sealed partial class BloodBrotherRuleSystem : GameRuleSystem<BloodBrother
 
     private void CreateBloodBrotherPairInternal(EntityUid mindId1, EntityUid mindId2, Entity<BloodBrotherRuleComponent> component)
     {
+        if (component.Comp.BloodBrotherPairs.ContainsKey(mindId1) && component.Comp.BloodBrotherPairs[mindId1] == mindId2)
+            return;
+
+        if (component.Comp.BloodBrotherPairs.ContainsKey(mindId2) && component.Comp.BloodBrotherPairs[mindId2] == mindId1)
+            return;
+
         component.Comp.BloodBrotherPairs[mindId1] = mindId2;
         component.Comp.BloodBrotherPairs[mindId2] = mindId1;
 
@@ -176,6 +184,8 @@ public sealed partial class BloodBrotherRuleSystem : GameRuleSystem<BloodBrother
     {
         if (!TryComp<MindComponent>(mindId, out var mind) || mind.OwnedEntity == null)
             return;
+
+        RemoveBloodBrotherRole(mindId);
 
         _roleSystem.MindAddRole(mindId, component.BloodBrotherPrototypeId, silent: true);
         _roleSystem.MindHasRole<BloodBrotherRoleComponent>(mindId, out var bloodBrotherRole);
@@ -207,6 +217,14 @@ public sealed partial class BloodBrotherRuleSystem : GameRuleSystem<BloodBrother
             _npcFaction.RemoveFaction(mind.OwnedEntity.Value, component.NanoTrasenFaction, false);
             _npcFaction.AddFaction(mind.OwnedEntity.Value, component.SyndicateFaction);
         }
+    }
+
+    private void RemoveBloodBrotherRole(EntityUid mindId)
+    {
+        if (!TryComp<MindComponent>(mindId, out var mind))
+            return;
+
+        _roleSystem.MindRemoveRole<BloodBrotherRoleComponent>((mindId, mind));
     }
 
     private void SendFullBriefing(EntityUid mindId, EntityUid brotherMindId, BloodBrotherRuleComponent component)

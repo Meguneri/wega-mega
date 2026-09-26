@@ -1,4 +1,5 @@
 using Content.Shared.Blocking;
+using Content.Shared.Blocking.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Popups;
 using Content.Shared.Weapons.Melee.Events;
@@ -29,9 +30,7 @@ public sealed partial class ParryRiposteSystem : EntitySystem
     private void OnBlockerAttacked(EntityUid uid, BlockingUserComponent component, AttackedEvent args)
     {
         if (component.BlockingItem is not { } item
-            || !TryComp<ParryRiposteComponent>(item, out var parry)
-            || !TryComp<BlockingComponent>(item, out var blocking)
-            || !blocking.IsBlocking)
+            || !TryComp<ParryRiposteComponent>(item, out var parry))
         {
             return;
         }
