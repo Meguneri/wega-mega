@@ -54,6 +54,11 @@
   components:
   - type: Sprite
     sprite: _Wega/Clothing/Head/Hardsuits/dreadnought.rsi
+    layers:
+    - state: icon
+    - state: icon-flash
+      visible: false
+      map: [ "light" ]
   - type: Clothing
     sprite: _Wega/Clothing/Head/Hardsuits/dreadnought.rsi
   - type: PointLight

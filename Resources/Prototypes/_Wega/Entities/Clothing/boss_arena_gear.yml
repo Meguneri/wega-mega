@@ -25,7 +25,7 @@
     damageCoefficient: 0.7
 
 - type: entity
-  parent: ClothingHeadHelmetBasic
+  parent: [BaseCorvaxContraband432DepartmentsSecurity, ClothingHeadHelmetArmoredBase, BaseSecurityContraband]
   id: ClothingHeadHelmetBossArena
   components:
   - type: Sprite
@@ -38,7 +38,7 @@
   id: ClothingUniformJumpsuitBossArena
   components:
   - type: Sprite
-    sprite: Clothing/Uniforms/Jumpsuit/color.rsi
+    sprite: Clothing/Uniforms/Jumpsuits/Color/color.rsi
     layers:
     - state: icon
       color: "#7d1119"
@@ -54,7 +54,7 @@
         color: "#7d1119"
       - state: trinkets-inhand-right
   - type: Clothing
-    sprite: Clothing/Uniforms/Jumpsuit/color.rsi
+    sprite: Clothing/Uniforms/Jumpsuits/Color/color.rsi
     clothingVisuals:
       jumpsuit:
       - state: equipped-INNERCLOTHING

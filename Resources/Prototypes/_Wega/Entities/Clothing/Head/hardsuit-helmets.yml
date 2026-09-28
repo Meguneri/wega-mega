@@ -147,6 +147,11 @@
   - type: BreathMask
   - type: Sprite
     sprite: _Wega/Clothing/Head/Hardsuits/spacemarine.rsi
+    layers:
+    - state: icon
+    - state: icon-flash
+      visible: false
+      map: [ "light" ]
   - type: Clothing
     sprite: _Wega/Clothing/Head/Hardsuits/spacemarine.rsi
   - type: PointLight

@@ -500,7 +500,8 @@
     - id: BasicTrashVariationPass
     - id: SolidWallRustingVariationPass
     - id: ReinforcedWallRustingVariationPass
-    - id: BaseStationEventGhostBarSpawn # Corvax-Wega-GhostBar
+    # В карте призрачного бара повторяются UID сущностей; до исправления карты
+    # не загружаем её при старте каждого раунда.
     - id: CutWireVariationPass
     - id: BasicPuddleMessVariationPass
       prob: 0.99

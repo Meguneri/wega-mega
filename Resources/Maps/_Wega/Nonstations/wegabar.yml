@@ -33010,7 +33010,6 @@ entities:
     - type: Transform
       parent: 2
       pos: -41.522667,-3.8912792
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 1461
