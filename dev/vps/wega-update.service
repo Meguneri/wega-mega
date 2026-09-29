@@ -1,0 +1,11 @@
+[Unit]
+Description=Build and deploy Wega Mega updates when server is empty
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Nice=10
+CPUWeight=10
+ExecStart=/usr/local/sbin/wega-update
+TimeoutStartSec=3600

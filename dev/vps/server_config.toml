@@ -1,0 +1,28 @@
+[net]
+port = 1212
+bindto = "0.0.0.0"
+tickrate = 30
+max_connections = 64
+
+[status]
+enabled = true
+
+[game]
+hostname = "Wega Mega"
+
+[auth]
+mode = 1
+allowlocal = false
+
+[hub]
+advertise = false
+
+[console]
+loginlocal = false
+
+[database]
+engine = "sqlite"
+sqlite_dbpath = "preferences.db"
+
+[log]
+enabled = false

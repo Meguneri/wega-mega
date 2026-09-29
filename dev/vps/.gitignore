@@ -1,0 +1,6 @@
+.cache/
+__pycache__/
+*.db
+*.db-*
+*.tar.gz
+*.local.*

@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Wega Mega Git updates every 10 minutes
+
+[Timer]
+OnBootSec=10min
+OnUnitInactiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
