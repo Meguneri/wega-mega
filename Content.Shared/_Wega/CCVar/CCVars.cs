@@ -12,6 +12,9 @@ public sealed partial class WegaCVars
     public static readonly CVarDef<string> UpdateNoticeFile =
         CVarDef.Create("wega.update_notice_file", "", CVar.SERVERONLY);
 
+    public static readonly CVarDef<bool> DisableHumanoidSatiation =
+        CVarDef.Create("wega.disable_humanoid_satiation", false, CVar.SERVERONLY);
+
     public static readonly CVarDef<bool> PostProcess =
         CVarDef.Create("graphics.post_process", true, CVar.CLIENTONLY | CVar.ARCHIVE);
 

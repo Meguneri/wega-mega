@@ -89,6 +89,10 @@ curl --fail http://127.0.0.1:1212/info
 Адрес лаунчера: `ss14://NEW_VPS_IP:1212`; проверить вход и персонажей обоих аккаунтов.
 В `wega.allowed_account_ids` разрешены только подтверждённые ID Meguneri и
 arhont1234; административные права не дают обхода этого списка.
+`wega.disable_humanoid_satiation` убирает голод и жажду у гуманоидов, включая
+уже созданных. `shuttle.auto_call_time = 0`, `viewport.maximum_width = 29` и
+`events.enabled = false` сохранены в конфигурации и применяются после ручного
+перезапуска игры.
 
 ## Проверки набора без VPS
 
