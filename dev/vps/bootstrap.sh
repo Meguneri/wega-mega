@@ -55,6 +55,7 @@ if [ -f "$stage/wega-release.tar.gz" ]; then
 fi
 chown -R wega:wega /opt/wega/repository /opt/wega/releases /var/lib/wega
 install -m 750 "$stage/update.sh" /usr/local/sbin/wega-update
+install -m 750 "$stage/install-release.sh" /usr/local/sbin/wega-install-release
 install -m 640 -o root -g wega "$stage/server_config.toml" /etc/wega/server_config.toml
 printf 'WEGA_BRANCH=%q\n' "$branch" > /etc/wega/deploy.env
 chmod 600 /etc/wega/deploy.env
@@ -66,5 +67,5 @@ for unit in wega.service wega-update.service wega-update.timer; do
 done
 systemctl daemon-reload
 systemctl enable wega.service
-/usr/local/sbin/wega-update
+/usr/local/sbin/wega-install-release
 systemctl enable --now wega-update.timer

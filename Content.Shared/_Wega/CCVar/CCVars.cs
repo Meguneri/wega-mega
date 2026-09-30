@@ -6,6 +6,12 @@ namespace Content.Shared.CCVar;
 [CVarDefs]
 public sealed partial class WegaCVars
 {
+    public static readonly CVarDef<string> AllowedAccountIds =
+        CVarDef.Create("wega.allowed_account_ids", "", CVar.SERVERONLY);
+
+    public static readonly CVarDef<string> UpdateNoticeFile =
+        CVarDef.Create("wega.update_notice_file", "", CVar.SERVERONLY);
+
     public static readonly CVarDef<bool> PostProcess =
         CVarDef.Create("graphics.post_process", true, CVar.CLIENTONLY | CVar.ARCHIVE);
 

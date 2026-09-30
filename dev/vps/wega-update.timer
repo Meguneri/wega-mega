@@ -1,5 +1,5 @@
 [Unit]
-Description=Check Wega Mega Git updates every 10 minutes
+Description=Notify Wega Mega of Git updates every 10 minutes without applying them
 
 [Timer]
 OnBootSec=10min

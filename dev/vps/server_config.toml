@@ -24,5 +24,9 @@ loginlocal = false
 engine = "sqlite"
 sqlite_dbpath = "preferences.db"
 
+[wega]
+allowed_account_ids = "CE5DA150-683B-4EAE-9B2E-59DEC887F527,A79BC02F-A745-4D2A-AEAF-2D5D612F93A2"
+update_notice_file = "/var/lib/wega/data/update-pending"
+
 [log]
 enabled = false

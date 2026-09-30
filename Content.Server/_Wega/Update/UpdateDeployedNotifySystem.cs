@@ -1,64 +1,57 @@
 using System.IO;
-using System.Reflection;
+using System.Linq;
 using Content.Server.Chat.Managers;
+using Content.Shared.CCVar;
+using Robust.Server.Player;
+using Robust.Shared.Configuration;
 using Robust.Shared.Timing;
 
 namespace Content.Server._Wega.Update;
 
 /// <summary>
-/// Замечает задеплоенное, но ещё не применённое обновление: раз в интервал сравнивает mtime
-/// серверной DLL на диске с тем, что было при старте процесса. Пересобрали билд поверх работающего
-/// сервера (git pull + dotnet build) — в общий чат уходит анонс «обновление загружено, применится
-/// после перезапуска». Повторная пересборка даст новый анонс (базовая метка сдвигается).
+/// Announces a pending Git update without installing it or restarting the round.
 /// </summary>
 public sealed partial class UpdateDeployedNotifySystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IChatManager _chat = default!;
+    [Dependency] private IConfigurationManager _cfg = default!;
+    [Dependency] private IPlayerManager _players = default!;
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(30);
-
-    private string? _assemblyPath;
-    private DateTime _baselineWriteTime;
     private TimeSpan _nextCheck;
-
-    public override void Initialize()
-    {
-        base.Initialize();
-
-        // Location пуст в single-file/собранных иначе сценариях — тогда система просто молчит.
-        var path = Assembly.GetExecutingAssembly().Location;
-        if (string.IsNullOrEmpty(path) || !File.Exists(path))
-            return;
-
-        _assemblyPath = path;
-        _baselineWriteTime = File.GetLastWriteTimeUtc(path);
-    }
+    private string? _announcedCommit;
 
     public override void Update(float frameTime)
     {
         base.Update(frameTime);
 
-        if (_assemblyPath == null || _timing.RealTime < _nextCheck)
+        if (_timing.RealTime < _nextCheck)
             return;
 
         _nextCheck = _timing.RealTime + CheckInterval;
+        var path = _cfg.GetCVar(WegaCVars.UpdateNoticeFile);
+        if (string.IsNullOrWhiteSpace(path) || _players.PlayerCount == 0)
+            return;
 
-        DateTime current;
+        string commit;
         try
         {
-            current = File.GetLastWriteTimeUtc(_assemblyPath);
+            commit = File.ReadAllText(path).Trim();
         }
         catch (IOException)
         {
-            // Файл в этот момент перезаписывается сборкой — проверим в следующий раз.
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
             return;
         }
 
-        if (current <= _baselineWriteTime)
+        if (commit.Length != 40 || !commit.All(Uri.IsHexDigit) || commit == _announcedCommit)
             return;
 
-        _baselineWriteTime = current;
-        _chat.DispatchServerAnnouncement(Loc.GetString("update-deployed-announcement"));
+        _announcedCommit = commit;
+        _chat.DispatchServerAnnouncement(Loc.GetString("update-available-announcement"));
     }
 }

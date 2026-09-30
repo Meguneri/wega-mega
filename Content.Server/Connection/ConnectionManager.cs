@@ -143,7 +143,6 @@ namespace Content.Server.Connection
 
             var addr = e.IP.Address;
             var userId = e.UserId;
-
             var serverId = (await _serverDbEntry.ServerEntity).Id;
 
             var hwid = e.UserData.GetModernHwid();
@@ -220,6 +219,16 @@ namespace Content.Server.Connection
             // Check if banned.
             var addr = e.IP.Address;
             var userId = e.UserId;
+            // Проверяем подтверждённый аккаунт до временных и админских обходов.
+            var allowedAccounts = _cfg.GetCVar(WegaCVars.AllowedAccountIds);
+            if (!string.IsNullOrWhiteSpace(allowedAccounts))
+            {
+                var allowed = e.AuthType == LoginType.LoggedIn &&
+                              allowedAccounts.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                                  .Any(id => Guid.TryParse(id, out var accountId) && accountId == userId.UserId);
+                if (!allowed)
+                    return (ConnectionDenyReason.Whitelist, Loc.GetString("whitelist-not-whitelisted"), null);
+            }
             ImmutableArray<byte>? hwId = e.UserData.HWId;
             if (hwId.Value.Length == 0 || !_cfg.GetCVar(CCVars.BanHardwareIds))
             {
