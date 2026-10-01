@@ -1,0 +1,4 @@
+- type: shader
+  id: WegaSubmerged
+  kind: source
+  path: "/Textures/Shaders/_Wega/submerged.swsl"
