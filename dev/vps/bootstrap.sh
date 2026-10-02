@@ -41,20 +41,22 @@ target=$(git -C /opt/wega/repository rev-parse HEAD)
 if [ -f "$stage/wega-release.tar.gz" ]; then
   (cd "$stage" && sha256sum -c wega-release.sha256)
   bundle_commit=$(tr -d '\r\n' < "$stage/wega-release.commit")
-  if [ "$bundle_commit" = "$target" ]; then
-    release=/opt/wega/releases/$target
-    install -d -m 755 "$release"
-    python3 -c 'import tarfile,sys; t=tarfile.open(sys.argv[1]); t.extractall(sys.argv[2],filter="data")' "$stage/wega-release.tar.gz" "$release"
-    test -f "$release/bin/Content.Server/Content.Server.dll"
-    test -f "$release/bin/Content.Client/Content.Client.dll"
-    test -d "$release/Resources"
-    touch "$release/.build-complete"
-  else
-    echo 'Cached bundle is for another commit; compiling the requested branch instead.'
-  fi
+  [[ "$bundle_commit" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid bundle commit.' >&2; exit 1; }
+  # Сборка работающего сервера может отставать от Git: берём именно её коммит.
+  git -C /opt/wega/repository fetch --depth 1 origin "$bundle_commit"
+  git -C /opt/wega/repository cat-file -e "$bundle_commit^{commit}"
+  target=$bundle_commit
+  release=/opt/wega/releases/$target
+  install -d -m 755 "$release"
+  python3 -c 'import tarfile,sys; t=tarfile.open(sys.argv[1]); t.extractall(sys.argv[2],filter="data")' "$stage/wega-release.tar.gz" "$release"
+  test -f "$release/bin/Content.Server/Content.Server.dll"
+  test -f "$release/bin/Content.Client/Content.Client.dll"
+  test -d "$release/Resources"
+  touch "$release/.build-complete"
 fi
 chown -R wega:wega /opt/wega/repository /opt/wega/releases /var/lib/wega
 install -m 750 "$stage/update.sh" /usr/local/sbin/wega-update
+install -m 750 "$stage/apply-pending.sh" /usr/local/sbin/wega-apply-pending
 install -m 750 "$stage/install-release.sh" /usr/local/sbin/wega-install-release
 install -m 640 -o root -g wega "$stage/server_config.toml" /etc/wega/server_config.toml
 printf 'WEGA_BRANCH=%q\n' "$branch" > /etc/wega/deploy.env

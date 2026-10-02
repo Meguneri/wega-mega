@@ -40,3 +40,6 @@ enabled = false
 
 [log]
 enabled = false
+
+[chat]
+max_message_length = 16384

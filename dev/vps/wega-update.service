@@ -1,5 +1,5 @@
 [Unit]
-Description=Check Git for Wega Mega updates without installing them
+Description=Build Wega Mega updates for next server start
 Wants=network-online.target
 After=network-online.target
 
@@ -8,4 +8,4 @@ Type=oneshot
 Nice=10
 CPUWeight=10
 ExecStart=/usr/local/sbin/wega-update
-TimeoutStartSec=120
+TimeoutStartSec=infinity

@@ -1,9 +1,11 @@
 #!/bin/bash
-# Только ручная установка; не вызывать из таймера.
+# Сборка для следующего запуска либо ручная установка.
 set -euo pipefail
 umask 077
 exec 9>/run/lock/wega-update.lock
 flock -n 9 || exit 0
+prepare=false
+if [ "${1:-}" = "--prepare" ]; then prepare=true; shift; fi
 source /etc/wega/deploy.env
 repo=/opt/wega/repository
 export DOTNET_ROOT=/opt/dotnet
@@ -18,11 +20,11 @@ run_as_wega git -C "$repo" cat-file -e "$target^{commit}"
 release=/opt/wega/releases/$target
 old=$(readlink -f /opt/wega/current || true)
 if [ "$old" = "$release" ]; then
-  systemctl is-active --quiet wega.service || systemctl start wega.service
+  if ! $prepare; then systemctl is-active --quiet wega.service || systemctl start wega.service; fi
   exit 0
 fi
 # На небольшом VPS не отнимаем ресурсы компиляцией у подключённых игроков.
-if systemctl is-active --quiet wega.service; then
+if ! $prepare && systemctl is-active --quiet wega.service; then
   if ! python3 -c 'import json,urllib.request,sys; s=json.load(urllib.request.urlopen("http://127.0.0.1:1212/status",timeout=5)); sys.exit(0 if s["players"] == 0 else 1)'; then
     echo 'Players connected; refusing to install.' >&2
     exit 1
@@ -37,6 +39,16 @@ if [ ! -e "$release/.build-complete" ]; then
   run_as_wega /opt/dotnet/dotnet build "$release/Content.Client" -c Release -m:1 -p:UseSharedCompilation=false
   touch "$release/.build-complete"
 fi
+if $prepare; then
+  exec 8>/run/lock/wega-pending.lock
+  flock 8
+  ln -sfn "$release" /opt/wega/pending.next
+  mv -Tf /opt/wega/pending.next /opt/wega/pending
+  printf '%s\n' "$target" > /var/lib/wega/data/update-pending
+  chown wega:wega /var/lib/wega/data/update-pending
+  echo "Build ready for next server start: $target; running server unchanged."
+  exit 0
+fi
 # Не прерываем игру ради обновления.
 if systemctl is-active --quiet wega.service; then
   if ! python3 -c 'import json,urllib.request,sys; s=json.load(urllib.request.urlopen("http://127.0.0.1:1212/status",timeout=5)); sys.exit(0 if s["players"] == 0 else 1)'; then
@@ -45,6 +57,7 @@ if systemctl is-active --quiet wega.service; then
   fi
 fi
 systemctl stop wega.service
+rm -f -- /opt/wega/pending
 backup=""
 if [ -f /var/lib/wega/data/preferences.db ]; then
   backup=/var/lib/wega/backups/preferences.$(date -u +%Y%m%dT%H%M%SZ).db
