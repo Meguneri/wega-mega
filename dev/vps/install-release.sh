@@ -31,12 +31,43 @@ if ! $prepare && systemctl is-active --quiet wega.service; then
   fi
 fi
 if [ ! -e "$release/.build-complete" ]; then
+  reusable=""
+  # Карты, текстуры и скрипты деплоя не меняют игровые сборки и движок.
+  for marker in /opt/wega/releases/*/.build-complete; do
+    [ -f "$marker" ] || continue
+    candidate=${marker%/.build-complete}
+    base=${candidate##*/}
+    [[ "$base" =~ ^[0-9a-f]{40}$ ]] || continue
+    run_as_wega git -C "$repo" merge-base --is-ancestor "$base" "$target" || continue
+    compatible=true
+    changed=$(run_as_wega git -C "$repo" diff --name-only "$base" "$target")
+    while IFS= read -r path; do
+      [ -n "$path" ] || continue
+      case "$path" in
+        Resources/*|dev/*|*.md) ;;
+        *) compatible=false; break ;;
+      esac
+    done <<< "$changed"
+    if $compatible && [ -f "$candidate/bin/Content.Server/Content.Server.dll" ] &&
+       [ -f "$candidate/bin/Content.Client/Content.Client.dll" ]; then
+      reusable=$candidate
+      break
+    fi
+  done
   if [ ! -d "$release" ]; then
     run_as_wega git -C "$repo" worktree add --detach "$release" "$target"
   fi
-  run_as_wega git -C "$release" submodule update --init --recursive --depth 1
-  run_as_wega /opt/dotnet/dotnet build "$release/Content.Server" -c Release -m:1 -p:UseSharedCompilation=false
-  run_as_wega /opt/dotnet/dotnet build "$release/Content.Client" -c Release -m:1 -p:UseSharedCompilation=false
+  if [ -n "$reusable" ]; then
+    echo "Reusing verified binaries from $reusable; only resources/deployment changed."
+    # Ресурсы основного репозитория уже взяты из нового коммита через worktree.
+    # Движок неизменен; его ресурсы и бинарники копируем без ссылок на старый Git worktree.
+    run_as_wega tar -C "$reusable" --exclude=.git -cf - bin RobustToolbox |
+      run_as_wega tar -C "$release" -xf -
+  else
+    run_as_wega git -C "$release" submodule update --init --recursive --depth 1
+    run_as_wega /opt/dotnet/dotnet build "$release/Content.Server" -c Release -m:1 -p:UseSharedCompilation=false
+    run_as_wega /opt/dotnet/dotnet build "$release/Content.Client" -c Release -m:1 -p:UseSharedCompilation=false
+  fi
   touch "$release/.build-complete"
 fi
 if $prepare; then
