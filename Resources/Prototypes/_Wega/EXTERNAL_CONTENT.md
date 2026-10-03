@@ -157,6 +157,14 @@ Uplink-каталог Estação Pirata не переносился.
 
 Полы пака (`frostpunk/*.png`) — сгенерированы с нуля тем же скриптом, отдельной атрибуции не требуют.
 
+## Словарь проверки орфографии чата
+
+- Источник: https://github.com/danakt/russian-words, коммит `d68c007fe9260d2d40ce413f13f77335c5af1e62`.
+- Лицензия MIT, Copyright (c) 2020 Danakt Frost; полный текст в `Resources/_Wega/Spelling/LICENSE.txt`.
+- Словоформы преобразованы в компактный `Resources/_Wega/Spelling/russian.bin`
+  генератором `dev/generate_chat_dictionary.py`; формат и источник описаны рядом в README.md.
+- Прототипы и локализованные игровые названия не добавляются.
+
 ## Чего избегать
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.

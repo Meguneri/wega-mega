@@ -345,3 +345,5 @@ DEPLOY.md
 # (проверка Gatekeeper) — venv из homebrew-python решает. Создаётся локально:
 #   /opt/homebrew/bin/python3 -m venv dev/.venv-sprites && dev/.venv-sprites/bin/pip install pillow
 dev/.venv-sprites/
+# Локальные загрузки и журналы генераторов dev.
+/dev/.cache/

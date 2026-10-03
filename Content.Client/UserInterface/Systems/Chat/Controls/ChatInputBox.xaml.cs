@@ -34,7 +34,7 @@ public class ChatInputBox : PanelContainer
             MinWidth = 75
         };
         Container.AddChild(ChannelSelector);
-        Input = new HistoryLineEdit
+        Input = new Content.Client._Wega.Chat.SpellCheckingChatInput
         {
             Name = "Input",
             PlaceHolder = GetChatboxInfoPlaceholder(),
