@@ -248600,7 +248600,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 50.5,8.5
-      parent: 2
 - proto: SpawnPointPassenger
   entities:
   - uid: 30942
@@ -259277,7 +259276,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 43.700527,-24.265348
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 32642

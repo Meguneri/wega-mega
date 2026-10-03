@@ -51327,7 +51327,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 2.524221,-20.535118
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 2187

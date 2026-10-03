@@ -269855,7 +269855,6 @@ entities:
     - type: Transform
       parent: 2
       pos: -42.5,-11.5
-      parent: 2
 - proto: SpawnPointPassenger
   entities:
   - uid: 27719
@@ -280120,7 +280119,6 @@ entities:
       parent: 2
       rot: 3.141592653589793 rad
       pos: 10.964032,-13.186012
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 29011
@@ -280166,7 +280164,6 @@ entities:
     - type: Transform
       parent: 2
       pos: -13.588393,-4.5270324
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 29017

@@ -60365,7 +60365,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 3.5,2.5
-      parent: 2
 - proto: SpawnPointPassenger
   entities:
   - uid: 5371
