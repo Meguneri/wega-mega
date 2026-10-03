@@ -2,12 +2,30 @@
 import argparse
 from contextlib import closing
 import json
+import hashlib
 from pathlib import Path
 import re
 import sqlite3
 import urllib.parse
 import urllib.request
 import uuid
+
+
+def database_digest(db, excluded=()):
+    """Fingerprint every column of every table, including unknown future attributes."""
+    digest = hashlib.sha256()
+    tables = db.execute("SELECT name,sql FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
+    for name, schema in tables:
+        if name in excluded:
+            continue
+        quoted = '"' + name.replace('"', '""') + '"'
+        digest.update(repr((name, schema)).encode('utf-8'))
+        # Order does not depend on query planning or insertion order.
+        rows = sorted(repr(row) for row in db.execute(f'SELECT * FROM {quoted}'))
+        for row in rows:
+            digest.update(row.encode('utf-8'))
+            digest.update(b'\n')
+    return digest.hexdigest()
 
 
 def snapshot(source: Path, output: Path):
@@ -17,9 +35,13 @@ def snapshot(source: Path, output: Path):
         raise ValueError(f"Refusing to overwrite: {output}")
     with closing(sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True)) as src:
         with closing(sqlite3.connect(output)) as dst:
+            # Pin the source snapshot while the live server continues writing to WAL.
+            src.execute("BEGIN")
             src.backup(dst)
             if dst.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("SQLite integrity check failed")
+            if database_digest(src) != database_digest(dst):
+                raise ValueError("Database snapshot lost or changed data")
 
 
 def prepare(source: Path, output: Path, admins: list[str], flags_path: Path, lookup):
@@ -29,6 +51,8 @@ def prepare(source: Path, output: Path, admins: list[str], flags_path: Path, loo
         raise ValueError("Host flag missing from source")
     with closing(sqlite3.connect(output)) as db, db:
         db.execute("PRAGMA foreign_keys=ON")
+        excluded = ('admin', 'admin_flag', 'sqlite_sequence')
+        attributes_before = database_digest(db, excluded)
         owners = db.execute("SELECT p.user_id,u.last_seen_user_name,COUNT(c.profile_id) FROM preference p LEFT JOIN player u ON u.user_id=p.user_id LEFT JOIN profile c ON c.preference_id=p.preference_id GROUP BY p.preference_id").fetchall()
         accounts = {}
         for uid, name, count in owners:
@@ -54,6 +78,8 @@ def prepare(source: Path, output: Path, admins: list[str], flags_path: Path, loo
             print(f"{name}: all {len(flags)} admin flags")
         if db.execute("PRAGMA foreign_key_check").fetchall():
             raise ValueError("Foreign key check failed")
+        if database_digest(db, excluded) != attributes_before:
+            raise ValueError("Character or other non-admin data changed during preparation")
 
 
 def lookup_account(name):

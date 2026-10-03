@@ -50,6 +50,28 @@ class DatabaseTransferTests(unittest.TestCase):
             snapshot(self.source, self.output)
         self.assertEqual(original, self.output.read_bytes())
 
+    def test_all_attributes_and_related_tables_survive_preparation(self):
+        self.db.executescript("""
+            ALTER TABLE profile ADD COLUMN height REAL;
+            ALTER TABLE profile ADD COLUMN appearance TEXT;
+            ALTER TABLE profile ADD COLUMN description TEXT;
+            ALTER TABLE profile ADD COLUMN future_attribute BLOB;
+            CREATE TABLE profile_traits(profile_id INTEGER, trait TEXT);
+            CREATE TABLE profile_loadouts(profile_id INTEGER, loadout TEXT);
+        """)
+        self.db.execute("UPDATE profile SET height=?,appearance=?,description=?,future_attribute=?",
+                        (185.3300018310547, '{"markings":["custom"]}', 'Full description', b'\x00\xff'))
+        self.db.execute("INSERT INTO profile_traits VALUES(1,'CustomTrait')")
+        self.db.execute("INSERT INTO profile_loadouts VALUES(1,'CustomLoadout')")
+        self.db.commit()
+        tables = ('profile', 'profile_traits', 'profile_loadouts', 'preference', 'player')
+        before = {table: self.db.execute(f'SELECT * FROM {table}').fetchall() for table in tables}
+        prepare(self.source, self.output, ["Meguneri"], self.flags,
+                lambda _: {"userId": UID.lower(), "userName": "Meguneri"})
+        with closing(sqlite3.connect(self.output)) as copy:
+            for table in tables:
+                self.assertEqual(copy.execute(f'SELECT * FROM {table}').fetchall(), before[table], table)
+
     def test_wrong_account_id_aborts_before_granting_rights(self):
         with self.assertRaisesRegex(ValueError, "offline ID differs"):
             prepare(self.source, self.output, ["Meguneri"], self.flags,
