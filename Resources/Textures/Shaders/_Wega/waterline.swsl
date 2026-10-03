@@ -1,0 +1,11 @@
+light_mode unshaded;
+
+uniform highp float waterline;
+const highp float alphaModifier = 0.2;
+
+void fragment()
+{
+    highp vec4 tex = zTexture(UV);
+    highp float modifier = SCREEN_UV.y > waterline ? 1.0 : alphaModifier;
+    COLOR = vec4(tex.rgb * modifier, tex.a * modifier);
+}

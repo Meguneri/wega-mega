@@ -2,3 +2,8 @@
   id: WegaSubmerged
   kind: source
   path: "/Textures/Shaders/_Wega/submerged.swsl"
+
+- type: shader
+  id: WegaWaterline
+  kind: source
+  path: "/Textures/Shaders/_Wega/waterline.swsl"

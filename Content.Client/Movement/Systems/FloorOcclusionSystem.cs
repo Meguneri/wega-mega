@@ -10,12 +10,13 @@ namespace Content.Client.Movement.Systems;
 
 public sealed partial class FloorOcclusionSystem : SharedFloorOcclusionSystem
 {
-    private static readonly ProtoId<ShaderPrototype> HorizontalCut = "HorizontalCut";
+    private static readonly ProtoId<ShaderPrototype> HorizontalCut = "WegaWaterline";
     private static readonly ProtoId<ShaderPrototype> Submerged = "WegaSubmerged";
 
     [Dependency] private EntityQuery<SpriteComponent> _spriteQuery = default!;
     [Dependency] private SpriteSystem _sprite = default!;
     [Dependency] private StandingStateSystem _standing = default!;
+    [Dependency] private SharedTransformSystem _transform = default!;
 
     public override void Initialize()
     {
@@ -27,6 +28,20 @@ public sealed partial class FloorOcclusionSystem : SharedFloorOcclusionSystem
         SubscribeLocalEvent<FloorOcclusionComponent, DownedEvent>(OnDowned);
         SubscribeLocalEvent<FloorOcclusionComponent, StoodEvent>(OnStood);
         SubscribeLocalEvent<FloorOcclusionComponent, AppearanceChangeEvent>(OnAppearanceChange);
+        SubscribeLocalEvent<FloorOcclusionComponent, BeforePostShaderRenderEvent>(OnShaderRender);
+    }
+
+    private void OnShaderRender(Entity<FloorOcclusionComponent> ent, ref BeforePostShaderRenderEvent args)
+    {
+        if (args.Id != ContentPostShaderIds.FloorOcclusion || _standing.IsDown(ent.Owner))
+            return;
+
+        // Уровень воды привязан к персонажу, а не к размеру временной текстуры постэффекта.
+        var position = _transform.GetWorldPosition(ent.Owner);
+        var center = args.Viewport.WorldToLocal(position);
+        var above = args.Viewport.WorldToLocal(position + System.Numerics.Vector2.UnitY);
+        var pixelsPerMeter = System.Numerics.Vector2.Distance(center, above);
+        args.Shader.SetParameter("waterline", 1f - (center.Y + 0.2f * pixelsPerMeter) / args.Viewport.Size.Y);
     }
 
     private void OnDowned(Entity<FloorOcclusionComponent> ent, ref DownedEvent args)
@@ -72,10 +87,11 @@ public sealed partial class FloorOcclusionSystem : SharedFloorOcclusionSystem
         if (enabled)
         {
             // Лёжа погружается весь силуэт, стоя — только нижняя часть тела.
-            var shader = ProtoMan.Index(_standing.IsDown(sprite.Owner) ? Submerged : HorizontalCut).Instance();
+            var shader = ProtoMan.Index(_standing.IsDown(sprite.Owner) ? Submerged : HorizontalCut).InstanceUnique();
             _sprite.SetPostShader(sprite, new SpriteComponent.PostShaderArgs(ContentPostShaderIds.FloorOcclusion, shader)
             {
                 Before = ContentPostShaderIds.BeforeOutlines,
+                RaiseShaderEvent = true,
             });
         }
         else
