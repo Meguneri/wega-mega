@@ -57,6 +57,7 @@ fi
 chown -R wega:wega /opt/wega/repository /opt/wega/releases /var/lib/wega
 install -m 750 "$stage/update.sh" /usr/local/sbin/wega-update
 install -m 750 "$stage/apply-pending.sh" /usr/local/sbin/wega-apply-pending
+install -m 750 "$stage/wait-update.sh" /usr/local/sbin/wega-wait-update
 install -m 750 "$stage/install-release.sh" /usr/local/sbin/wega-install-release
 install -m 640 -o root -g wega "$stage/server_config.toml" /etc/wega/server_config.toml
 printf 'WEGA_BRANCH=%q\n' "$branch" > /etc/wega/deploy.env

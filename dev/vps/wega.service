@@ -11,12 +11,14 @@ Group=wega
 WorkingDirectory=/opt/wega/current/bin/Content.Server
 Environment=DOTNET_ROOT=/opt/dotnet
 Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+ExecStartPre=+/usr/local/sbin/wega-wait-update
 ExecStartPre=+/usr/local/sbin/wega-apply-pending
 ExecStart=/opt/dotnet/dotnet /opt/wega/current/bin/Content.Server/Content.Server.dll --config-file /etc/wega/server_config.toml --data-dir /var/lib/wega/data
 Restart=always
 RestartSec=5
 KillSignal=SIGINT
 TimeoutStopSec=90
+TimeoutStartSec=infinity
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true

@@ -20,7 +20,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Database preparation failed; nothing sent to V
 $sshArgs = @('-i', $key, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes')
 & ssh @sshArgs "root@$Vps" 'test ! -e /var/lib/wega/data/preferences.db && test ! -e /etc/wega/deploy.env && install -d -m 700 /root/wega-deploy'
 if ($LASTEXITCODE -ne 0) { throw 'VPS is inaccessible or already deployed; refusing to overwrite it.' }
-$files = @('bootstrap.sh','update.sh','install-release.sh','apply-pending.sh','wega.service','wega-update.service','wega-update.timer') | ForEach-Object { Join-Path $PSScriptRoot $_ }
+$files = @('bootstrap.sh','update.sh','install-release.sh','apply-pending.sh','wait-update.sh','wega.service','wega-update.service','wega-update.timer') | ForEach-Object { Join-Path $PSScriptRoot $_ }
 $files = foreach ($file in $files) {
     $destination = Join-Path $stage ([IO.Path]::GetFileName($file))
     $text = [IO.File]::ReadAllText($file).Replace("`r`n", "`n")
