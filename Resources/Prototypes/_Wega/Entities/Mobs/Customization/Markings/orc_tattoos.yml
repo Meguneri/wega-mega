@@ -1,0 +1,38 @@
+# Порт Aavikko-2.0, ffa8f45cce560f8dfda71384de4fb0638a4eaaff (MIT).
+# Изменения Wega: совместимость с телом, ростом и открытыми ассетами нашего билда.
+# Tattoos Head
+- type: marking
+  id: OrcTagarsSign
+  bodyPart: Head
+  groupWhitelist: [ Orc ]
+  coloring:
+    default:
+      type: !type:TattooColoring
+      fallbackColor: "#666666"
+  sprites:
+  - sprite: _Wega/Mobs/Customization/Orc/orc_tattoos.rsi
+    state: orc_tagars_sign
+
+- type: marking
+  id: OrcSign1
+  bodyPart: Head
+  groupWhitelist: [ Orc ]
+  coloring:
+    default:
+      type: !type:TattooColoring
+      fallbackColor: "#666666"
+  sprites:
+  - sprite: _Wega/Mobs/Customization/Orc/orc_tattoos.rsi
+    state: orc_sign_1
+
+- type: marking
+  id: OrcSign2
+  bodyPart: Head
+  groupWhitelist: [ Orc ]
+  coloring:
+    default:
+      type: !type:TattooColoring
+      fallbackColor: "#666666"
+  sprites:
+  - sprite: _Wega/Mobs/Customization/Orc/orc_tattoos.rsi
+    state: orc_sign_2

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Made by Nimfar11 (GitHub) for Space Station 14. Reptilian edit by Nairod(Github), vox edit by Flareguy | vulpkanin version made by Floofers Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-MASK-orc",
+      "directions": 4
+    }
+  ]
+}

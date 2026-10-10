@@ -1,0 +1,89 @@
+# Характеристики Aavikko-2.0 (MIT); открытые модели Wega вместо ограниченных оригинальных RSI.
+- type: Tag
+  id: OrcHardsuit
+
+- type: entity
+  parent: ClothingOuterHardsuitBase
+  id: ClothingOuterHardsuitOrcCadet
+  components:
+  - type: Sprite
+    sprite: Clothing/OuterClothing/Hardsuits/engineering.rsi
+  - type: Clothing
+    sprite: Clothing/OuterClothing/Hardsuits/engineering.rsi
+  - type: PressureProtection
+    highPressureMultiplier: 0.2
+    lowPressureMultiplier: 1000
+  - type: ExplosionResistance
+    damageCoefficient: 0.55
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.35
+        Slash: 0.35
+        Piercing: 0.55
+        Heat: 0.85
+        Radiation: 0
+        Caustic: 0.8
+  - type: ToggleableClothing
+    clothingPrototype: ClothingHeadHardsuitOrcCadet
+  - type: Tag
+    tags: [Hardsuit, OrcHardsuit, ModNotEquipable]
+
+- type: entity
+  parent: ClothingOuterHardsuitOrcCadet
+  id: ClothingOuterHardsuitOrcHead
+  components:
+  - type: Sprite
+    sprite: Clothing/OuterClothing/Hardsuits/capspace.rsi
+  - type: Clothing
+    sprite: Clothing/OuterClothing/Hardsuits/capspace.rsi
+  - type: ExplosionResistance
+    damageCoefficient: 0.25
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.35
+        Slash: 0.35
+        Piercing: 0.35
+        Heat: 0.6
+        Radiation: 0
+        Caustic: 0.7
+  - type: ToggleableClothing
+    clothingPrototype: ClothingHeadHardsuitOrcHead
+
+- type: entity
+  parent: ClothingHeadHardsuitBase
+  id: ClothingHeadHardsuitOrcCadet
+  categories: [HideSpawnMenu]
+  components:
+  - type: Sprite
+    sprite: Clothing/Head/Hardsuits/engineering.rsi
+    layers:
+    - state: icon
+  - type: Clothing
+    sprite: Clothing/Head/Hardsuits/engineering.rsi
+    clothingVisuals:
+      head:
+      - state: equipped-head
+  - type: PressureProtection
+    highPressureMultiplier: 0.08
+    lowPressureMultiplier: 1000
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.8
+        Slash: 0.8
+        Piercing: 0.8
+        Heat: 0.8
+  - type: Tag
+    tags: [OrcHardsuit]
+
+- type: entity
+  parent: ClothingHeadHardsuitOrcCadet
+  id: ClothingHeadHardsuitOrcHead
+  categories: [HideSpawnMenu]
+  components:
+  - type: Sprite
+    sprite: Clothing/Head/Hardsuits/capspace.rsi
+  - type: Clothing
+    sprite: Clothing/Head/Hardsuits/capspace.rsi

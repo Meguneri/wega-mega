@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Taken from Paradise at https://github.com/Henri215/Paradise/blob/27087670280de99e2fceb47194aad29a7b99b280/icons/obj/radio.dmi Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-EARS-orc",
+      "directions": 4
+    }
+  ]
+}

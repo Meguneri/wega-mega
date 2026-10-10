@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Taken from tgstation at commit https://github.com/tgstation/tgstation/commit/3d1a0a5b367a080c42fba0e85ce0382b2cbcb284 . Inhands were made for SS14 and available under the same license. Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-OUTERCLOTHING-orc",
+      "directions": 4
+    }
+  ]
+}

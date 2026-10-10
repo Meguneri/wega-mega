@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Drawn by Ubaser. Vox states made by Flareguy, modified from magboots.rsi, resprited by fazan_saverg (842350861123452948) on discord. Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-FEET-orc",
+      "directions": 4
+    },
+    {
+      "name": "on-equipped-FEET-orc",
+      "directions": 4
+    }
+  ]
+}

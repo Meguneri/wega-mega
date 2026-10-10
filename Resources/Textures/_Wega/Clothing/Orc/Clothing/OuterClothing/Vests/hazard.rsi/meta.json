@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Taken from tgstation at commit https://github.com/tgstation/tgstation/commit/c838ba21dae97db345e0113f99596decd1d66039. Vox state made by Flareguy for Space Station 14. Modified and splited into shaded-unshaded states by kosticia. Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-OUTERCLOTHING-orc",
+      "directions": 4
+    },
+    {
+      "name": "equipped-OUTERCLOTHING-unshaded-orc",
+      "directions": 4
+    }
+  ]
+}

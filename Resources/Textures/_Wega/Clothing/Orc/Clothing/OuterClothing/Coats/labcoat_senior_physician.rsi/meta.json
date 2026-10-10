@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Edit by Nairodian (github) of labcoat.rsi from Space-Station-14 at pull request https://github.com/space-wizards/space-station-14/pull/10758, resprite by muriexlol Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-OUTERCLOTHING-orc",
+      "directions": 4
+    },
+    {
+      "name": "open-equipped-OUTERCLOTHING-orc",
+      "directions": 4
+    }
+  ]
+}

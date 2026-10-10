@@ -1,0 +1,10 @@
+marking-OrcHairDread = Dreadlocks
+marking-OrcHairFather = Long hair
+marking-OrcHairMeganefor = Big afro
+marking-OrcHairMohawk = Mohawk
+marking-OrcHairNefor = Half shaved
+marking-OrcHairPolnoref = Pompadour
+marking-OrcHairRonin = Ronin
+marking-OrcHairVicing = Viking
+marking-OrcHairVip = Business
+marking-OrcHairWisdom = Wisdom

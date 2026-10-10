@@ -165,6 +165,41 @@ Uplink-каталог Estação Pirata не переносился.
   генератором `dev/generate_chat_dictionary.py`; формат и источник описаны рядом в README.md.
 - Прототипы и локализованные игровые названия не добавляются.
 
+## Орки Aavikko Avaruus
+
+- Источник: https://github.com/KoTiKo43/Aavikko-2.0, коммит
+  `ffa8f45cce560f8dfda71384de4fb0638a4eaaff`.
+- Код и прототипы источника — MIT; полный текст в `Resources/_Wega/Orc/LICENSE.txt`.
+  Тело орка — CC-BY-SA-3.0, автор QWERTY; атрибуция сохранена в RSI.
+- ID: `Orc` (species/markingsGroup), `OrcGreen`, `MobOrc`, `AppearanceOrc`,
+  семейство `OrganOrc*`, `NamesOrcFirst`, `NamesOrcLast`, `UnisexOrc`, `FemaleOrc`,
+  акцент `orc`, семейства `OrcHair*`/`OrcFacialHair*`, `OrcSign1`, `OrcSign2`, `OrcTagarsSign`,
+  `ClothingOuterHardsuitOrc{Cadet,Head}` и `ClothingHeadHardsuitOrc{Cadet,Head}`, тег `OrcHardsuit`.
+- Прототипы: `_Wega/Species/orc*.yml`, `_Wega/Body/Species/orc.yml`,
+  `_Wega/Entities/Mobs/Customization/Markings/orc*.yml`, `_Wega/Entities/Clothing/orc_hardsuits.yml`,
+  `_Wega/Datasets/Names/orc.yml`, `_Wega/Voice/orc.yml`, `_Wega/Accents/orc.yml`.
+- Текстуры: `Textures/_Wega/Mobs/Species/Orc/parts.rsi`,
+  `Textures/_Wega/Mobs/Customization/Orc/`, `Textures/_Wega/Clothing/Orc/`.
+  Открытые варианты обычной одежды сохраняют CC-BY-SA-3.0/CC0-1.0 и авторство исходных RSI.
+  Они подключаются клиентской системой, апстримные RSI не изменены.
+- Локализация: `Locale/{ru-RU,en-US}/_wega/{species,accessories,accents,datasets}/orc*`.
+  Есть русские имена/описания новой расы, органов и обоих скафандров.
+- Исходные причёски, бороды, татуировки и скафандры с `CLA with hosting restrictions`,
+  а также варианты одежды с CC-BY-NC **не перенесены**. Открытые альтернативы генерирует
+  `dev/gen_orc_customization.py` из наших CC-BY-SA RSI; геометрические лицевые метки — собственные CC0.
+  Это другие спрайты, а не перелицензирование оригиналов. Голос использует существующие звуки.
+- `dev/import_aavikko_orcs.py` воспроизводит импорт разрешённых оригинальных RSI с закреплённого
+  коммита. Для новой структуры формы переименованы пути Jumpsuit/Jumpskirt; незарегистрированные
+  PNG источника получают направления/анимацию обычного состояния того же исходного RSI.
+- Совместимость Wega: добавлены язык/уши/аппендикс и хирургия, пищевой метаболизм Animal,
+  рост 220–260 см (у создаваемого моба 226,5 см). Остальные характеристики сохранены из источника.
+  Недостающие исходные ключи акцента исключены, исправлены окончания первой группы глаголов;
+  акцент не затрагивает эмоуты. Голоса наследуют дополнительные эмоции Wega от человеческих голосов.
+  Замены слов выполняются за один проход с ограничением времени, чтобы длинные повторяющиеся
+  реплики не вызывали квадратичную обработку строк.
+  Клиентская точка подключения — две строки в `Content.Client/Clothing/ClientClothingSystem.cs`:
+  движок допускает только одну подписку на пару ClothingComponent/GetEquipmentVisualsEvent.
+
 ## Чего избегать
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Taken from /tg/station 13 at commit https://github.com/tgstation/tgstation/commit/3dbc8c3c121e3ade9158303c2819b47206b0f93d. inhand-left modified by K-Dynamic (github). Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-OUTERCLOTHING-orc",
+      "directions": 4
+    }
+  ]
+}

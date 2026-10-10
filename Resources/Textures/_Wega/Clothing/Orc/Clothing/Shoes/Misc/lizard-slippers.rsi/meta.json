@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Ducky Slippers base taken from ParadiseSS13 at commits https://github.com/ParadiseSS13/Paradise/commit/27edf99e063a31b87cab66c1e29e481ff6a4d88a, Lizard Plushie taken from tgstation at commit https://github.com/tgstation/tgstation/commit/b4f25333593f2550c6bf578d1a03aa9817b7a8fc, sprites by loodelin Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-FEET-orc",
+      "directions": 4
+    }
+  ]
+}

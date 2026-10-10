@@ -1,0 +1,23 @@
+# Порт Aavikko-2.0, ffa8f45cce560f8dfda71384de4fb0638a4eaaff (MIT).
+# Изменения Wega: совместимость с телом, ростом и открытыми ассетами нашего билда.
+- type: species
+  id: Orc
+  name: species-name-orc
+  roundStart: true
+  prototype: MobOrc
+  defaultSkinTone: "#188f0f"
+  dollPrototype: AppearanceOrc
+  skinColoration: OrcGreen
+  maleFirstNames: NamesOrcFirst
+  maleLastNames: NamesOrcLast
+  sexes:
+   - Male
+  minAge: 20
+  youngAge: 1000
+  oldAge: 2000
+  maxAge: 3350
+
+  minHeight: 220
+  maxHeight: 260
+  defaultSoundsBySex: [UnisexOrc, FemaleOrc, UnisexOrc]
+  voices: [UnisexOrc, FemaleOrc]

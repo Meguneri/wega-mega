@@ -1,0 +1,13 @@
+# Порт Aavikko-2.0, ffa8f45cce560f8dfda71384de4fb0638a4eaaff (MIT).
+# Изменения Wega: совместимость с телом, ростом и открытыми ассетами нашего билда.
+- type: localizedDataset
+  id: NamesOrcFirst
+  values:
+    prefix: names-orc-first-dataset-
+    count: 50
+
+- type: localizedDataset
+  id: NamesOrcLast
+  values:
+    prefix: names-orc-last-dataset-
+    count: 50

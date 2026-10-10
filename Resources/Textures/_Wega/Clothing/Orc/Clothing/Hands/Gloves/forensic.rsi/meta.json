@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Taken from paradise station at https://github.com/ss220-space/Paradise/blob/e13af16eec39b663112e014901960c89fb09ef8b/icons/obj/clothing/gloves.dmi. Inhand sprites by SeamLesss (Github) Orc variants ported from KoTiKo43/Aavikko-2.0 at ffa8f45cce560f8dfda71384de4fb0638a4eaaff for Wega.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "equipped-HAND-orc",
+      "directions": 4
+    }
+  ]
+}

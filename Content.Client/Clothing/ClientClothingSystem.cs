@@ -23,6 +23,7 @@ namespace Content.Client.Clothing;
 
 public sealed partial class ClientClothingSystem : ClothingSystem
 {
+    [Dependency] private Content.Client._Wega.Species.OrcClothingVisualsSystem _orcClothing = default!;
     public const string Jumpsuit = "jumpsuit";
 
     /// <summary>
@@ -180,6 +181,7 @@ public sealed partial class ClientClothingSystem : ClothingSystem
             }
         }
         // Corvax-Wega-UpgradableClothing-end
+        _orcClothing.AdaptVisuals(ent, args); // Wega: отдельные RSI и подгонка одежды орков.
     }
 
     [SubscribeLocalEvent]

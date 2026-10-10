@@ -1,0 +1,11 @@
+marking-OrcFacialHairBaron = Full beard
+marking-OrcFacialHairHipster = Hipster beard
+marking-OrcFacialHairMedium = Cropped beard
+marking-OrcFacialHairReah = Chinless beard
+marking-OrcFacialHairShield = Dwarven beard
+marking-OrcFacialHairStark = Jensen beard
+marking-OrcFacialHairTail = Goatee
+marking-OrcFacialHairVicing = Long beard
+marking-OrcFacialHairOldBeard = Wise beard
+marking-OrcFacialHairMoustache = Moustache
+marking-OrcFacialHairMoustachetwo = Thick moustache
