@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Numerics;
 using Content.IntegrationTests.Fixtures;
 using Content.Shared.Body;
 using Content.Shared.Clothing;
@@ -79,6 +80,27 @@ public sealed class OrcSpeciesTest : GameTest
             CEntMan.EventBus.RaiseLocalEvent(shirt, humanVisuals);
             Assert.That(humanVisuals.Layers[0].Item2.State, Is.EqualTo("equipped-INNERCLOTHING"));
             Assert.That(humanVisuals.Layers[0].Item2.RsiPath ?? "", Does.Not.Contain("_Wega/Clothing/Orc/"));
+        });
+    }
+
+    [Test]
+    public async Task GenericClothingUsesDisplacementWithoutAdditionalScale()
+    {
+        await Client.WaitAssertion(() =>
+        {
+            var orc = CSpawn("AppearanceOrc");
+            var inventory = CComp<InventoryComponent>(orc);
+            var displacements = inventory.Displacements;
+            Assert.That(displacements.ContainsKey("jumpsuit"), Is.True);
+            Assert.That(displacements["jumpsuit"].SizeMaps[32].RsiPath,
+                Is.EqualTo("_Wega/Mobs/Species/Orc/displacement.rsi"));
+
+            var shirt = CSpawn("ClothingUniformJumpsuitCaptain");
+            var visuals = new GetEquipmentVisualsEvent(orc, "jumpsuit");
+            CEntMan.EventBus.RaiseLocalEvent(shirt, visuals);
+            Assert.That(visuals.Layers, Is.Not.Empty);
+            Assert.That(visuals.Layers[0].Item2.State, Is.EqualTo("equipped-INNERCLOTHING"));
+            Assert.That(visuals.Layers[0].Item2.Scale ?? Vector2.One, Is.EqualTo(Vector2.One));
         });
     }
 

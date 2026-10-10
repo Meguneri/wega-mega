@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
+from gen_orc_displacement import build_maps, warp
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXTURES = ROOT / "Resources/Textures"
@@ -28,7 +29,8 @@ def read_meta(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=preserve_copyright)
 
 
-def adapt(source: str, destination: str, states: dict[str, str], width: float, dy: int) -> None:
+def adapt(source: str, destination: str, states: dict[str, str], width: float, dy: int,
+          displacements: list[Image.Image] | None = None) -> None:
     src = TEXTURES / source
     dst = TEXTURES / destination
     dst.mkdir(parents=True, exist_ok=True)
@@ -38,6 +40,9 @@ def adapt(source: str, destination: str, states: dict[str, str], width: float, d
     originals = {state["name"]: state for state in meta["states"]}
     meta["states"] = []
     meta["copyright"] += f" Orc fit adapted for Wega from {source} by Codex, 2026."
+    if displacements is not None:
+        geometry = read_meta(TEXTURES / "_Wega/Mobs/Species/Orc/displacement.rsi/meta.json")
+        meta["copyright"] += " Displacement geometry: " + geometry["copyright"]
     w, h = meta["size"]["x"], meta["size"]["y"]
     for target, name in states.items():
         state = copy.deepcopy(originals[name])
@@ -45,9 +50,15 @@ def adapt(source: str, destination: str, states: dict[str, str], width: float, d
         meta["states"].append(state)
         image = Image.open(src / (name + ".png")).convert("RGBA")
         fitted = Image.new("RGBA", image.size)
+        frames_per_direction = image.width // w * (image.height // h) // state.get("directions", 1)
         for y in range(0, image.height, h):
             for x in range(0, image.width, w):
                 frame = image.crop((x, y, x + w, y + h))
+                if displacements is not None:
+                    frame_index = y // h * (image.width // w) + x // w
+                    direction = frame_index // frames_per_direction
+                    fitted.paste(warp(frame, displacements[direction]), (x, y))
+                    continue
                 scaled = frame.resize((round(w * width), h), Image.Resampling.NEAREST)
                 offset = (scaled.width - w) // 2
                 cell = Image.new("RGBA", (w, h))
@@ -58,6 +69,7 @@ def adapt(source: str, destination: str, states: dict[str, str], width: float, d
 
 
 def main() -> None:
+    displacements = build_maps()
     hair = dict(dread="dreads", father="long", meganefor="bigafro", mohawk="shavedmohawk",
                 nefor="halfshaved", polnoref="pompadour", ronin="ronin", vicing="long2",
                 vip="business", wisdom="long3")
@@ -76,7 +88,7 @@ def main() -> None:
                       if state["name"].startswith("equipped-") and
                       not any(state["name"].endswith("-" + species) for species in
                               ("vox", "vulpkanin", "reptilian", "resomi", "dog"))}
-            adapt(source, "_Wega/Clothing/Orc/" + source, states, 1.35, -1 if category == "Head" else 0)
+            adapt(source, "_Wega/Clothing/Orc/" + source, states, 1, 0, displacements)
     for kind in ("Jumpsuits", "Jumpskirts"):
         source = f"Clothing/Uniforms/{kind}/Color/color.rsi"
         meta = read_meta(TEXTURES / source / "meta.json")
@@ -84,7 +96,7 @@ def main() -> None:
                   if "equipped-" in state["name"] and
                   not any(state["name"].endswith("-" + species) for species in
                           ("vox", "vulpkanin", "reptilian", "resomi", "dog", "monkey", "female"))}
-        adapt(source, "_Wega/Clothing/Orc/" + source, states, 1.35, 0)
+        adapt(source, "_Wega/Clothing/Orc/" + source, states, 1, 0, displacements)
     # Собственные геометрические метки, не копии ограниченных татуировок Aavikko.
     dst = TEXTURES / "_Wega/Mobs/Customization/Orc/orc_tattoos.rsi"
     dst.mkdir(parents=True, exist_ok=True)
@@ -131,6 +143,8 @@ def preview() -> None:
     clothing = "_Wega/Clothing/Orc/Clothing/"
     examples[1].alpha_composite(frame(
         clothing + "Uniforms/Jumpsuits/Color/color.rsi/equipped-INNERCLOTHING-orc.png", "#b3b3b3"))
+    examples[1].alpha_composite(frame(
+        clothing + "Uniforms/Jumpsuits/Color/color.rsi/trinkets-equipped-INNERCLOTHING-orc.png"))
     examples[1].alpha_composite(frame(custom + "orc_hair.rsi/ronin.png", "#4b3020"))
     for index, style in ((2, "engineering"), (3, "capspace")):
         examples[index].alpha_composite(frame(

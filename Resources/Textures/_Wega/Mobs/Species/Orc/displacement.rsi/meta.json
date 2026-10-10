@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Orc geometry by QWERTY especially for Aavikko Avaruus. Human geometry: https://github.com/tgstation/tgstation/blob/8024397cc81c5f47f74cf4279e35728487d0a1a7/icons/mob/human_parts_greyscale.dmi and modified by DrSmugleaf, also modified by Ko4erga (discord) Inverse clothing displacement derived for Wega by Codex, 2026.",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "body",
+      "directions": 4
+    }
+  ]
+}

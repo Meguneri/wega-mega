@@ -70,6 +70,25 @@
     voice: UnisexOrc
   - type: Inventory
     speciesId: orc
+    displacements:
+      jumpsuit: &orcDisplacement
+        sizeMaps:
+          32:
+            sprite: _Wega/Mobs/Species/Orc/displacement.rsi
+            state: body
+      outerClothing: *orcDisplacement
+      head: *orcDisplacement
+      mask: *orcDisplacement
+      eyes: *orcDisplacement
+      ears: *orcDisplacement
+      gloves: *orcDisplacement
+      shoes: *orcDisplacement
+      neck: *orcDisplacement
+      back: *orcDisplacement
+      suitStorage: *orcDisplacement
+      socks: *orcDisplacement
+      underwear: *orcDisplacement
+      bra: *orcDisplacement
 
 - type: entity
   parent:

@@ -1,4 +1,3 @@
-using System.Numerics;
 using Content.Shared.Clothing;
 using Content.Shared.Clothing.Components;
 using Content.Shared.Inventory;
@@ -52,11 +51,8 @@ public sealed partial class OrcClothingVisualsSystem : EntitySystem
                 copy.RsiPath = variantPath.ToString();
                 copy.State = state;
             }
-            else
-            {
-                // Новая одежда и дополнительные слои формы тоже подгоняются по ширине.
-                copy.Scale = (copy.Scale ?? Vector2.One) * new Vector2(1.25f, 1f);
-            }
+            // Для обычных состояний Inventory применит карту смещения при добавлении слоя.
+            // Готовые состояния -orc автоматически пропускают этот этап.
             args.Layers[i] = (key, copy);
         }
     }

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "license": "CC-BY-SA-3.0",
-  "copyright": "Taken from vgstation at commit https://github.com/vgstation-coders/vgstation13/commit/993de554ecfc30cc45f8340819c5a60ef1eee7e1 and modified by Flareguy & P3MOIRA, with the lower half of the jumpskirt taken from tgstation at commit https://github.com/tgstation/tgstation/commit/c838ba21dae97db345e0113f99596decd1d66039 and modified by Flareguy for SS14. monkey sprites edited by whatston3 (GitHub). Orc fit adapted for Wega from Clothing/Uniforms/Jumpskirts/Color/color.rsi by Codex, 2026.",
+  "copyright": "Taken from vgstation at commit https://github.com/vgstation-coders/vgstation13/commit/993de554ecfc30cc45f8340819c5a60ef1eee7e1 and modified by Flareguy & P3MOIRA, with the lower half of the jumpskirt taken from tgstation at commit https://github.com/tgstation/tgstation/commit/c838ba21dae97db345e0113f99596decd1d66039 and modified by Flareguy for SS14. monkey sprites edited by whatston3 (GitHub). Orc fit adapted for Wega from Clothing/Uniforms/Jumpskirts/Color/color.rsi by Codex, 2026. Displacement geometry: Orc geometry by QWERTY especially for Aavikko Avaruus. Human geometry: https://github.com/tgstation/tgstation/blob/8024397cc81c5f47f74cf4279e35728487d0a1a7/icons/mob/human_parts_greyscale.dmi and modified by DrSmugleaf, also modified by Ko4erga (discord) Inverse clothing displacement derived for Wega by Codex, 2026.",
   "size": {
     "x": 32,
     "y": 32
