@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using Content.IntegrationTests.Fixtures;
 using Content.Shared.Body;
 using Content.Shared.Clothing;
@@ -7,8 +8,10 @@ using Content.Shared.Humanoid;
 using Content.Shared.Inventory;
 using Content.Shared.Preferences;
 using Content.Shared.Speech;
+using Robust.Shared.ContentPack;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Localization;
+using Robust.Shared.Utility;
 
 namespace Content.IntegrationTests.Tests._Wega.Species;
 
@@ -101,6 +104,44 @@ public sealed class OrcSpeciesTest : GameTest
             Assert.That(visuals.Layers, Is.Not.Empty);
             Assert.That(visuals.Layers[0].Item2.State, Is.EqualTo("equipped-INNERCLOTHING"));
             Assert.That(visuals.Layers[0].Item2.Scale ?? Vector2.One, Is.EqualTo(Vector2.One));
+        });
+    }
+
+    [Test]
+    public async Task DisplacementMapsAreLinearAndUseExistingInventorySlots()
+    {
+        await Client.WaitAssertion(() =>
+        {
+            var resources = Client.ResolveDependency<IResourceManager>();
+            using var stream = resources.ContentFileRead(
+                new ResPath("/Textures/_Wega/Mobs/Species/Orc/displacement.rsi/meta.json"));
+            using var metadata = JsonDocument.Parse(stream);
+            // Значения карты — числовые смещения, sRGB-преобразование заставляет читать чужие кадры атласа.
+            Assert.That(metadata.RootElement.GetProperty("load").GetProperty("srgb").GetBoolean(), Is.False);
+
+            var orc = CSpawn("AppearanceOrc");
+            var inventory = CComp<InventoryComponent>(orc);
+            var displacements = inventory.Displacements;
+            var inventorySlots = inventory.Slots;
+            var slots = inventorySlots.Select(slot => slot.Name).ToArray();
+            Assert.That(displacements.Keys.All(slots.Contains), Is.True);
+            foreach (var slot in new[] { "shoes", "socks", "underwearbottom", "underweartop", "suitstorage" })
+                Assert.That(displacements.ContainsKey(slot), Is.True, slot);
+
+            foreach (var (prototype, slot) in new[]
+                     {
+                         ("ClothingShoesColorBlack", "shoes"),
+                         ("ClothingUnderBottomGrey", "underwearbottom"),
+                         ("ClothingUnderTopBraGrey", "underweartop"),
+                     })
+            {
+                var clothing = CSpawn(prototype);
+                var visuals = new GetEquipmentVisualsEvent(orc, slot);
+                CEntMan.EventBus.RaiseLocalEvent(clothing, visuals);
+                Assert.That(visuals.Layers, Is.Not.Empty, prototype);
+                foreach (var (_, layer) in visuals.Layers)
+                    Assert.That(layer.Scale ?? Vector2.One, Is.EqualTo(Vector2.One), prototype);
+            }
         });
     }
 

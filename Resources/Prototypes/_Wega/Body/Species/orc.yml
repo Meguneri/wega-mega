@@ -85,10 +85,11 @@
       shoes: *orcDisplacement
       neck: *orcDisplacement
       back: *orcDisplacement
-      suitStorage: *orcDisplacement
+      suitstorage: *orcDisplacement
+      belt: *orcDisplacement
       socks: *orcDisplacement
-      underwear: *orcDisplacement
-      bra: *orcDisplacement
+      underwearbottom: *orcDisplacement
+      underweartop: *orcDisplacement
 
 - type: entity
   parent:

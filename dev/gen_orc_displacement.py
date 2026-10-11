@@ -103,9 +103,10 @@ def main() -> None:
     meta = dict(version=1, license="CC-BY-SA-3.0",
                 copyright="Orc geometry by QWERTY especially for Aavikko Avaruus. Human geometry: "
                           + human_meta["copyright"] + " Inverse clothing displacement derived for Wega by Codex, 2026.",
-                size=dict(x=32, y=32), states=[dict(name="body", directions=4)])
+                size=dict(x=32, y=32), load=dict(srgb=False), states=[dict(name="body", directions=4)])
     (target / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     preview(maps)
+    preview_underclothing(maps)
     print("Orc displacement maps generated.")
 
 
@@ -145,6 +146,45 @@ def preview(maps: list[Image.Image]) -> None:
             montage.alpha_composite(body.resize((160, 160), Image.Resampling.NEAREST),
                                     (column * 210 + 25, direction * 190 + 42))
     output = ROOT / "dev/.cache/orc-port/displacement-preview.png"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    montage.save(output)
+
+
+def preview_underclothing(maps: list[Image.Image]) -> None:
+    # Обувь состоит из двух независимых слоёв; проверяем оба, а также настоящий низ/верх белья Wega.
+    shoes = [("Clothing/Shoes/color.rsi/equipped-FEET.png", "#1d1d1d"),
+             ("Clothing/Shoes/color.rsi/soles-equipped-FEET.png", None)]
+    bottom = [("_Wega/Clothing/Under/Bottom/grey.rsi/equipped-UNDERWEARBOTTOM.png", None)]
+    top = [("_Wega/Clothing/Under/Top/grey.rsi/equipped-UNDERWEARTOP.png", None)]
+    uniform = [("Clothing/Uniforms/Jumpsuits/Color/color.rsi/equipped-INNERCLOTHING.png", "#b3b3b3"),
+               ("Clothing/Uniforms/Jumpsuits/Color/color.rsi/trinkets-equipped-INNERCLOTHING.png", None)]
+    examples = [("Чёрные туфли", shoes), ("Нижнее бельё", bottom),
+                ("Комплект белья", bottom + top + shoes), ("Форма и туфли", bottom + top + uniform + shoes)]
+    montage = Image.new("RGBA", (840, 802), "#20252d")
+    draw = ImageDraw.Draw(montage)
+    font_path = Path("C:/Windows/Fonts/segoeui.ttf")
+    font = ImageFont.truetype(str(font_path), 15) if font_path.exists() else ImageFont.load_default()
+    for column, (label, layers) in enumerate(examples):
+        draw.text((column * 210 + 105, 20), label, font=font, fill="white", anchor="mm")
+        for direction in range(4):
+            body = Image.new("RGBA", (32, 32))
+            for part in PARTS:
+                image = frame(Image.open(TEXTURES / f"_Wega/Mobs/Species/Orc/parts.rsi/{part}.png")
+                              .convert("RGBA"), direction)
+                alpha = image.getchannel("A")
+                image = ImageChops.multiply(image, Image.new("RGBA", image.size, "#469d36"))
+                image.putalpha(alpha)
+                body.alpha_composite(image)
+            for path, color in layers:
+                image = frame(Image.open(TEXTURES / path).convert("RGBA"), direction)
+                if color:
+                    alpha = image.getchannel("A")
+                    image = ImageChops.multiply(image, Image.new("RGBA", image.size, color))
+                    image.putalpha(alpha)
+                body.alpha_composite(warp(image, maps[direction]))
+            montage.alpha_composite(body.resize((160, 160), Image.Resampling.NEAREST),
+                                    (column * 210 + 25, direction * 190 + 42))
+    output = ROOT / "dev/.cache/orc-port/underclothing-preview.png"
     output.parent.mkdir(parents=True, exist_ok=True)
     montage.save(output)
 
