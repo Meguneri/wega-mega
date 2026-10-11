@@ -15,8 +15,6 @@ public sealed partial class SpellCheckingChatInput : HistoryLineEdit
     private readonly SpellingMarks _marks;
     private ChatSpellChecker? _checker;
     private string _checkedText = "";
-    private int _checkedCursor = -1;
-    private float _delay;
     private List<(int Start, int End)> _errors = new();
 
     public SpellCheckingChatInput()
@@ -36,20 +34,19 @@ public sealed partial class SpellCheckingChatInput : HistoryLineEdit
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
-        if (_checkedText != Text || _checkedCursor != CursorPosition)
+        if (_checkedText == Text)
+            return;
+
+        _checkedText = Text;
+        if (Text.Length == 0)
         {
-            _checkedText = Text;
-            _checkedCursor = CursorPosition;
             _errors.Clear();
-            _delay = 0.35f;
+            return;
         }
-        if (_delay <= 0)
-            return;
-        _delay -= args.DeltaSeconds;
-        if (_delay > 0 || Text.Length == 0)
-            return;
+
+        // Обновляем отметки в том же кадре, без сброса при наборе, пробеле или перемещении курсора.
         _checker ??= ChatSpellChecker.Get(_resources);
-        _errors = _checker.FindErrors(Text, CursorPosition);
+        _errors = _checker.FindErrors(Text);
     }
 
     private sealed class SpellingMarks : Control

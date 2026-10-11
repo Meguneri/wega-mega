@@ -21,11 +21,15 @@ public sealed class ChatSpellCheckerTest
     }
 
     [Test]
-    public void FindsCompletedMistakeAndWaitsForCurrentWord()
+    public void KeepsMistakesMarkedWhileTypingAndAddingSpaces()
     {
-        Assert.That(Checker.FindErrors("превет пишет", 12), Is.EqualTo(new[] { (0, 6) }));
-        Assert.That(Checker.FindErrors("превет", 6), Is.Empty);
-        Assert.That(Checker.FindErrors("превет ", 7), Is.EqualTo(new[] { (0, 6) }));
+        Assert.That(Checker.FindErrors("превет"), Is.EqualTo(new[] { (0, 6) }));
+        Assert.That(Checker.FindErrors("превет "), Is.EqualTo(new[] { (0, 6) }));
+        Assert.That(Checker.FindErrors("превет пишет"), Is.EqualTo(new[] { (0, 6) }));
+        Assert.That(Checker.FindErrors("превет пишет "), Is.EqualTo(new[] { (0, 6) }));
+        Assert.That(Checker.FindErrors("превет пишет перевет"), Is.EqualTo(new[] { (0, 6), (13, 20) }));
+        Assert.That(Checker.FindErrors("привет пишет перевет"), Is.EqualTo(new[] { (13, 20) }));
+        Assert.That(Checker.FindErrors("привет пишет привет"), Is.Empty);
     }
 
     [TestCase("/превет аргумент ")]
@@ -34,14 +38,14 @@ public sealed class ChatSpellCheckerTest
     [TestCase("персонаж abcпревет123 ")]
     public void IgnoresCommandsNamesLinksAndGameTerms(string text)
     {
-        Assert.That(Checker.FindErrors(text, text.Length), Is.Empty);
+        Assert.That(Checker.FindErrors(text), Is.Empty);
     }
 
     [Test]
     public void HandlesMaximumChatLength()
     {
         var text = new string('я', 16384) + " ";
-        Assert.That(Checker.FindErrors(text, text.Length), Is.EqualTo(new[] { (0, 16384) }));
+        Assert.That(Checker.FindErrors(text), Is.EqualTo(new[] { (0, 16384) }));
     }
 
     [Test]
@@ -59,7 +63,8 @@ public sealed class ChatSpellCheckerTest
         var checker = new ChatSpellChecker(words);
         foreach (var word in new[] { "что-то", "кто-нибудь", "из-за", "по-русски", "что-либо", "ещё", "персонажами" })
             Assert.That(checker.IsKnown(word), Is.True, word);
-        Assert.That(checker.FindErrors("что-то кто-нибудь из-за по-русски ", 33), Is.Empty);
-        Assert.That(checker.FindErrors("чтто-то ", 8), Is.EqualTo(new[] { (0, 7) }));
+        Assert.That(checker.FindErrors("что-то кто-нибудь из-за по-русски "), Is.Empty);
+        Assert.That(checker.FindErrors("чтто-то"), Is.EqualTo(new[] { (0, 7) }));
+        Assert.That(checker.FindErrors("чтто-то "), Is.EqualTo(new[] { (0, 7) }));
     }
 }

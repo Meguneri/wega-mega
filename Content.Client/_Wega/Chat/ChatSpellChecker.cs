@@ -68,7 +68,7 @@ public sealed class ChatSpellChecker
         return false;
     }
 
-    public List<(int Start, int End)> FindErrors(string text, int cursor)
+    public List<(int Start, int End)> FindErrors(string text)
     {
         var errors = new List<(int, int)>();
         if (text.TrimStart().StartsWith('/'))
@@ -93,10 +93,10 @@ public sealed class ChatSpellChecker
                     russian = false;
             }
 
-            // Не подсвечиваем набираемое слово, имена, аббревиатуры и части ссылок.
+            // Не подсвечиваем имена, аббревиатуры и части ссылок; набираемое слово проверяем сразу.
             var name = char.IsUpper(text[start]) && start > 0;
             var link = start > 0 && (text[start - 1] == '@' || text[start - 1] == '/' || text[start - 1] == '.');
-            if (russian && end - start > 2 && !name && !link && !(cursor > start && cursor <= end)
+            if (russian && end - start > 2 && !name && !link
                 && !IsKnown(text.Substring(start, end - start)))
                 errors.Add((start, end));
             start = end;
