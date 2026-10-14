@@ -16,6 +16,15 @@ public sealed class ChatSpellChecker
         "ниан", "ниана", "нианом", "диона", "дионы", "слайм", "слайма", "слаймом",
         "унатх", "унатха", "унатхом", "вега", "веги", "веге", "вегой"
     };
+    private static readonly HashSet<ulong> GameWordHashes = HashGameWords();
+
+    private static HashSet<ulong> HashGameWords()
+    {
+        var hashes = new HashSet<ulong>();
+        foreach (var word in GameWords)
+            hashes.Add(Fingerprint(word));
+        return hashes;
+    }
 
     public ChatSpellChecker(ulong[] words)
     {
@@ -41,7 +50,11 @@ public sealed class ChatSpellChecker
         var hash = 14695981039346656037UL;
         foreach (var character in word)
         {
+            if (IsSpellingMark(character))
+                continue;
             var lower = char.ToLowerInvariant(character);
+            if (IsWordHyphen(lower))
+                lower = '-';
             hash = unchecked((hash ^ (lower == 'ё' ? 'е' : lower)) * 1099511628211UL);
         }
         return hash;
@@ -49,9 +62,9 @@ public sealed class ChatSpellChecker
 
     public bool IsKnown(string word)
     {
-        if (GameWords.Contains(word))
-            return true;
         var value = Fingerprint(word);
+        if (GameWordHashes.Contains(value))
+            return true;
         var left = 0;
         var right = _words.Length - 1;
         // Array.BinarySearch<T> не разрешён клиентской песочницей.
@@ -74,6 +87,8 @@ public sealed class ChatSpellChecker
         if (text.TrimStart().StartsWith('/'))
             return errors;
 
+        var tokenEnd = 0;
+        var skipToken = false;
         for (var start = 0; start < text.Length;)
         {
             if (!char.IsLetterOrDigit(text[start]))
@@ -81,26 +96,65 @@ public sealed class ChatSpellChecker
                 start++;
                 continue;
             }
+
+            // URL, адрес почты и упоминание проверяются целиком, включая параметры ссылки.
+            if (start >= tokenEnd)
+            {
+                tokenEnd = start;
+                while (tokenEnd < text.Length && !char.IsWhiteSpace(text[tokenEnd]))
+                    tokenEnd++;
+                var token = text.Substring(start, tokenEnd - start);
+                skipToken = token.Contains("://", StringComparison.Ordinal) ||
+                            token.StartsWith("www.", StringComparison.OrdinalIgnoreCase) || token.Contains('@');
+            }
+            if (skipToken || (start > 0 && text[start - 1] == '@'))
+            {
+                start = tokenEnd;
+                continue;
+            }
+
             var end = start + 1;
-            while (end < text.Length && (char.IsLetterOrDigit(text[end]) || text[end] == '-'))
+            while (end < text.Length && (char.IsLetterOrDigit(text[end]) || IsSpellingMark(text[end]) ||
+                   (IsWordHyphen(text[end]) && end + 1 < text.Length && char.IsLetterOrDigit(text[end + 1]))))
                 end++;
 
             var russian = true;
             for (var i = start; i < end; i++)
             {
                 var c = char.ToLowerInvariant(text[i]);
-                if (c != 'ё' && c != '-' && (c < 'а' || c > 'я'))
+                if (c != 'ё' && !IsWordHyphen(c) && !IsSpellingMark(c) && (c < 'а' || c > 'я'))
                     russian = false;
             }
 
             // Не подсвечиваем имена, аббревиатуры и части ссылок; набираемое слово проверяем сразу.
-            var name = char.IsUpper(text[start]) && start > 0;
+            var hasLowercase = false;
+            for (var i = start; i < end; i++)
+                hasLowercase |= char.IsLower(text[i]);
+            var name = char.IsUpper(text[start]) && hasLowercase && !IsSentenceStart(text, start);
+            var abbreviation = end - start <= 5;
+            for (var i = start; i < end && abbreviation; i++)
+                abbreviation = char.IsUpper(text[i]);
             var link = start > 0 && (text[start - 1] == '@' || text[start - 1] == '/' || text[start - 1] == '.');
-            if (russian && end - start > 2 && !name && !link
+            if (russian && end - start > 2 && !name && !abbreviation && !link
                 && !IsKnown(text.Substring(start, end - start)))
                 errors.Add((start, end));
             start = end;
         }
         return errors;
+    }
+
+    private static bool IsSpellingMark(char character) => character is '\u0301' or '\u0300' or '\u00ad';
+
+    private static bool IsWordHyphen(char character) => character is '-' or '\u2010' or '\u2011';
+
+    private static bool IsSentenceStart(string text, int start)
+    {
+        for (var i = start - 1; i >= 0; i--)
+        {
+            if (char.IsWhiteSpace(text[i]) || text[i] is '"' or '«' or '»' or '(' or ')')
+                continue;
+            return text[i] is '.' or '!' or '?' or '\u2026';
+        }
+        return true;
     }
 }
