@@ -65,6 +65,7 @@ run_tests() {
 step "Сборка сервера"            build Content.Server/Content.Server.csproj
 step "Сборка клиента"            build Content.Client/Content.Client.csproj
 step "Прототипы (YAMLLinter)"    lint_yaml
+step "Уникальность UID карт"    python3 dev/audit_map_uids.py
 
 # Главное: настоящая проверка песочницы теми же средствами, что и у клиента на старте.
 # Ловит запрещённые вызовы (ReadOnlySpan, ImageSharp Image.Load и прочий не-вайтлистнутый API).

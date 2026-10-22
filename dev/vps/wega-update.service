@@ -1,5 +1,5 @@
 [Unit]
-Description=Build Wega Mega updates for next server start
+Description=Check Wega Mega Git updates and notify players
 Wants=network-online.target
 After=network-online.target
 

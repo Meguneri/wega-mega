@@ -209,7 +209,23 @@ Uplink-каталог Estação Pirata не переносился.
   Клиентская точка подключения — две строки в `Content.Client/Clothing/ClientClothingSystem.cs`:
   движок допускает только одну подписку на пару ClothingComponent/GetEquipmentVisualsEvent.
 
-## Чего избегать
+## Летний Пилигрим Corvax NEXT
+
+- Источник: `space-syndicate/space-station-14-next`,
+  `a27738b7433cf5bfafb384a34b7e3d1023ce967f` (17 июня 2025).
+- Карта и пять шаттлов: AGPL-3.0 источника, текст лицензии и атрибуция в
+  `Resources/Maps/_Wega/PilgrimSummer/{LICENSE.txt,README.md}`.
+- GameMap ID: `WegaPilgrimSummer`; параллакс и вода `WegaPilgrimSummerWater`;
+  декор `WegaPilgrimSummer{WeightsBench,WeightLifter,PunchingBag,ExecutionChair}`.
+- Прототипы: `Resources/Prototypes/_Wega/Maps/pilgrim_summer*.yml`.
+- Текстуры: `Resources/Textures/_Wega/PilgrimSummer/`. Вода — CC-BY-SA-3.0,
+  Citadel-Station-13-RP, доработка Ko4erga; тренажёры — CC-BY-SA-3.0,
+  vgstation13; кресло — CC-BY-SA-4.0, Ko4erga. Метаданные сохранены.
+- Обе локали: `Locale/{ru-RU,en-US}/_wega/maps/pilgrim_summer.ftl`.
+- Импорт воспроизводит `dev/import_pilgrim_summer.py`; ограничения адаптации
+  перечислены в README карты. Код систем NEXT не импортируется.
+
+## Чего избегать при дальнейшем переносе
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.
 - Репозитории без чёткой лицензии или с портами из коммерческих игр.

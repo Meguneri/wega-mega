@@ -1,5 +1,5 @@
 [Unit]
-Description=Prepare Wega Mega Git updates in background every minute
+Description=Check Wega Mega Git updates and notify every minute
 
 [Timer]
 OnBootSec=1min

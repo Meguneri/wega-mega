@@ -60365,18 +60365,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 3.5,2.5
-- proto: SpawnPointPassenger
-  entities:
-  - uid: 5371
-    components:
-    - type: Transform
-      pos: 31.5,32.5
-      parent: 2
-  - uid: 5372
-    components:
-    - type: Transform
-      pos: 27.5,36.5
-      parent: 2
 - proto: Spear
   entities:
   - uid: 8457
@@ -70952,36 +70940,6 @@ entities:
       pos: -0.5,-8.5
     - type: WarpPoint
       location: Ксенолаборатория
-- proto: WarpPoint
-  entities:
-  - uid: 6800
-    components:
-    - type: MetaData
-      name: Хранилище бомбы
-    - type: Transform
-      pos: 21.5,15.5
-      parent: 2
-    - type: WarpPoint
-      location: Цель ниндзи - хранилище
-  - uid: 6801
-    components:
-    - type: MetaData
-      name: Мостик
-    - type: Transform
-      pos: 18.5,1.5
-      parent: 2
-    - type: WarpPoint
-      location: Цель ниндзи - мостик
-  - uid: 6802
-    components:
-    - type: MetaData
-      name: оружейная
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 4.5,0.5
-      parent: 2
-    - type: WarpPoint
-      location: Цель ниндзи - оружейная
 - proto: WaterCooler
   entities:
   - uid: 6803

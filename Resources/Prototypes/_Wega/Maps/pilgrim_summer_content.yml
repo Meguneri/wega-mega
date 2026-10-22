@@ -1,0 +1,63 @@
+# Текстуры Corvax NEXT: авторство и лицензии сохранены в meta.json.
+- type: parallax
+  id: WegaPilgrimSummerWater
+  layers:
+  - texture:
+      !type:ImageParallaxTextureSource
+      path: /Textures/_Wega/PilgrimSummer/azure_water.png
+    slowness: 0.1
+    scrolling: "-0.05, -0.05"
+    tiled: true
+    shader: ""
+  - texture:
+      !type:ImageParallaxTextureSource
+      path: /Textures/_Wega/PilgrimSummer/azure_water.png
+    slowness: 0
+    scrolling: "-0.08, 0"
+    tiled: true
+    shader: ""
+  layersLQUseHQ: true
+
+- type: entity
+  id: WegaPilgrimSummerWater
+  parent: FloorWaterEntity
+
+- type: entity
+  id: WegaPilgrimSummerWeightsBench
+  parent: SeatBase
+  components:
+  - type: Transform
+    anchored: true
+  - type: Physics
+    bodyType: Static
+  - type: Anchorable
+  - type: Rotatable
+  - type: Sprite
+    sprite: _Wega/PilgrimSummer/fitness.rsi
+    state: fitnessweight
+
+- type: entity
+  id: WegaPilgrimSummerWeightLifter
+  parent: WegaPilgrimSummerWeightsBench
+  components:
+  - type: Sprite
+    sprite: _Wega/PilgrimSummer/fitness.rsi
+    state: fitnesslifter
+
+- type: entity
+  id: WegaPilgrimSummerPunchingBag
+  parent: BaseStructure
+  components:
+  - type: Sprite
+    sprite: _Wega/PilgrimSummer/fitness.rsi
+    state: punchingbag
+
+# Сохранён вид и посадочное место; отсутствующая механика казни NEXT не переносится.
+- type: entity
+  id: WegaPilgrimSummerExecutionChair
+  parent: ChairBase
+  components:
+  - type: Sprite
+    sprite: _Wega/PilgrimSummer/execution_chair.rsi
+    state: execution-chair
+    noRot: true

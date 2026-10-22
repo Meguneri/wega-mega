@@ -167997,14 +167997,7 @@ entities:
     - type: Transform
       parent: 2
       pos: 77.24102,78.36234
-- proto: TowelColorWhite
-  entities:
-  - uid: 17916
-    components:
-    - type: Transform
-      pos: 57.384445,-6.3630414
-      parent: 2
-- proto: TowelColorWhite
+- proto: TowelColorNT
   entities:
   - uid: 17917
     components:
@@ -168016,20 +168009,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 72.309784,-35.44681
-- proto: TowelColorWhite
-  entities:
-  - uid: 17919
-    components:
-    - type: Transform
-      pos: 59.25493,-14.494862
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 17920
-    components:
-    - type: Transform
-      pos: 49.623558,-6.284862
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 17921

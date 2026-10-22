@@ -40511,78 +40511,7 @@ entities:
     components:
     - type: Transform
       parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1781
-    components:
-    - type: Transform
-      parent: 1780
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1777
-    components:
-    - type: Transform
-      parent: 1776
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1778
-    components:
-    - type: Transform
-      parent: 1776
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1786
-    components:
-    - type: Transform
-      parent: 1785
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1782
-    components:
-    - type: Transform
-      parent: 1780
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1779
-    components:
-    - type: Transform
-      parent: 1776
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1787
-    components:
-    - type: Transform
-      parent: 1785
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1783
-    components:
-    - type: Transform
-      parent: 1780
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
+      pos: 2.524221,-20.535118
 - proto: TowelColorWhite
   entities:
   - uid: 1784
@@ -40592,15 +40521,10 @@ entities:
     - type: Physics
       canCollide: False
     - type: InsideEntityStorage
-- proto: TowelColorWhite
-  entities:
-  - uid: 1788
-    components:
-    - type: Transform
-      parent: 1785
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
+    - type: ContainerContainer
+      containers:
+        clothing_upgrades: !type:Container
+          ents: []
 - proto: ToyFigurineClown
   entities:
   - uid: 4405
@@ -49200,36 +49124,7 @@ entities:
       name: Обломок плоти
     - type: Transform
       parent: 5376
-- proto: WarpPoint
-  entities:
-  - uid: 5200
-    components:
-    - type: Transform
-      pos: -48.5,19.5
-      parent: 2
-    - type: WarpPoint
-      location: Церковный остров
-  - uid: 5201
-    components:
-    - type: Transform
-      pos: 0.5,21.5
-      parent: 2
-    - type: WarpPoint
-      location: Камера брига
-  - uid: 5202
-    components:
-    - type: Transform
-      pos: 26.5,-13.5
-      parent: 2
-    - type: WarpPoint
-      location: камера с артефактом
-  - uid: 5203
-    components:
-    - type: Transform
-      pos: -20.5,-2.5
-      parent: 2
-    - type: WarpPoint
-      location: тех. тунелли на открытом воздухе
+      pos: 2.5,-0.5
 - proto: WaterCooler
   entities:
   - uid: 5204

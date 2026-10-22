@@ -333783,18 +333783,6 @@ entities:
     - type: Transform
       parent: 2
       pos: -47.5,-21.5
-- proto: SpawnPointPassenger
-  entities:
-  - uid: 44929
-    components:
-    - type: Transform
-      pos: -42.5,24.5
-      parent: 2
-  - uid: 44930
-    components:
-    - type: Transform
-      pos: -42.5,19.5
-      parent: 2
 - proto: SpawnVendingMachineRestockDrink
   entities:
   - uid: 44931
@@ -349894,36 +349882,15 @@ entities:
     components:
     - type: Transform
       parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 20578
-    components:
-    - type: Transform
-      parent: 20550
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-  - uid: 20579
-    components:
-    - type: Transform
-      parent: 20550
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-  - uid: 20580
-    components:
-    - type: Transform
-      parent: 20550
-    - type: Physics
-      canCollide: False
-    - type: InsideEntityStorage
-- proto: TowelColorWhite
+      pos: -88.48045,32.65129
+- proto: TowelColorNT
   entities:
   - uid: 47427
     components:
     - type: Transform
       parent: 2
-- proto: TowelColorWhite
+      pos: -26.424202,-87.25286
+- proto: TowelColorSyndicate
   entities:
   - uid: 47428
     components:
@@ -406931,99 +406898,6 @@ entities:
       pos: 5.5,12.5
     - type: WarpPoint
       location: Каторга "Добрый самаритянин"
-- proto: WarpPoint
-  entities:
-  - uid: 55202
-    components:
-    - type: Transform
-      pos: -24.5,-20.5
-      parent: 2
-    - type: WarpPoint
-      location: СИЗО
-  - uid: 55203
-    components:
-    - type: Transform
-      pos: 85.5,-14.5
-      parent: 2
-    - type: WarpPoint
-      location: Стыковочный порт карго
-  - uid: 55204
-    components:
-    - type: Transform
-      pos: -46.5,-23.5
-      parent: 2
-    - type: WarpPoint
-      location: Офис смотрителя
-  - uid: 55205
-    components:
-    - type: Transform
-      pos: -24.5,-7.5
-      parent: 2
-    - type: WarpPoint
-      location: Офис ГП
-  - uid: 55206
-    components:
-    - type: Transform
-      pos: -25.5,9.5
-      parent: 2
-    - type: WarpPoint
-      location: Хранилище скафандров
-  - uid: 55207
-    components:
-    - type: Transform
-      pos: -51.5,-29.5
-      parent: 2
-    - type: WarpPoint
-      location: Оружейная
-  - uid: 55208
-    components:
-    - type: Transform
-      pos: 23.5,-8.5
-      parent: 2
-    - type: WarpPoint
-      location: Хранилище
-  - uid: 55209
-    components:
-    - type: Transform
-      pos: 34.5,-31.5
-      parent: 2
-    - type: WarpPoint
-      location: Серверная
-  - uid: 55210
-    components:
-    - type: Transform
-      pos: 0.5,10.5
-      parent: 2
-    - type: WarpPoint
-      location: Мостик
-  - uid: 55211
-    components:
-    - type: Transform
-      pos: 118.5,-51.5
-      parent: 2
-    - type: WarpPoint
-      location: Телекоммуникация
-  - uid: 55212
-    components:
-    - type: Transform
-      pos: 118.5,-61.5
-      parent: 2
-    - type: WarpPoint
-      location: Маршрутизаторы камер
-  - uid: 55213
-    components:
-    - type: Transform
-      pos: -80.5,-15.5
-      parent: 2
-    - type: WarpPoint
-      location: Смотровая площадка доков СБ
-  - uid: 55214
-    components:
-    - type: Transform
-      pos: 0.5,-49.5
-      parent: 2
-    - type: WarpPoint
-      location: Криогеника
 - proto: WaterCooler
   entities:
   - uid: 55215

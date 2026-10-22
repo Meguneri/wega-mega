@@ -1,0 +1,10 @@
+ent-WegaPilgrimSummerWater = лазурная вода
+    .desc = Тёплая прибрежная вода.
+ent-WegaPilgrimSummerWeightsBench = скамья для жима
+    .desc = Скамья со штангой для силовых тренировок.
+ent-WegaPilgrimSummerWeightLifter = силовой тренажёр
+    .desc = Тренажёр для любителей тяжёлого железа.
+ent-WegaPilgrimSummerPunchingBag = боксёрская груша
+    .desc = Прочный мешок для тренировки ударов.
+ent-WegaPilgrimSummerExecutionChair = кресло для казни
+    .desc = Зловещее кресло. Электрический механизм отключён.

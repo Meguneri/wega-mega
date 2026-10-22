@@ -248600,13 +248600,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 50.5,8.5
-- proto: SpawnPointPassenger
-  entities:
-  - uid: 30942
-    components:
-    - type: Transform
-      pos: 3.5,-15.5
-      parent: 2
 - proto: SpawnVendingMachineRestockFoodDrink
   entities:
   - uid: 30943
@@ -259276,13 +259269,6 @@ entities:
     - type: Transform
       parent: 2
       pos: 43.700527,-24.265348
-- proto: TowelColorWhite
-  entities:
-  - uid: 32642
-    components:
-    - type: Transform
-      pos: 35.480675,19.524847
-      parent: 2
 - proto: TowelColorWhite
   entities:
   - uid: 32643
@@ -296535,58 +296521,6 @@ entities:
       pos: -83.5,10.5
     - type: WarpPoint
       location: Инженерный - Верфь
-- proto: WarpPoint
-  entities:
-  - uid: 37936
-    components:
-    - type: Transform
-      pos: 6.5,-32.5
-      parent: 2
-    - type: WarpPoint
-      location: Кабинет химиков
-  - uid: 37937
-    components:
-    - type: MetaData
-      name: Мостик
-    - type: Transform
-      pos: -0.5,18.5
-      parent: 2
-    - type: WarpPoint
-      location: Мостик
-  - uid: 37938
-    components:
-    - type: MetaData
-      name: РИТЭГ
-    - type: Transform
-      pos: -69.5,-2.5
-      parent: 2
-    - type: WarpPoint
-      location: РИТЭГ
-  - uid: 37939
-    components:
-    - type: MetaData
-      name: ЕВА
-    - type: Transform
-      pos: -11.5,-13.5
-      parent: 2
-    - type: WarpPoint
-      location: ЕВА
-  - uid: 37940
-    components:
-    - type: MetaData
-      name: Оружейка
-    - type: Transform
-      pos: 62.5,7.5
-      parent: 2
-    - type: WarpPoint
-      location: Оружейка
-  - uid: 37941
-    components:
-    - type: Transform
-      pos: 57.5,30.5
-      parent: 2
-    - type: WarpPoint
-      location: ГСБ
 - proto: WaterCooler
   entities:
   - uid: 37942

@@ -32915,84 +32915,7 @@ entities:
       pos: -16.5,-10.5
     missingComponents:
     - Destructible
-- proto: TowelColorWhite
-  entities:
-  - uid: 1457
-    components:
-    - type: Transform
-      pos: -41.522667,-4.1490917
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1464
-    components:
-    - type: Transform
-      pos: -41.393013,-3.4772165
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1469
-    components:
-    - type: Transform
-      pos: -41.893013,-4.4459667
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1459
-    components:
-    - type: Transform
-      pos: -41.768013,-3.1803415
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1468
-    components:
-    - type: Transform
-      pos: -41.893013,-4.1334667
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1460
-    components:
-    - type: Transform
-      pos: -41.377388,-3.1647165
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1462
-    components:
-    - type: Transform
-      pos: -40.439888,-3.1803415
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1467
-    components:
-    - type: Transform
-      pos: -41.877388,-3.8522167
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1463
-    components:
-    - type: Transform
-      pos: -41.799263,-3.5084665
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1466
-    components:
-    - type: Transform
-      pos: -40.439888,-3.4615915
-      parent: 2
-- proto: TowelColorWhite
-  entities:
-  - uid: 1458
-    components:
-    - type: Transform
-      pos: -41.546104,-4.453779
-      parent: 2
-- proto: TowelColorWhite
+- proto: TowelColorSyndicate
   entities:
   - uid: 3613
     components:
@@ -33010,13 +32933,10 @@ entities:
     - type: Transform
       parent: 2
       pos: -41.522667,-3.8912792
-- proto: TowelColorWhite
-  entities:
-  - uid: 1461
-    components:
-    - type: Transform
-      pos: -40.924263,-3.1647165
-      parent: 2
+    - type: ContainerContainer
+      containers:
+        clothing_upgrades: !type:Container
+          ents: []
 - proto: TrashBag
   entities:
   - uid: 9

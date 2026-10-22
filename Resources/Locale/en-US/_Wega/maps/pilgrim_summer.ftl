@@ -1,0 +1,10 @@
+ent-WegaPilgrimSummerWater = azure water
+    .desc = Warm coastal water.
+ent-WegaPilgrimSummerWeightsBench = weights bench
+    .desc = A bench and barbell for strength training.
+ent-WegaPilgrimSummerWeightLifter = weight lifter
+    .desc = A machine for strength training enthusiasts.
+ent-WegaPilgrimSummerPunchingBag = punching bag
+    .desc = A sturdy bag for practicing punches.
+ent-WegaPilgrimSummerExecutionChair = execution chair
+    .desc = An ominous chair. Its electrical mechanism is disconnected.
