@@ -82,6 +82,19 @@ public sealed class ChatSpellCheckerTest
         Assert.That(Checker.FindErrors(text), Is.EqualTo(new[] { (start, start + 7) }));
     }
 
+    [TestCase("привет-то", true)]
+    [TestCase("пре\u0301вет-то", false)]
+    [TestCase("превет-то", false)]
+    [TestCase("привет-нибудь", false)]
+    [TestCase("привет-либе", false)]
+    [TestCase("привет-персонаж", false)]
+    [TestCase("кое-привет", false)]
+    [TestCase("привет-то-то", false)]
+    public void ChecksHyphenatedBasesInsteadOfIgnoringAllCompounds(string word, bool expected)
+    {
+        Assert.That(Checker.IsKnown(word), Is.EqualTo(expected));
+    }
+
     [Test]
     public void RealDictionaryRecognizesHyphenatedWordsAndFindsTypos()
     {
@@ -97,8 +110,11 @@ public sealed class ChatSpellCheckerTest
         var checker = new ChatSpellChecker(words);
         foreach (var word in new[] { "что-то", "кто-нибудь", "из-за", "по-русски", "что-либо", "ещё", "персонажами",
                      "причиндал", "причиндала", "причиндалу", "причиндалом", "причиндале", "причиндалы",
-                     "что\u2010то", "кто\u2011нибудь", "причинда\u0301л" })
+                     "что\u2010то", "кто\u2011нибудь", "причинда\u0301л", "чем-то", "чём-то",
+                     "кому-то", "чьему-либо", "какими-нибудь", "кое-чем", "кое-какими",
+                     "ЧЕМ\u2011ТО", "че\u0301м-то", "причиндал-то" })
             Assert.That(checker.IsKnown(word), Is.True, word);
+        Assert.That(checker.FindErrors("чем-то чьему-либо какими-нибудь кое-чем причиндал "), Is.Empty);
         Assert.That(checker.FindErrors("что-то кто-нибудь из-за по-русски "), Is.Empty);
         Assert.That(checker.FindErrors("чтто-то"), Is.EqualTo(new[] { (0, 7) }));
         Assert.That(checker.FindErrors("чтто-то "), Is.EqualTo(new[] { (0, 7) }));

@@ -4,11 +4,11 @@
 
 - type: tileAlias
   id: FloorAsteroidCoarseSand1
-  target: FloorAsteroidCoarseSand0
+  target: FloorAsteroidSand
 
 - type: tileAlias
   id: FloorAsteroidCoarseSand2
-  target: FloorAsteroidCoarseSand0
+  target: FloorAsteroidSand
 
 # 2023-08-21
 # Asteroid coarse sand has been nuked since it was made to fit in with the old CEV-Eris style rocks. This tile alias is inevitably not enough to fix every instance of it appearing since the tile is so common, but it's the only reasonable way forward since it's not the default anymore.
@@ -19,7 +19,7 @@
 
 - type: tileAlias
   id: FloorAsteroidSandRocksRed
-  target: FloorAsteroidSandRed
+  target: FloorAsteroidSand
 
 - type: tileAlias
   id: FloorAsteroidSandPebbles
@@ -47,7 +47,7 @@
 
 - type: tileAlias
   id: FloorAsteroidCoarseSandDug
-  target: FloorAsteroidSandDug
+  target: FloorAsteroidSand
 
 # 2023-09-09
 
@@ -87,27 +87,27 @@
 
 - type: tileAlias
   id: FloorGrayConcreteOutside
-  target: FloorGrayConcrete
+  target: FloorConcrete
 
 - type: tileAlias
   id: FloorGrayConcreteOutsideMono
-  target: FloorGrayConcreteMono
+  target: FloorConcreteMono
 
 - type: tileAlias
   id: FloorGrayConcreteOutsideSmooth
-  target: FloorGrayConcreteSmooth
+  target: FloorConcreteSmooth
 
 - type: tileAlias
   id: FloorOldConcreteOutside
-  target: FloorOldConcrete
+  target: FloorConcrete
 
 - type: tileAlias
   id: FloorOldConcreteOutsideMono
-  target: FloorOldConcreteMono
+  target: FloorConcreteMono
 
 - type: tileAlias
   id: FloorOldConcreteOutsideSmooth
-  target: FloorOldConcreteSmooth
+  target: FloorConcreteSmooth
 
 # 2026/07/22
 # The respritening! With this one simple trick, i give 200 mappers a collective aneurysm.
@@ -176,7 +176,7 @@
 
 - type: tileAlias
   id: FloorPlasmaMarble
-  target: FloorMarble
+  target: FloorWhiteMarble
 
 - type: tileAlias
   id: FloorEighties

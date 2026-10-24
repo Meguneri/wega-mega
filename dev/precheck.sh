@@ -66,6 +66,9 @@ step "Сборка сервера"            build Content.Server/Content.Serve
 step "Сборка клиента"            build Content.Client/Content.Client.csproj
 step "Прототипы (YAMLLinter)"    lint_yaml
 step "Уникальность UID карт"    python3 dev/audit_map_uids.py
+step "Варианты тайлов карт"     python3 dev/fix_map_tile_variants.py Resources/Maps
+step "Тесты миграции тайлов"    python3 -m unittest discover -s dev -p test_fix_map_tile_variants.py
+step "Совместимость карт"       run_tests Content.IntegrationTests "FullyQualifiedName~MapCompatibilityTest"
 
 # Главное: настоящая проверка песочницы теми же средствами, что и у клиента на старте.
 # Ловит запрещённые вызовы (ReadOnlySpan, ImageSharp Image.Load и прочий не-вайтлистнутый API).

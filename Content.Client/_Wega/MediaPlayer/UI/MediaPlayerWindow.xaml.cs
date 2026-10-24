@@ -146,18 +146,19 @@ public sealed partial class MediaPlayerWindow : FancyWindow
 
         // Now-playing card — rounded dark panel.
         var card = new StyleBoxTexture { Texture = panelTex, Modulate = Color.FromHex("#2B323D") };
-        card.SetPatchMargin(StyleBox.Margin.All, 3);
+        // Текстура 5×5: сохраняем центральный пиксель между краями 2+2.
+        card.SetPatchMargin(StyleBox.Margin.All, 2);
         card.SetContentMarginOverride(StyleBox.Margin.All, 12);
         NowPlayingPanel.PanelOverride = card;
 
         // Results panel — dark box, doubles as the empty-state backdrop.
         var resultsBox = new StyleBoxTexture { Texture = panelTex, Modulate = Color.FromHex("#1D232C") };
-        resultsBox.SetPatchMargin(StyleBox.Margin.All, 3);
+        resultsBox.SetPatchMargin(StyleBox.Margin.All, 2);
         ResultsPanel.PanelOverride = resultsBox;
 
         // Search field — rounded dark box to match the card and buttons.
         var field = new StyleBoxTexture { Texture = panelTex, Modulate = Color.FromHex("#1D232C") };
-        field.SetPatchMargin(StyleBox.Margin.All, 3);
+        field.SetPatchMargin(StyleBox.Margin.All, 2);
         field.SetContentMarginOverride(StyleBox.Margin.Horizontal, 10);
         field.SetContentMarginOverride(StyleBox.Margin.Vertical, 6);
         SearchField.StyleBoxOverride = field;

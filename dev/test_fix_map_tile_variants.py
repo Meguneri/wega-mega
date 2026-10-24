@@ -4,10 +4,16 @@ import struct
 import unittest
 from unittest.mock import patch
 
-from fix_map_tile_variants import normalize
+from fix_map_tile_variants import normalize, tile_variants
 
 
 class TileVariantTests(unittest.TestCase):
+    def test_multiple_parents_preserve_explicit_variants(self):
+        limits = tile_variants()
+        self.assertEqual(limits['FloorAstroGrass'], 6)
+        self.assertEqual(limits['FloorAstroGrass'], limits['FloorPlanetGrass'])
+        self.assertEqual(limits['FloorPlasmaMarble'], limits['FloorWhiteMarble'])
+
     def test_only_invalid_variant_byte_changes(self):
         raw = struct.pack('<iBBB', 7, 3, 9, 5) + struct.pack('<iBBB', 7, 8, 1, 2)
         encoded = base64.b64encode(raw).decode()

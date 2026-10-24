@@ -5,13 +5,16 @@ from pathlib import Path
 import re
 import struct
 import yaml
+from functools import lru_cache
 
 
+@lru_cache(maxsize=1)
 def tile_variants():
     definitions = {}
-    for folder in ['Tiles', 'Corvax/Tiles', '_Wega/Tiles']:
-        for path in (Path('Resources/Prototypes') / folder).rglob('*.yml'):
-            for proto in yaml.load(path.read_text(encoding='utf-8'), Loader=yaml.CBaseLoader) or []:
+    for path in Path('Resources/Prototypes').rglob('*.yml'):
+        text = path.read_text(encoding='utf-8')
+        if re.search(r'^- type: tile\s*$', text, re.M):
+            for proto in yaml.load(text, Loader=yaml.CBaseLoader) or []:
                 if isinstance(proto, dict) and proto.get('type') == 'tile':
                     definitions[proto['id']] = proto
     def resolve(name, seen=()):
@@ -20,11 +23,31 @@ def tile_variants():
         proto = definitions[name]
         if 'variants' in proto:
             return int(proto['variants'])
-        parent = proto.get('parent')
-        if isinstance(parent, list):
-            parent = parent[0] if parent else None
-        return resolve(parent, (*seen, name)) if parent else 1
-    return {name: resolve(name) for name in definitions}
+        parents = proto.get('parent', [])
+        if isinstance(parents, str):
+            parents = [parents]
+        for parent in parents:
+            inherited = resolve(parent, (*seen, name))
+            if inherited is not None:
+                return inherited
+        return None
+    limits = {name: resolve(name) or 1 for name in definitions}
+    aliases = yaml.load(Path('Resources/Prototypes/Tiles/tile_migrations.yml').read_text(encoding='utf-8'),
+                        Loader=yaml.CBaseLoader)
+    for alias in aliases:
+        if alias.get('type') != 'tileAlias':
+            continue
+        target = alias['target']
+        chain = {a['id']: a['target'] for a in aliases if a.get('type') == 'tileAlias'}
+        seen = {alias['id']}
+        while target in chain:
+            if target in seen:
+                raise ValueError('Tile alias cycle: ' + target)
+            seen.add(target)
+            target = chain[target]
+        if target in limits:
+            limits[alias['id']] = limits[target]
+    return limits
 
 
 def normalize(text, fix=False):
@@ -69,13 +92,27 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('root', type=Path)
     parser.add_argument('--fix', action='store_true')
+    parser.add_argument('--report', type=Path)
     args = parser.parse_args()
     count = 0
+    report = {}
+    failures = []
     for path in sorted(args.root.rglob('*.yml')):
-        text, errors = normalize(path.read_text(encoding='utf-8'), args.fix)
+        try:
+            text, errors = normalize(path.read_text(encoding='utf-8'), args.fix)
+        except (ValueError, KeyError, AssertionError) as exc:
+            failures.append(str(path))
+            print(path, 'ERROR:', exc, flush=True)
+            continue
         count += sum(errors.values())
-        print(path.name, dict(errors), flush=True)
+        if errors:
+            report[path.as_posix()] = dict(errors)
+            print(path, sum(errors.values()), dict(errors), flush=True)
         if args.fix and errors:
             path.write_text(text, encoding='utf-8', newline='\n')
-    print('Invalid tile variants:', count)
-    raise SystemExit(bool(count) and not args.fix)
+    if args.report:
+        import json
+        args.report.write_text(json.dumps({'maps': report, 'failures': failures}, ensure_ascii=False, indent=2),
+                               encoding='utf-8')
+    print('Invalid tile variants:', count, '; affected maps:', len(report), '; failures:', len(failures))
+    raise SystemExit(bool(failures) or (bool(count) and not args.fix))

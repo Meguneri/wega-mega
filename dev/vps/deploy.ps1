@@ -5,12 +5,23 @@ param(
     [string]$Database,
     [string[]]$Admins = @('Meguneri', 'arhont1234'),
     [string]$BundleDirectory,
-    [string]$ServerConfig
+    [string]$ServerConfig,
+    [string]$UserDataArchive
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-if (!$Database) { $Database = Join-Path $root 'bin/Content.Server/data/preferences.db' }
-if (!$ServerConfig) { $ServerConfig = Join-Path $PSScriptRoot 'server_config.toml' }
+$saved = Join-Path $PSScriptRoot '.cache/deployment'
+if (!$Database) {
+    $Database = Join-Path $saved 'preferences.live.db'
+    if (!(Test-Path -LiteralPath $Database)) { $Database = Join-Path $root 'bin/Content.Server/data/preferences.db' }
+    if (!$UserDataArchive -and (Test-Path -LiteralPath (Join-Path $saved 'userdata.tar.gz'))) {
+        $UserDataArchive = Join-Path $saved 'userdata.tar.gz'
+    }
+}
+if (!$ServerConfig) {
+    $ServerConfig = Join-Path $saved 'server_config.toml'
+    if (!(Test-Path -LiteralPath $ServerConfig)) { $ServerConfig = Join-Path $PSScriptRoot 'server_config.toml' }
+}
 $key = (Resolve-Path -LiteralPath $SshKey).Path
 $stage = Join-Path ([IO.Path]::GetTempPath()) ('wega-deploy-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
@@ -20,7 +31,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Database preparation failed; nothing sent to V
 $sshArgs = @('-i', $key, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes')
 & ssh @sshArgs "root@$Vps" 'test ! -e /var/lib/wega/data/preferences.db && test ! -e /etc/wega/deploy.env && install -d -m 700 /root/wega-deploy'
 if ($LASTEXITCODE -ne 0) { throw 'VPS is inaccessible or already deployed; refusing to overwrite it.' }
-$files = @('bootstrap.sh','update.sh','install-release.sh','apply-pending.sh','wait-update.sh','wega.service','wega-update.service','wega-update.timer') | ForEach-Object { Join-Path $PSScriptRoot $_ }
+$files = @('bootstrap.sh','update.sh','install-release.sh','apply-pending.sh','wait-update.sh','restore_userdata.py','wega.service','wega-update.service','wega-update.timer') | ForEach-Object { Join-Path $PSScriptRoot $_ }
 $files = foreach ($file in $files) {
     $destination = Join-Path $stage ([IO.Path]::GetFileName($file))
     $text = [IO.File]::ReadAllText($file).Replace("`r`n", "`n")
@@ -32,6 +43,10 @@ $files += $snapshot
 if ($LASTEXITCODE -ne 0) { throw 'Script/database upload failed.' }
 & scp @sshArgs $ServerConfig "root@${Vps}:/root/wega-deploy/server_config.toml"
 if ($LASTEXITCODE -ne 0) { throw 'Config upload failed.' }
+if ($UserDataArchive) {
+    & scp @sshArgs $UserDataArchive "root@${Vps}:/root/wega-deploy/userdata.tar.gz"
+    if ($LASTEXITCODE -ne 0) { throw 'User data upload failed.' }
+}
 if ($BundleDirectory) {
     $bundleFiles = @('wega-release.tar.gz','wega-release.commit','wega-release.sha256') | ForEach-Object { (Resolve-Path -LiteralPath (Join-Path $BundleDirectory $_)).Path }
     & scp @sshArgs @bundleFiles "root@${Vps}:/root/wega-deploy/"

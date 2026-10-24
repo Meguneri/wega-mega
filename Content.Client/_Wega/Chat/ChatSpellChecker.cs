@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using Robust.Client.ResourceManagement;
 using Robust.Shared.Utility;
 
@@ -17,6 +18,15 @@ public sealed class ChatSpellChecker
         "унатх", "унатха", "унатхом", "вега", "веги", "веге", "вегой"
     };
     private static readonly HashSet<ulong> GameWordHashes = HashGameWords();
+    private static readonly HashSet<string> IndefiniteBases = new(StringComparer.Ordinal)
+    {
+        "кто", "кого", "кому", "кем", "ком", "что", "чего", "чему", "чем", "чём",
+        "какой", "какая", "какое", "какие", "какого", "какому", "каким", "какую",
+        "какою", "каком", "каких", "какими", "чей", "чья", "чьё", "чье", "чьи", "чьего",
+        "чьей", "чьему", "чьим", "чью", "чьею", "чьём", "чьем", "чьих", "чьими",
+        "где", "куда", "откуда", "когда", "как", "почему", "зачем", "сколько", "скольких",
+        "скольким", "сколькими"
+    };
 
     private static HashSet<ulong> HashGameWords()
     {
@@ -61,6 +71,33 @@ public sealed class ChatSpellChecker
     }
 
     public bool IsKnown(string word)
+    {
+        if (ContainsWord(word))
+            return true;
+
+        // Проверяем продуктивные формы, которых может не быть в перечне словоформ.
+        // Не принимаем произвольное соединение двух правильных слов через дефис.
+        var normalized = new StringBuilder(word.Length);
+        foreach (var character in word)
+        {
+            if (!IsSpellingMark(character))
+                normalized.Append(IsWordHyphen(character) ? '-' : char.ToLowerInvariant(character));
+        }
+        var text = normalized.ToString();
+        var hyphen = text.IndexOf('-');
+        if (hyphen <= 0 || hyphen == text.Length - 1 || text.IndexOf('-', hyphen + 1) >= 0)
+            return false;
+
+        var first = text.Substring(0, hyphen);
+        var second = text.Substring(hyphen + 1);
+        if (second == "то")
+            return ContainsWord(first);
+        if (second is "либо" or "нибудь")
+            return IndefiniteBases.Contains(first) && ContainsWord(first);
+        return first == "кое" && IndefiniteBases.Contains(second) && ContainsWord(second);
+    }
+
+    private bool ContainsWord(string word)
     {
         var value = Fingerprint(word);
         if (GameWordHashes.Contains(value))

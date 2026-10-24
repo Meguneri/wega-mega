@@ -16,7 +16,7 @@ if [ "$ID" != ubuntu ] || [ "$VERSION_ID" != 24.04 ]; then
 fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y git curl ca-certificates python3 sqlite3 libicu74 libssl3t64 libzstd1 libatomic1 unzip
+apt-get install -y git curl ca-certificates python3 sqlite3 libicu74 libssl3t64 libzstd1 libatomic1 unzip ffmpeg
 git check-ref-format --branch "$branch" >/dev/null
 python3 -c 'import tomllib,sys; c=tomllib.load(open(sys.argv[1],"rb")); assert c["auth"]["mode"]==1 and c["auth"]["allowlocal"] is False, "Verified authentication required"; assert c["net"]["port"]==1212, "This kit uses port 1212"' "$stage/server_config.toml"
 id wega >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/wega --shell /usr/sbin/nologin wega
@@ -65,6 +65,10 @@ chmod 600 /etc/wega/deploy.env
 python3 -c 'import sqlite3,sys; c=sqlite3.connect("file:"+sys.argv[1]+"?mode=ro",uri=True); assert c.execute("pragma integrity_check").fetchone()[0]=="ok"; assert not c.execute("pragma foreign_key_check").fetchall()' "$stage/preferences.snapshot.db"
 install -m 600 -o wega -g wega "$stage/preferences.snapshot.db" /var/lib/wega/data/preferences.db
 install -m 600 "$stage/preferences.snapshot.db" /var/lib/wega/backups/preferences.imported.db
+if [ -f "$stage/userdata.tar.gz" ]; then
+  python3 "$stage/restore_userdata.py" "$stage/userdata.tar.gz" /var/lib/wega/data
+  chown -R wega:wega /var/lib/wega/data
+fi
 for unit in wega.service wega-update.service wega-update.timer; do
   install -m 644 "$stage/$unit" "/etc/systemd/system/$unit"
 done

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Source: wega-team/ss14-wega commit 00424636e7 (imported by Vovock); original artist not specified. Default asset license from the source README applies.",
+  "size": { "x": 32, "y": 32 },
+  "states": [ { "name": "mask", "directions": 4 } ]
+}
