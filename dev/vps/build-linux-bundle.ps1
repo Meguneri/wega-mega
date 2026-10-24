@@ -44,10 +44,10 @@ with tarfile.open(bundle, 'w:gz', compresslevel=3) as archive:
         archive.add(output / 'stage' / directory, arcname=directory, filter=include)
     for directory in ['Resources', 'RobustToolbox/Resources']:
         archive.add(root / directory, arcname=directory, filter=include)
-(output / 'wega-release.commit').write_text(revision + '\n', encoding='utf-8')
+(output / 'wega-release.commit').write_text(revision + '\n', encoding='utf-8', newline='\n')
 with bundle.open('rb') as stream:
     digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-(output / 'wega-release.sha256').write_text(digest + '  wega-release.tar.gz\n', encoding='utf-8')
+(output / 'wega-release.sha256').write_text(digest + '  wega-release.tar.gz\n', encoding='utf-8', newline='\n')
 print('Linux bundle verified:', digest)
 '@ | & python - $root $output $revision
     if ($LASTEXITCODE -ne 0) { throw 'Bundle creation failed.' }
