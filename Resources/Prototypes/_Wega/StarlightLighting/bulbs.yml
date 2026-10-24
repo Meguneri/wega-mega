@@ -1,0 +1,22 @@
+# Starlight fff9583f6280f260d4df3c3a60318131feb54a87; см. README.md и LICENSE*.txt.
+- type: entity
+  parent: BaseLightTube
+  id: WegaStarlightBlackLightTube
+  components:
+  - type: LightBulb
+    color: "#5D0CED"
+    lightEnergy: 1.1
+    lightRadius: 10
+    lightSoftness: 1
+    BurningTemperature: 700
+    PowerUse: 25
+
+- type: entity
+  parent: BaseLightTube
+  id: WegaStarlightLightTubeWarm
+  components:
+  - type: LightBulb
+    color: "#ff9833" # 2200k color temp
+    lightEnergy: 0.8
+    lightRadius: 10
+    lightSoftness: 3

@@ -1,5 +1,17 @@
 # `_Wega` — кастомный контент форка
 
+## Экспериментальный набор освещения Starlight
+
+Источник: [ss14Starlight/space-station-14](https://github.com/ss14Starlight/space-station-14),
+`fff9583f6280f260d4df3c3a60318131feb54a87`. 43 ID с префиксом `WegaStarlight` перечислены
+в [StarlightLighting/entities.txt](StarlightLighting/entities.txt). Прототипы, графы сборки
+и лицензии: `Resources/Prototypes/_Wega/StarlightLighting/`; текстуры:
+`Resources/Textures/_Wega/StarlightLighting/{streetlamp,floorlights,light_floor}.rsi`.
+Ассеты CC-BY-SA-3.0, авторство Starlight/Paradise сохранено в метаданных; код пола MIT,
+для старых определений также сохранена атрибуционная Starlight License. Обе локали:
+`Resources/Locale/{ru-RU/_wega,en-US/_Wega}/starlight_lighting.ftl`.
+Адаптации и откат описаны в [README пакета](StarlightLighting/README.md).
+
 Эта папка содержит прототипы, текстуры, звуки, локализации и другие ресурсы, специфичные для форка `wega-mega`. Контент организован так, чтобы не пересекаться с upstream: прототипы лежат в `Entities/`, текстуры — в `Textures/_Wega/`, локализация — в `Resources/Locale/ru-RU/...`.
 
 ## Перенесённый контент для арены / тарков-режима

@@ -1,0 +1,30 @@
+# Изолированные рецепты для экспериментального набора Starlight.
+- type: construction
+  id: WegaStarlightFloorLightFixture
+  graph: WegaStarlightFloorLightFixture
+  startNode: start
+  targetNode: floorLight
+  category: construction-category-structures
+  objectType: Structure
+  placementMode: SnapgridCenter
+  conditions:
+  - !type:TileNotBlocked
+
+- type: construction
+  id: WegaStarlightLightFloor
+  graph: WegaStarlightLightFloor
+  startNode: start
+  targetNode: lightTile
+  category: construction-category-structures
+  objectType: Item
+
+- type: construction
+  id: WegaStarlightStreetLamp
+  graph: WegaStarlightStreetLamp
+  startNode: start
+  targetNode: streetLamp
+  category: construction-category-structures
+  objectType: Structure
+  placementMode: SnapgridCenter
+  conditions:
+  - !type:TileNotBlocked

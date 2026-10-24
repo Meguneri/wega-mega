@@ -1,0 +1,55 @@
+# Starlight fff9583f6280f260d4df3c3a60318131feb54a87; см. README.md и LICENSE*.txt.
+- type: entity
+  id: WegaStarlightPoweredlightBlackLight
+  suffix: Starlight, violet
+  parent: Poweredlight
+  components:
+  - type: PoweredLight
+    hasLampOnSpawn: WegaStarlightBlackLightTube
+
+  - type: PointLight
+    radius: 10
+    energy: 1.1
+    softness: 1
+    color: "#5D0CED"
+  - type: DamageOnInteract
+    damage:
+      types:
+        Heat: 4
+    popupText: powered-light-component-burn-hand
+
+- type: entity
+  parent: AlwaysPoweredWallLight
+  id: WegaStarlightAlwaysPoweredLightBlackLight
+  suffix: Always Powered, black light
+  components:
+  - type: PointLight
+    radius: 10
+    energy: 1.1
+    softness: 1
+    color: "#5D0CED"
+
+- type: entity
+  id: WegaStarlightPoweredlightWarm
+  suffix: Warm
+  parent: Poweredlight
+  components:
+  - type: PoweredLight
+    hasLampOnSpawn: WegaStarlightLightTubeWarm
+  - type: PointLight
+    enabled: true
+    radius: 10
+    energy: 0.8
+    softness: 3
+    color: "#ff9833"
+
+- type: entity
+  parent: AlwaysPoweredWallLight
+  id: WegaStarlightAlwaysPoweredLightWarm
+  suffix: Always Powered, Warm
+  components:
+  - type: PointLight
+    radius: 10
+    energy: 0.8
+    softness: 3
+    color: "#ff9833"

@@ -1,0 +1,167 @@
+# Starlight fff9583f6280f260d4df3c3a60318131feb54a87; см. README.md и LICENSE*.txt.
+- type: entity
+  id: WegaStarlightBaseLightStreetLamp
+  parent: BaseStructure
+  abstract: true
+  components:
+  - type: Sprite
+    sprite: _Wega/StarlightLighting/streetlamp.rsi
+    drawdepth: Overdoors
+    noRot: True
+    offset: 0, 0.75
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-0.15,-0.15,0.15,0.15"
+        density: 190
+        mask:
+        - MachineMask
+        layer:
+        - MidImpassable
+        - LowImpassable
+        - BulletImpassable
+  - type: InteractionOutline
+  - type: Damageable
+    damageModifierSet: Metallic
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 200
+      behaviors:
+        - !type:DoActsBehavior
+          acts: [ "Destruction" ]
+        - !type:PlaySoundBehavior
+          sound:
+            collection: MetalGlassBreak
+        - !type:SpawnEntitiesBehavior
+          spawn:
+            SheetSteel1:
+              min: 2
+              max: 4
+
+- type: entity
+  id: WegaStarlightLightStreetLamp
+  suffix: Always Powered
+  parent: WegaStarlightBaseLightStreetLamp
+  components:
+  - type: Sprite
+    layers:
+    - map: ["enum.PoweredLightLayers.Base"]
+      state: base
+    - map: ["enum.PoweredLightLayers.Glow"]
+      state: glow
+      shader: unshaded
+    state: base
+  - type: PointLight
+    radius: 10
+    energy: 2
+    softness: 0.9
+    offset: 0, -0.4
+    color: "#EEEEFF"
+  - type: AmbientOnPowered
+  - type: AmbientSound
+    volume: -10
+    range: 3
+    sound:
+      path: /Audio/Ambience/Objects/light_hum.ogg
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 200
+      behaviors:
+        - !type:DoActsBehavior
+          acts: [ "Destruction" ]
+    - trigger:
+        !type:DamageTrigger
+        damage: 150
+      behaviors:
+        - !type:PlaySoundBehavior
+          sound:
+            collection: MetalBreak
+        - !type:ChangeConstructionNodeBehavior
+          node: broken
+        - !type:DoActsBehavior
+          acts: [ "Destruction" ]
+        - !type:EmptyAllContainersBehaviour
+  - type: RequireProjectileTarget
+
+- type: entity
+  id: WegaStarlightPoweredLightStreetLampEmpty
+  suffix: Empty
+  parent: WegaStarlightLightStreetLamp
+  components:
+  - type: Sprite
+    state: empty
+  - type: PointLight
+    enabled: false
+  - type: PoweredLight
+    bulb: Tube
+  - type: ContainerContainer
+    containers:
+      light_bulb: !type:ContainerSlot
+  - type: ApcPowerReceiver
+  - type: ExtensionCableReceiver
+  - type: Construction
+    graph: WegaStarlightStreetLamp
+    node: streetLamp
+  - type: Appearance
+  - type: PoweredLightVisuals
+    blinkingSound:
+      path: "/Audio/Machines/light_tube_on.ogg"
+    spriteStateMap:
+      Empty: empty
+      Off: base
+      On: base
+      Broken: light_broken
+      Burned: base
+  - type: DamageOnInteract
+    damage:
+      types:
+        Heat: 2
+    popupText: powered-light-component-burn-hand
+  - type: DeviceLinkSink
+    ports:
+      - On
+      - Off
+      - Toggle
+
+- type: entity
+  id: WegaStarlightPoweredLightStreetLamp
+  suffix: ""
+  parent: WegaStarlightPoweredLightStreetLampEmpty
+  components:
+  - type: PoweredLight
+    hasLampOnSpawn: LightTube
+
+- type: entity
+  id: WegaStarlightPoweredLightStreetLampWarm
+  suffix: Warm
+  parent: WegaStarlightPoweredLightStreetLampEmpty
+  components:
+  - type: PoweredLight
+    hasLampOnSpawn: WegaStarlightLightTubeWarm
+
+- type: entity
+  id: WegaStarlightLightStreetLampBroken
+  parent: WegaStarlightBaseLightStreetLamp
+  components:
+  - type: Sprite
+    state: broken
+  - type: Construction
+    graph: WegaStarlightStreetLamp
+    node: broken
+
+- type: entity
+  id: WegaStarlightLightStreetLampUnfinished
+  parent: WegaStarlightBaseLightStreetLamp
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: Sprite
+    state: empty
+  - type: Construction
+    graph: WegaStarlightStreetLamp
+    node: unfinished

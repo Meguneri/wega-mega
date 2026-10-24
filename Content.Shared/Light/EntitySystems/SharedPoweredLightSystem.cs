@@ -290,7 +290,11 @@ public abstract partial class SharedPoweredLightSystem : EntitySystem
             case LightBulbState.Normal:
                 if (powerReceiver.Powered && light.On)
                 {
-                    SetLight(uid, true, lightBulb.Color, light, lightBulb.LightRadius, lightBulb.LightEnergy, lightBulb.LightSoftness);
+                    // Wega: переносимые светящиеся полы ограничивают яркость сменной лампы.
+                    var level = new Content.Shared._Wega.StarlightLighting.WegaStarlightLightFixtureLevelEvent(
+                        lightBulb.LightEnergy, lightBulb.LightRadius);
+                    RaiseLocalEvent(uid, ref level);
+                    SetLight(uid, true, lightBulb.Color, light, level.LightRadius, level.LightEnergy, lightBulb.LightSoftness);
                     _appearance.SetData(uid, PoweredLightVisuals.BulbState, PoweredLightState.On, appearance);
                     var time = GameTiming.CurTime;
                     if (time > light.LastThunk + ThunkDelay)

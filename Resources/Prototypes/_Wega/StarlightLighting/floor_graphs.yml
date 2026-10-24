@@ -1,0 +1,60 @@
+# Starlight fff9583f6280f260d4df3c3a60318131feb54a87; см. README.md и LICENSE*.txt.
+- type: constructionGraph
+  id: WegaStarlightFloorLightFixture
+  start: start
+  graph:
+    - node: start
+      edges:
+        - to: floorLight
+          steps:
+            - material: Steel
+              amount: 1
+              doAfter: 2
+    - node: floorLight
+      entity: WegaStarlightPoweredFloorLightEmpty
+      edges:
+        - to: start
+          conditions:
+            - !type:ContainerEmpty
+              container: "light_bulb"
+          steps:
+            - tool: Screwing
+              doAfter: 2
+          completed:
+            - !type:SpawnPrototype
+              prototype: SheetSteel1
+              amount: 1
+            - !type:DeleteEntity {}
+
+- type: constructionGraph
+  id: WegaStarlightLightFloor
+  start: start
+  graph:
+    - node: start
+      edges:
+        - to: lightTile
+          steps:
+            - material: Glass
+              amount: 1
+            - material: Cable
+              amount: 1
+            - material: Steel
+              amount: 1
+    - node: lightTile
+      entity: WegaStarlightFloorTileItemLight
+    - node: lightFloor
+      entity: WegaStarlightLightFloorEmpty
+      edges:
+        - to: start
+          conditions:
+            - !type:WirePanel {}
+            - !type:ContainerEmpty
+              container: "light_bulb"
+          steps:
+            - tool: Prying
+              doAfter: 1
+          completed:
+            - !type:SpawnPrototype
+              prototype: WegaStarlightFloorTileItemLight
+              amount: 1
+            - !type:DeleteEntity {}
