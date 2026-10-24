@@ -42,7 +42,7 @@ Git и уведомляет игроков. Сборка на работающе
 Один раз экспортировать готовую Linux-сборку с действующего VPS:
 
 ```powershell
-.\dev\vps\cache-bundle.ps1 -Vps OLD_VPS_IP -SshKey C:\path\to\ssh_key
+.\dev\vps\cache-bundle.ps1 -Vps OLD_VPS_IP -SshKey C:\path\to\ssh_key -OutputDirectory .\dev\vps\.cache\bundle-new
 ```
 
 Архив, SHA-256 и номер коммита сохраняются в игнорируемом `dev/vps/.cache`.
@@ -54,7 +54,7 @@ Git и уведомляет игроков. Сборка на работающе
 Затем развернуть на новом VPS из корня проекта:
 
 ```powershell
-.\dev\vps\deploy.ps1 -Vps NEW_VPS_IP -SshKey C:\path\to\ssh_key -BundleDirectory .\dev\vps\.cache
+.\dev\vps\deploy.ps1 -Vps NEW_VPS_IP -SshKey C:\path\to\ssh_key -BundleDirectory .\dev\vps\.cache\bundle-new
 ```
 
 Архив закреплён за конкретным коммитом: новая установка запускается ровно на

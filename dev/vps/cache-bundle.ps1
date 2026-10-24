@@ -4,14 +4,19 @@ param(
     [string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
-if (!$OutputDirectory) { $OutputDirectory = Join-Path $PSScriptRoot '.cache' }
+if (!$OutputDirectory) {
+    $OutputDirectory = Join-Path $PSScriptRoot ('.cache/bundle-' + [guid]::NewGuid().ToString('N'))
+}
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Output directory already exists. Select a new directory.' }
 $key = (Resolve-Path -LiteralPath $SshKey).Path
 $token = [guid]::NewGuid().ToString('N')
 $remoteScript = "/root/wega-export-$token.sh"
 $remoteBundle = "/root/wega-bundle-$token"
 $sshArgs = @('-i', $key, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes')
-& scp @sshArgs (Join-Path $PSScriptRoot 'export-bundle.sh') "root@${Vps}:$remoteScript"
+$temporary = Join-Path ([IO.Path]::GetTempPath()) "wega-export-$token.sh"
+$script = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'export-bundle.sh')).Replace("`r`n", "`n")
+[IO.File]::WriteAllText($temporary, $script, [Text.UTF8Encoding]::new($false))
+& scp @sshArgs $temporary "root@${Vps}:$remoteScript"
 if ($LASTEXITCODE -ne 0) { throw 'Exporter upload failed.' }
 & ssh @sshArgs "root@$Vps" "bash $remoteScript $remoteBundle"
 if ($LASTEXITCODE -ne 0) { throw 'Bundle export failed.' }
