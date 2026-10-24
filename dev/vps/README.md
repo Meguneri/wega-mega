@@ -74,7 +74,7 @@ arhont1234. Параметры `-Branch`, `-Database`, `-Admins` и `-ServerConf
 выбрать другие значения. Пользовательская конфигурация должна сохранять
 `auth.mode=1`, `auth.allowlocal=false` и порт 1212.
 Для точного клона действующего сервера укажите
-`-Database .\dev\vps\.cache\preferences.live.db`; файл содержит персонажей и
+`-Database .\dev\vps\.cache\deployment\preferences.live.db -UserDataArchive .\dev\vps\.cache\deployment\userdata.tar.gz`; файл содержит персонажей и
 должен храниться только локально, отдельно от Git.
 При использовании стандартного снимка автоматически передаются и `userdata.tar.gz`,
 и сохранённая конфигурация. Для произвольной базы архив можно указать отдельно через
