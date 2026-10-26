@@ -14,6 +14,7 @@ try {
         Write-Host "Publishing Linux Release: $project"
         $destination = Join-Path $output "stage/bin/$project"
         & dotnet publish "$project/$project.csproj" -c Release -r linux-x64 --self-contained false `
+            "-p:OutputPath=$output/build/" `
             -p:TargetOS=Linux -p:FullRelease=false -p:PublishSingleFile=false -p:PublishTrimmed=false `
             -p:ErrorOnDuplicatePublishOutputFiles=false -m:1 -p:UseSharedCompilation=false `
             --disable-build-servers -o $destination *> (Join-Path $output "$project.log")

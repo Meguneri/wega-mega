@@ -74,6 +74,29 @@ public sealed class ChatSpellCheckerTest
         Assert.That(Checker.FindErrors(text), Is.EqualTo(new[] { (start, end) }));
     }
 
+    [TestCase("/me превет")]
+    [TestCase("/me Превет")]
+    [TestCase("  /ME \tПревет")]
+    [TestCase("/me «Превет»")]
+    [TestCase("/me привет. Превет")]
+    public void ChecksEmoteCommandTextAtItsOriginalPosition(string text)
+    {
+        var start = text.LastIndexOf("превет", StringComparison.OrdinalIgnoreCase);
+        Assert.That(Checker.FindErrors(text), Is.EqualTo(new[] { (start, start + 6) }));
+    }
+
+    [TestCase("/me")]
+    [TestCase("/me ")]
+    [TestCase("/me привет персонаж")]
+    [TestCase("/me привет Джиневра")]
+    [TestCase("/me https://пример.рф/превет")]
+    [TestCase("/meow превет")]
+    [TestCase("/say превет")]
+    public void KeepsCommandsAndValidEmotesUnmarked(string text)
+    {
+        Assert.That(Checker.FindErrors(text), Is.Empty);
+    }
+
     [Test]
     public void ChecksTextFollowingALink()
     {

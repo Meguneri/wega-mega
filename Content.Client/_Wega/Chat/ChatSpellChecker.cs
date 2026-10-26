@@ -121,12 +121,22 @@ public sealed class ChatSpellChecker
     public List<(int Start, int End)> FindErrors(string text)
     {
         var errors = new List<(int, int)>();
-        if (text.TrimStart().StartsWith('/'))
-            return errors;
+        var messageStart = 0;
+        while (messageStart < text.Length && char.IsWhiteSpace(text[messageStart]))
+            messageStart++;
+        if (messageStart < text.Length && text[messageStart] == '/')
+        {
+            // /me содержит обычный текст эмоута; остальные команды не проверяем.
+            if (text.Length - messageStart < 4 ||
+                !text.Substring(messageStart, 3).Equals("/me", StringComparison.OrdinalIgnoreCase) ||
+                !char.IsWhiteSpace(text[messageStart + 3]))
+                return errors;
+            messageStart += 4;
+        }
 
         var tokenEnd = 0;
         var skipToken = false;
-        for (var start = 0; start < text.Length;)
+        for (var start = messageStart; start < text.Length;)
         {
             if (!char.IsLetterOrDigit(text[start]))
             {
@@ -167,7 +177,7 @@ public sealed class ChatSpellChecker
             var hasLowercase = false;
             for (var i = start; i < end; i++)
                 hasLowercase |= char.IsLower(text[i]);
-            var name = char.IsUpper(text[start]) && hasLowercase && !IsSentenceStart(text, start);
+            var name = char.IsUpper(text[start]) && hasLowercase && !IsSentenceStart(text, start, messageStart);
             var abbreviation = end - start <= 5;
             for (var i = start; i < end && abbreviation; i++)
                 abbreviation = char.IsUpper(text[i]);
@@ -184,9 +194,9 @@ public sealed class ChatSpellChecker
 
     private static bool IsWordHyphen(char character) => character is '-' or '\u2010' or '\u2011';
 
-    private static bool IsSentenceStart(string text, int start)
+    private static bool IsSentenceStart(string text, int start, int messageStart)
     {
-        for (var i = start - 1; i >= 0; i--)
+        for (var i = start - 1; i >= messageStart; i--)
         {
             if (char.IsWhiteSpace(text[i]) || text[i] is '"' or '«' or '»' or '(' or ')')
                 continue;
