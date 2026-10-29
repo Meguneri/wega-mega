@@ -205,7 +205,9 @@ public sealed partial class MediaPlayerSystem
                 var outTemplate = Path.Combine(cacheDir, "tvfull_%(id)s.%(ext)s");
 
                 var (dlExit, _, dlErr) = await RunYtdlp(
-                    "--no-playlist -f \"best[height<=360][ext=mp4]/best[height<=360]/best\" " +
+                    // YouTube обычно отдаёт звук и видео отдельно; объединяем дорожки без перекодирования.
+                    "--no-playlist -f \"bv[height<=360][vcodec^=avc1][protocol=https]+ba[ext=m4a][protocol=https]/bv[height<=360]+ba/b[height<=360]/b\" " +
+                    "--merge-output-format mp4 --concurrent-fragments 4 --postprocessor-args \"Merger+ffmpeg:-threads 1\" " +
                     $"--max-filesize 2G -o \"{outTemplate}\" --no-warnings -- \"{Sanitize(id)}\"");
                 videoPath = Directory.EnumerateFiles(cacheDir, $"tvfull_{id}.*")
                     .FirstOrDefault(f => !f.EndsWith(".ogg"));
