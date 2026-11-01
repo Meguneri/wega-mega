@@ -1,0 +1,308 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Adapted from ArcaneSS14/arcane 81cd66873de20e597282565f27b686331e65f677.
+
+- type: entity
+  parent: BaseItem
+  id: WegaArcaneLeash
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Objects/Misc/leash.rsi
+    state: icon
+    scale: 1,1
+  - type: Item
+    sprite: _Wega/ArcaneAccessories/Objects/Misc/leash.rsi
+    size: Normal
+  - type: ArcaneLeash
+    maxDistance: 3
+
+- type: entity
+  parent: BaseItem
+  id: WegaArcaneBdsmLeash
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Objects/Misc/bdsm_leash.rsi
+    state: icon
+    scale: 1,1
+  - type: Item
+    sprite: _Wega/ArcaneAccessories/Objects/Misc/bdsm_leash.rsi
+    size: Normal
+  - type: ArcaneLeash
+    maxDistance: 3
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerRedSpikes
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_spikes.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_spikes.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerRedSpikesHeart
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red-spikes_heart.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red-spikes_heart.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerRing
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_ring.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_ring.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerBell
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_bell.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_bell.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerHeart
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_heart.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_heart.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerHeartSpikes
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_heart_spikes.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_heart_spikes.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerLaceBlack
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_black.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_black.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerLacePink
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_pink.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_pink.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerLaceRed
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_red.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_red.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerLaceWhite
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_white.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_white.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerPinkHeart
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_heart.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_heart.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerPinkHeartSpikes
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_heart_spikes.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_heart_spikes.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerPinkSpikes
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_spikes.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_spikes.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerRedBell
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_bell.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_bell.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ClothingNeckBase
+  id: WegaArcaneClothingNeckChokerRedHeart
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_heart.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_heart.rsi
+  - type: ArcaneCollar
+
+- type: entity
+  parent: ERPWhip
+  id: WegaArcaneLongWhip
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/ERP/Toys/Whip/long_whip.rsi
+    state: icon
+    scale: 1,1
+  - type: Item
+    sprite: _Wega/ArcaneAccessories/ERP/Toys/Whip/long_whip.rsi
+    size: Normal
+  - type: MeleeWeapon
+    possibilityWideAtack: false
+
+- type: entity
+  parent: ERPWhip
+  id: WegaArcanePaddleStack
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/ERP/Toys/Whip/paddle_stack.rsi
+    state: icon
+    scale: 1,1
+  - type: Item
+    sprite: _Wega/ArcaneAccessories/ERP/Toys/Whip/paddle_stack.rsi
+    size: Normal
+  - type: MeleeWeapon
+    possibilityWideAtack: false
+
+- type: entity
+  parent: ClothingHandsBase
+  id: WegaArcaneClothingHandsBDSMgloves
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Hands/bdsm_gloves.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Hands/bdsm_gloves.rsi
+
+- type: entity
+  parent: ClothingShoesBase
+  id: WegaArcaneClothingShoesBDSMBoots
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Shoes/bdsm_boots.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Shoes/bdsm_boots.rsi
+
+- type: entity
+  parent: ClothingUniformBase
+  id: WegaArcaneHarnessOutfit
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneAccessories/Clothing/Innerclothing/bdsm_dress.rsi
+    state: icon
+    scale: 1,1
+  - type: Clothing
+    sprite: _Wega/ArcaneAccessories/Clothing/Innerclothing/bdsm_dress.rsi
+
+- type: entity
+  parent: CrateGenericSteel
+  id: WegaArcaneAccessoriesCrate
+  components:
+  - type: EntityStorage
+    capacity: 64
+  - type: StorageFill
+    contents:
+    - id: WegaArcaneLeash
+    - id: WegaArcaneBdsmLeash
+    - id: WegaArcaneClothingNeckChokerRedSpikes
+    - id: WegaArcaneClothingNeckChokerRedSpikesHeart
+    - id: WegaArcaneClothingNeckChokerRing
+    - id: WegaArcaneClothingNeckChokerBell
+    - id: WegaArcaneClothingNeckChokerHeart
+    - id: WegaArcaneClothingNeckChokerHeartSpikes
+    - id: WegaArcaneClothingNeckChokerLaceBlack
+    - id: WegaArcaneClothingNeckChokerLacePink
+    - id: WegaArcaneClothingNeckChokerLaceRed
+    - id: WegaArcaneClothingNeckChokerLaceWhite
+    - id: WegaArcaneClothingNeckChokerPinkHeart
+    - id: WegaArcaneClothingNeckChokerPinkHeartSpikes
+    - id: WegaArcaneClothingNeckChokerPinkSpikes
+    - id: WegaArcaneClothingNeckChokerRedBell
+    - id: WegaArcaneClothingNeckChokerRedHeart
+    - id: WegaArcaneLongWhip
+    - id: WegaArcanePaddleStack
+    - id: WegaArcaneClothingHandsBDSMgloves
+    - id: WegaArcaneClothingShoesBDSMBoots
+    - id: WegaArcaneHarnessOutfit
+    - id: ClothingNeckChokerBlack
+    - id: ClothingNeckChokerRed
+    - id: ClothingNeckChokerSpike
+    - id: ERPShibariRopeWhite
+    - id: ERPWhip
+    - id: ToyHandcuffs

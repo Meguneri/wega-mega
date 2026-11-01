@@ -1,0 +1,236 @@
+{
+  "repository": "https://github.com/ArcaneSS14/arcane",
+  "revision": "81cd66873de20e597282565f27b686331e65f677",
+  "items": [
+    {
+      "id": "WegaArcaneLeash",
+      "source_id": "Leash",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Objects/Misc/leash.rsi",
+      "category": "leash",
+      "license": "CC-BY-SA-3.0",
+      "author": "Created for ArcaneSS14 by 0RK",
+      "equipped": null
+    },
+    {
+      "id": "WegaArcaneBdsmLeash",
+      "source_id": "BdsmLeash",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Objects/Misc/bdsm_leash.rsi",
+      "category": "leash",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": null
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerRedSpikes",
+      "source_id": "ClothingNeckChokerRedSpikes",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_spikes.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerRedSpikesHeart",
+      "source_id": "ClothingNeckChokerRedSpikesHeart",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red-spikes_heart.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerRing",
+      "source_id": "ClothingNeckChokerRing",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_ring.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerBell",
+      "source_id": "ClothingNeckChokerBell",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_bell.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerHeart",
+      "source_id": "ClothingNeckChokerHeart",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_heart.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerHeartSpikes",
+      "source_id": "ClothingNeckChokerHeartSpikes",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_heart_spikes.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerLaceBlack",
+      "source_id": "ClothingNeckChokerLaceBlack",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_black.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerLacePink",
+      "source_id": "ClothingNeckChokerLacePink",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_pink.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerLaceRed",
+      "source_id": "ClothingNeckChokerLaceRed",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_red.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerLaceWhite",
+      "source_id": "ClothingNeckChokerLaceWhite",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_lace_white.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerPinkHeart",
+      "source_id": "ClothingNeckChokerPinkHeart",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_heart.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerPinkHeartSpikes",
+      "source_id": "ClothingNeckChokerPinkHeartSpikes",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_heart_spikes.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerPinkSpikes",
+      "source_id": "ClothingNeckChokerPinkSpikes",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_pink_spikes.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerRedBell",
+      "source_id": "ClothingNeckChokerRedBell",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_bell.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneClothingNeckChokerRedHeart",
+      "source_id": "ClothingNeckChokerRedHeart",
+      "source": "Resources/Prototypes/_Arcane/Fun/leash.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Neck/Collars/choker_red_heart.rsi",
+      "category": "neck",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bulbo44kkey (Discord)",
+      "equipped": "equipped-NECK"
+    },
+    {
+      "id": "WegaArcaneLongWhip",
+      "source_id": "LongWhip",
+      "source": "Resources/Prototypes/_Arcane/Entities/ERP/toys.yml",
+      "sprite": "_Wega/ArcaneAccessories/ERP/Toys/Whip/long_whip.rsi",
+      "category": "prop",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by Bulbo44kkey (Discord)",
+      "equipped": null
+    },
+    {
+      "id": "WegaArcanePaddleStack",
+      "source_id": "PaddleStack",
+      "source": "Resources/Prototypes/_Arcane/Entities/ERP/toys.yml",
+      "sprite": "_Wega/ArcaneAccessories/ERP/Toys/Whip/paddle_stack.rsi",
+      "category": "prop",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by Bulbo44kkey (Discord)",
+      "equipped": null
+    },
+    {
+      "id": "WegaArcaneClothingHandsBDSMgloves",
+      "source_id": "ClothingHandsBDSMgloves",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Hands/gloves.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Hands/bdsm_gloves.rsi",
+      "category": "gloves",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by seraphimttt (Discord)",
+      "equipped": "equipped-HAND"
+    },
+    {
+      "id": "WegaArcaneClothingShoesBDSMBoots",
+      "source_id": "ClothingShoesBDSMBoots",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Shoes/shoes.yml",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Shoes/bdsm_boots.rsi",
+      "category": "shoes",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by bulbo44key (Discord)",
+      "equipped": "equipped-FEET"
+    },
+    {
+      "id": "WegaArcaneHarnessOutfit",
+      "source_id": null,
+      "source": "Resources/Textures/_Arcane/Clothing/Innerclothing/bdsm_dress.rsi",
+      "sprite": "_Wega/ArcaneAccessories/Clothing/Innerclothing/bdsm_dress.rsi",
+      "category": "jumpsuit",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by seraphimttt (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    }
+  ],
+  "reused": {
+    "Whip": "ERPWhip",
+    "SoftHandcuffs": "ToyHandcuffs",
+    "Shibari": "ERPShibariRopeWhite",
+    "Collar": "ClothingNeckChokerBlack",
+    "ClothingNeckChokerDefault": "ClothingNeckChokerBlack",
+    "ClothingNeckChokerSpikes": "ClothingNeckChokerSpike",
+    "ClothingNeckChokerRed": "ClothingNeckChokerRed"
+  },
+  "deduplication": "Reviewed functional equivalents; new artwork variants are distinguished from new mechanics."
+}

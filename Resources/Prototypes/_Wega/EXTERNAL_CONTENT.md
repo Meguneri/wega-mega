@@ -251,6 +251,23 @@ Uplink-каталог Estação Pirata не переносился.
   `Resources/Locale/en-US/_Wega/arcane_social.ftl`.
   Импорт: `dev/import_arcane_social.py`; ограничения перечислены в README набора.
 
+## Arcane: недостающие аксессуары и поводки
+
+- Источник: [ArcaneSS14/arcane](https://github.com/ArcaneSS14/arcane),
+  `81cd66873de20e597282565f27b686331e65f677`.
+- 22 новых варианта; 6 существующих предметов Wega переиспользуются.
+  Аудит сопоставлений, точные ID, пути и авторы:
+  `Resources/Prototypes/_Wega/ArcaneAccessories/manifest.json`.
+- Прототипы: `Resources/Prototypes/_Wega/ArcaneAccessories/accessories.yml`.
+  Текстуры: `Resources/Textures/_Wega/ArcaneAccessories/` (CC-BY-SA-3.0/4.0,
+  Bulbo44kkey/bulbo44kkey/bulbo44key, seraphimttt, 0RK; исходные метаданные сохранены).
+- Адаптация поводков: `Content.{Client,Server,Shared}/_Wega/ArcaneSocial/ArcaneLeash*`
+  и `Content.Shared/_Wega/ArcaneSocial/ArcaneCollarComponent.cs`, AGPL-3.0-or-later.
+  Клиентское рисование заменено на API, доступный песочнице; обработка жизненного цикла усилена.
+- Локали: `Resources/Locale/ru-RU/_wega/arcane_accessories.ftl` и
+  `Resources/Locale/en-US/_Wega/arcane_accessories.ftl`.
+  Импорт: `dev/import_arcane_accessories.py`; ограничения и аудит — в README набора.
+
 ## Чего избегать при дальнейшем переносе
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.

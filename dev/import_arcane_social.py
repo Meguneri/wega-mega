@@ -123,7 +123,7 @@ def main():
                              sprite=sprite, state=state, license=meta["license"], author=meta["copyright"]))
     (TARGET / "sofas.yml").write_text(output.rstrip() + "\n", encoding="utf-8", newline="\n")
 
-    crate = HEADER + "- type: entity\n  parent: CrateGenericSteel\n  id: WegaArcaneSocialWardrobe\n  components:\n  - type: Storage\n    grid:\n    - 0,0,15,15\n  - type: StorageFill\n    contents:\n"
+    crate = HEADER + "- type: entity\n  parent: CrateGenericSteel\n  id: WegaArcaneSocialWardrobe\n  components:\n  - type: EntityStorage\n    capacity: 64\n  - type: StorageFill\n    contents:\n"
     for item in manifest:
         if "equipped" in item:
             crate += "    - id: " + item["id"] + "\n"

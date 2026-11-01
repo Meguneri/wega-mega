@@ -1,8 +1,10 @@
 using System.Linq;
 using System.Text.Json;
 using Content.IntegrationTests.Fixtures;
+using Content.Server.Storage.EntitySystems;
 using Content.Shared.Inventory;
 using Content.Shared.Storage;
+using Content.Shared.Storage.Components;
 using Robust.Shared.ContentPack;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Utility;
@@ -25,10 +27,13 @@ public sealed class ArcaneSocialTest : GameTest
             var expected = items.Where(item => item.TryGetProperty("equipped", out _))
                 .Select(item => item.GetProperty("id").GetString()!).ToArray();
             var crate = SSpawnAtPosition("WegaArcaneSocialWardrobe", map.GridCoords);
-            var container = SComp<StorageComponent>(crate).Container;
+            Assert.That(SEntMan.HasComponent<StorageComponent>(crate), Is.False);
+            var container = SComp<EntityStorageComponent>(crate).Contents;
             var contents = container.ContainedEntities
                 .Select(uid => SComp<MetaDataComponent>(uid).EntityPrototype!.ID).ToArray();
             Assert.That(contents, Is.EquivalentTo(expected), "All clothes must fit inside the supplied crate.");
+            Server.System<EntityStorageSystem>().OpenStorage(crate);
+            Assert.That(container.ContainedEntities, Is.Empty, "The supplied clothes must be accessible after opening.");
             foreach (var item in items)
                 SSpawnAtPosition(item.GetProperty("id").GetString()!, map.GridCoords);
         });

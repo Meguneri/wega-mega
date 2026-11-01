@@ -5,9 +5,8 @@
   parent: CrateGenericSteel
   id: WegaArcaneSocialWardrobe
   components:
-  - type: Storage
-    grid:
-    - 0,0,15,15
+  - type: EntityStorage
+    capacity: 64
   - type: StorageFill
     contents:
     - id: WegaArcaneClothingUniformDressesWithFlowers

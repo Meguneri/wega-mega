@@ -3,6 +3,7 @@
   id: ClothingNeckChokerBase
   abstract: true
   components:
+  - type: ArcaneCollar
   - type: Item
     size: Tiny
   - type: Sprite
