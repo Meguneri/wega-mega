@@ -80,7 +80,7 @@ def main():
             if stem not in NAMES:
                 continue
             original = re.search(r"^  id: (.+)$", block, re.M)[1].strip()
-            # These source prototypes refer to a missing 'bouquet' sprite state.
+            # У части исходных букетов отсутствует состояние bouquet; группа не импортируется.
             if original.startswith("Bouquet"):
                 continue
             uid = "WegaArcane" + original
@@ -132,7 +132,8 @@ def main():
         "Платья, кимоно и цветочные венки. Выдаётся администратором.",
         "Dresses, kimonos and flower wreaths. Supplied by an administrator.")
     for locale, entries in locales.items():
-        path = ROOT / f"Resources/Locale/{locale}/_wega/arcane_social.ftl"
+        directory = "_Wega" if locale == "en-US" else "_wega"
+        path = ROOT / f"Resources/Locale/{locale}/{directory}/arcane_social.ftl"
         path.write_text("\n".join(entries), encoding="utf-8", newline="\n")
     (TARGET / "manifest.json").write_text(json.dumps(dict(repository="https://github.com/ArcaneSS14/arcane",
         revision=REVISION, items=manifest), ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")

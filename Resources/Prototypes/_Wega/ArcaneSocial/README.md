@@ -23,7 +23,8 @@ CC-BY-SA-3.0, clopiks. Венки: CC-BY-SA-4.0, seraphimttt.
 Исходные `meta.json` сохранены без изменения.
 
 Текстуры находятся в `Resources/Textures/_Wega/ArcaneSocial/`;
-локализации — `Resources/Locale/{ru-RU,en-US}/_wega/arcane_social.ftl`.
+локализации — `Resources/Locale/ru-RU/_wega/arcane_social.ftl` и
+`Resources/Locale/en-US/_Wega/arcane_social.ftl` (регистр каталогов различается).
 Импорт воспроизводится `python dev/import_arcane_social.py --source PATH`;
 нужен checkout указанного коммита с соответствующими текстурами и прототипами.
 Превью: `dev/preview_arcane_social.py` (Pillow).
@@ -37,7 +38,7 @@ CC-BY-SA-3.0, clopiks. Венки: CC-BY-SA-4.0, seraphimttt.
 - У дивана нет автоматического лечения, нестандартных систем отдыха и ADT-рецептов.
   Он использует стандартную посадку `ChairBase`; это сиденье, а не кровать.
 - Рецепты венков требуют ботаники Arcane и не перенесены.
-- Букеты исключены: их прототипы используют состояние `bouquet`, которого нет
+- Букеты исключены: у части прототипов состояние `bouquet` отсутствует
   в RSI цветов в закреплённом коммите. Генерировать подменные изображения не стали.
 - Не импортируются интимные механики, анатомия, изменения чата, химии,
   генерация комнат и серверные системы Arcane.

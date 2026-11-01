@@ -247,7 +247,8 @@ Uplink-каталог Estação Pirata не переносился.
 - Прототипы: `Resources/Prototypes/_Wega/ArcaneSocial/*.yml` (адаптации AGPL-3.0-or-later).
   Текстуры: `Resources/Textures/_Wega/ArcaneSocial/` (CC-BY-SA-3.0/4.0,
   Bubo44kkey, clopiks, seraphimttt, lunalita; исходные метаданные сохранены).
-- Обе локали: `Resources/Locale/{ru-RU,en-US}/_wega/arcane_social.ftl`.
+- Локали: `Resources/Locale/ru-RU/_wega/arcane_social.ftl` и
+  `Resources/Locale/en-US/_Wega/arcane_social.ftl`.
   Импорт: `dev/import_arcane_social.py`; ограничения перечислены в README набора.
 
 ## Чего избегать при дальнейшем переносе
