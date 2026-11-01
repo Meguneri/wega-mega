@@ -1,0 +1,402 @@
+{
+  "repository": "https://github.com/ArcaneSS14/arcane",
+  "revision": "81cd66873de20e597282565f27b686331e65f677",
+  "items": [
+    {
+      "id": "WegaArcaneClothingUniformDressesWithFlowers",
+      "source_id": "ClothingUniformDressesWithFlowers",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/dresseswithflowers.rsi",
+      "license": "CC-BY-SA-3.0",
+      "author": "Created by clopiks (Github)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtMaidBlue",
+      "source_id": "ClothingUniformJumpskirtMaidBlue",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_blue.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtMaidLong",
+      "source_id": "ClothingUniformJumpskirtMaidLong",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_long.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtMaidPink",
+      "source_id": "ClothingUniformJumpskirtMaidPink",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_pink.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtTangoDress",
+      "source_id": "ClothingUniformJumpskirtTangoDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/tango_dress.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtXenoDress",
+      "source_id": "ClothingUniformJumpskirtXenoDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/xeno_dress.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtWedingBeerDress",
+      "source_id": "ClothingUniformJumpskirtWedingBeerDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/beer_wedding.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtFlowerPrincessDress",
+      "source_id": "ClothingUniformJumpskirtFlowerPrincessDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/flower_princess.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtFlyAgaricDress",
+      "source_id": "ClothingUniformJumpskirtFlyAgaricDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/fly_agaric.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtGentleYellowDress",
+      "source_id": "ClothingUniformJumpskirtGentleYellowDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/gentle_yellow.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtLeopardDress",
+      "source_id": "ClothingUniformJumpskirtLeopardDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/leopard.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtPurpleEveningDress",
+      "source_id": "ClothingUniformJumpskirtPurpleEveningDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/purple_evening.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtSpiderDress",
+      "source_id": "ClothingUniformJumpskirtSpiderDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/spider.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtWeddingDress",
+      "source_id": "ClothingUniformJumpskirtWeddingDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/wedding.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingUniformJumpskirtWeddingSleevesDress",
+      "source_id": "ClothingUniformJumpskirtWeddingSleevesDress",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Uniforms/dresses.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Uniforms/Dresses/wedding_sleeves.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Made by bubo44kkey (Discord)",
+      "equipped": "equipped-INNERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoBlackGreen",
+      "source_id": "ClothingOuterKimonoBlackGreen",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_blgr.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoBlue",
+      "source_id": "ClothingOuterKimonoBlue",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_blu.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoFlowerBlack",
+      "source_id": "ClothingOuterKimonoFlowerBlack",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowbl.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoFlowerBlue",
+      "source_id": "ClothingOuterKimonoFlowerBlue",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowblu.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoFlowerRed",
+      "source_id": "ClothingOuterKimonoFlowerRed",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowred.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoFlowerWhite",
+      "source_id": "ClothingOuterKimonoFlowerWhite",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowwh.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoRed",
+      "source_id": "ClothingOuterKimonoRed",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_red.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoRedBlack",
+      "source_id": "ClothingOuterKimonoRedBlack",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_redbl.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoStripes",
+      "source_id": "ClothingOuterKimonoStripes",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_stripes.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneClothingOuterKimonoWhite",
+      "source_id": "ClothingOuterKimonoWhite",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/OuterClothing/kimonos.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_wh.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "Created by Bubo44kkey",
+      "equipped": "equipped-OUTERCLOTHING"
+    },
+    {
+      "id": "WegaArcaneWreathCornflower",
+      "source_id": "WreathCornflower",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/cornflower.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathGeranium",
+      "source_id": "WreathGeranium",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/geranium.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathLilyOfTheValley",
+      "source_id": "WreathLilyOfTheValley",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/lily_of_the_valley.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathWhiteLily",
+      "source_id": "WreathWhiteLily",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/white_lily.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathPinkLily",
+      "source_id": "WreathPinkLily",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/pink_lily.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathPeony",
+      "source_id": "WreathPeony",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/peony.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathSunflower",
+      "source_id": "WreathSunflower",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/sunflower.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathWhiteRose",
+      "source_id": "WreathWhiteRose",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/white_rose.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathRedRose",
+      "source_id": "WreathRedRose",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/red_rose.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathChamomile",
+      "source_id": "WreathChamomile",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/chamomile.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathYellowTulip",
+      "source_id": "WreathYellowTulip",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/yellow_tulip.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneWreathPinkTulip",
+      "source_id": "WreathPinkTulip",
+      "source": "Resources/Prototypes/_Arcane/Entities/Clothing/Head/flower_wreaths.yml",
+      "sprite": "_Wega/ArcaneSocial/Clothing/Head/Flowers/pink_tulip.rsi",
+      "license": "CC-BY-SA-4.0",
+      "author": "by discord: seraphimttt",
+      "equipped": "equipped-HELMET"
+    },
+    {
+      "id": "WegaArcaneSofaLeft",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_left",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    },
+    {
+      "id": "WegaArcaneSofaLeft02",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_left_02",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    },
+    {
+      "id": "WegaArcaneSofaRight",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_right",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    },
+    {
+      "id": "WegaArcaneSofaRight02",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_right_02",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    },
+    {
+      "id": "WegaArcaneSofaMiddle",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_middle",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    },
+    {
+      "id": "WegaArcaneSofaLeftcorner",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_leftcorner",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    },
+    {
+      "id": "WegaArcaneSofaRightcorner",
+      "source_id": "ADTSofaBrown*",
+      "source": "Resources/Prototypes/_Arcane/Entities/Structures/Furniture/sofas.yml",
+      "sprite": "_Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi",
+      "state": "brownsofa_rightcorner",
+      "license": "CC-BY-SA-3.0",
+      "author": "Made by discord - lunalita."
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Adapted from ArcaneSS14/arcane, 81cd66873de20e597282565f27b686331e65f677. See README.md.
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformDressesWithFlowers
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/dresseswithflowers.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/dresseswithflowers.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtMaidBlue
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_blue.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_blue.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtMaidLong
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_long.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_long.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtMaidPink
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_pink.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/maid_pink.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtTangoDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/tango_dress.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/tango_dress.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtXenoDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/xeno_dress.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/xeno_dress.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtWedingBeerDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/beer_wedding.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/beer_wedding.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtFlowerPrincessDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/flower_princess.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/flower_princess.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtFlyAgaricDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/fly_agaric.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/fly_agaric.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtGentleYellowDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/gentle_yellow.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/gentle_yellow.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtLeopardDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/leopard.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/leopard.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtPurpleEveningDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/purple_evening.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/purple_evening.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtSpiderDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/spider.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/spider.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtWeddingDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/wedding.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/wedding.rsi
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: WegaArcaneClothingUniformJumpskirtWeddingSleevesDress
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/wedding_sleeves.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Uniforms/Dresses/wedding_sleeves.rsi

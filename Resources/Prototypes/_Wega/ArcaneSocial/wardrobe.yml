@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Adapted from ArcaneSS14/arcane, 81cd66873de20e597282565f27b686331e65f677. See README.md.
+
+- type: entity
+  parent: CrateGenericSteel
+  id: WegaArcaneSocialWardrobe
+  components:
+  - type: Storage
+    grid:
+    - 0,0,15,15
+  - type: StorageFill
+    contents:
+    - id: WegaArcaneClothingUniformDressesWithFlowers
+    - id: WegaArcaneClothingUniformJumpskirtMaidBlue
+    - id: WegaArcaneClothingUniformJumpskirtMaidLong
+    - id: WegaArcaneClothingUniformJumpskirtMaidPink
+    - id: WegaArcaneClothingUniformJumpskirtTangoDress
+    - id: WegaArcaneClothingUniformJumpskirtXenoDress
+    - id: WegaArcaneClothingUniformJumpskirtWedingBeerDress
+    - id: WegaArcaneClothingUniformJumpskirtFlowerPrincessDress
+    - id: WegaArcaneClothingUniformJumpskirtFlyAgaricDress
+    - id: WegaArcaneClothingUniformJumpskirtGentleYellowDress
+    - id: WegaArcaneClothingUniformJumpskirtLeopardDress
+    - id: WegaArcaneClothingUniformJumpskirtPurpleEveningDress
+    - id: WegaArcaneClothingUniformJumpskirtSpiderDress
+    - id: WegaArcaneClothingUniformJumpskirtWeddingDress
+    - id: WegaArcaneClothingUniformJumpskirtWeddingSleevesDress
+    - id: WegaArcaneClothingOuterKimonoBlackGreen
+    - id: WegaArcaneClothingOuterKimonoBlue
+    - id: WegaArcaneClothingOuterKimonoFlowerBlack
+    - id: WegaArcaneClothingOuterKimonoFlowerBlue
+    - id: WegaArcaneClothingOuterKimonoFlowerRed
+    - id: WegaArcaneClothingOuterKimonoFlowerWhite
+    - id: WegaArcaneClothingOuterKimonoRed
+    - id: WegaArcaneClothingOuterKimonoRedBlack
+    - id: WegaArcaneClothingOuterKimonoStripes
+    - id: WegaArcaneClothingOuterKimonoWhite
+    - id: WegaArcaneWreathCornflower
+    - id: WegaArcaneWreathGeranium
+    - id: WegaArcaneWreathLilyOfTheValley
+    - id: WegaArcaneWreathWhiteLily
+    - id: WegaArcaneWreathPinkLily
+    - id: WegaArcaneWreathPeony
+    - id: WegaArcaneWreathSunflower
+    - id: WegaArcaneWreathWhiteRose
+    - id: WegaArcaneWreathRedRose
+    - id: WegaArcaneWreathChamomile
+    - id: WegaArcaneWreathYellowTulip
+    - id: WegaArcaneWreathPinkTulip

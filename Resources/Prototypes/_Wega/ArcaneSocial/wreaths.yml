@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Adapted from ArcaneSS14/arcane, 81cd66873de20e597282565f27b686331e65f677. See README.md.
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathCornflower
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/cornflower.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/cornflower.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathGeranium
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/geranium.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/geranium.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathLilyOfTheValley
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/lily_of_the_valley.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/lily_of_the_valley.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathWhiteLily
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/white_lily.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/white_lily.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathPinkLily
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/pink_lily.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/pink_lily.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathPeony
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/peony.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/peony.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathSunflower
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/sunflower.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/sunflower.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathWhiteRose
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/white_rose.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/white_rose.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathRedRose
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/red_rose.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/red_rose.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathChamomile
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/chamomile.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/chamomile.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathYellowTulip
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/yellow_tulip.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/yellow_tulip.rsi
+
+- type: entity
+  parent: ClothingHeadBase
+  id: WegaArcaneWreathPinkTulip
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/pink_tulip.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/Head/Flowers/pink_tulip.rsi

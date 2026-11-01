@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Adapted from ArcaneSS14/arcane, 81cd66873de20e597282565f27b686331e65f677. See README.md.
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoBlackGreen
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_blgr.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_blgr.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoBlue
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_blu.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_blu.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoFlowerBlack
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowbl.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowbl.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoFlowerBlue
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowblu.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowblu.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoFlowerRed
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowred.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowred.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoFlowerWhite
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowwh.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_flowwh.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoRed
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_red.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_red.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoRedBlack
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_redbl.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_redbl.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoStripes
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_stripes.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_stripes.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded
+
+- type: entity
+  parent: ClothingOuterBase
+  id: WegaArcaneClothingOuterKimonoWhite
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_wh.rsi
+  - type: Clothing
+    sprite: _Wega/ArcaneSocial/Clothing/OuterClothing/Kimonos/kimono_wh.rsi
+  - type: Foldable
+    canFoldInsideContainer: true
+  - type: FoldableClothing
+    foldedEquippedPrefix: folded

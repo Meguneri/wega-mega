@@ -237,6 +237,19 @@ Uplink-каталог Estação Pirata не переносился.
 - Импорт воспроизводит `dev/import_pilgrim_summer.py`; ограничения адаптации
   перечислены в README карты. Код систем NEXT не импортируется.
 
+## Arcane: одежда и мебель для социального отыгрыша
+
+- Источник: [ArcaneSS14/arcane](https://github.com/ArcaneSS14/arcane),
+  `81cd66873de20e597282565f27b686331e65f677`.
+- 15 платьев, 10 кимоно, 12 венков, 7 секций дивана и ящик выдачи.
+  ID `WegaArcane*`; полный реестр ID и авторов:
+  `Resources/Prototypes/_Wega/ArcaneSocial/manifest.json`.
+- Прототипы: `Resources/Prototypes/_Wega/ArcaneSocial/*.yml` (адаптации AGPL-3.0-or-later).
+  Текстуры: `Resources/Textures/_Wega/ArcaneSocial/` (CC-BY-SA-3.0/4.0,
+  Bubo44kkey, clopiks, seraphimttt, lunalita; исходные метаданные сохранены).
+- Обе локали: `Resources/Locale/{ru-RU,en-US}/_wega/arcane_social.ftl`.
+  Импорт: `dev/import_arcane_social.py`; ограничения перечислены в README набора.
+
 ## Чего избегать при дальнейшем переносе
 
 - **Nuclear-14** — много крутого постапокалиптического контента, но текстуры под `CC-BY-NC-SA-3.0` (non-commercial), поэтому не подходят.

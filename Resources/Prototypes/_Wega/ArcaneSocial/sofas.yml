@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Adapted from ArcaneSS14/arcane, 81cd66873de20e597282565f27b686331e65f677. See README.md.
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaLeft
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_left
+    noRot: false
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaLeft02
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_left_02
+    noRot: false
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaRight
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_right
+    noRot: false
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaRight02
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_right_02
+    noRot: false
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaMiddle
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_middle
+    noRot: false
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaLeftcorner
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_leftcorner
+    noRot: false
+
+- type: entity
+  parent: ChairBase
+  id: WegaArcaneSofaRightcorner
+  components:
+  - type: Sprite
+    sprite: _Wega/ArcaneSocial/Structures/Furniture/Sofas/sofa_brown.rsi
+    state: brownsofa_rightcorner
+    noRot: false

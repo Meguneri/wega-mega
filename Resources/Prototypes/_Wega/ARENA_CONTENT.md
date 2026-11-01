@@ -9,6 +9,10 @@
 
 ## Уже перенесённый контент
 
+Социальная одежда и диваны Arcane — отдельный набор
+[`ArcaneSocial`](ArcaneSocial/README.md), ID `WegaArcane*`.
+В арсенальные пулы не добавляются. Лицензии и авторы сохранены в RSI и manifest.json.
+
 | Репозиторий | Лицензия текстур | Что перенесено | Куда в `_Wega` |
 |---|---|---|---|
 | [Delta-V](https://github.com/DeltaV-Station/Delta-v) | `CC0-1.0` | Plate carrier, durathread vest, ARCS (riot suit) | `Entities/Clothing/OuterClothing/arena_armor.yml`, `Textures/_Wega/Clothing/OuterClothing/Armor/{platecarrier,duravest,riot}.rsi` |
